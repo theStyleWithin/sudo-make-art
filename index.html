@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>sudo-make-art</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<header id="top">
+  <b class="logo">sudo-make-art</b>
+  <select id="size" title="Page size"></select>
+  <button id="undo" title="Undo (Ctrl+Z)">↶</button>
+  <button id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+  <span class="sp"></span>
+  <select id="tpl" title="Templates"><option value="">Templates…</option></select>
+  <button id="open">Open</button>
+  <button id="save">Save</button>
+  <select id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option></select>
+</header>
+<main>
+  <nav id="tools">
+    <button data-add="text">T<small>Text</small></button>
+    <button data-add="rect">▭<small>Rect</small></button>
+    <button data-add="ellipse">◯<small>Ellipse</small></button>
+    <button data-add="line">／<small>Line</small></button>
+    <button data-add="star">★<small>Star</small></button>
+    <button data-add="image">🖼<small>Image</small></button>
+  </nav>
+  <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
+  <aside id="props"></aside>
+</main>
+<footer>
+  <span id="status"></span><span class="sp"></span>
+  <button id="zoomout">−</button><span id="zoomlbl">100%</span><button id="zoomin">+</button><button id="fit">Fit</button>
+</footer>
+<input type="file" id="file" hidden>
+<script src="src/app.js"></script>
+</body>
+</html>
