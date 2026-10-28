@@ -80,6 +80,7 @@
   <div class="dhead"><h2>AI image (runs on this computer)</h2><button id="ai-close">✕</button></div>
   <div class="ai-body">
     <div id="ai-form">
+      <div id="ai-fields">
       <label>Mode <select id="ai-mode"><option value="gen">Generate from a prompt</option><option value="edit">Edit the selected image</option><option value="video">Generate a short video (experimental)</option></select></label>
       <label>Prompt <textarea id="ai-prompt" placeholder="Describe what you want"></textarea></label>
       <label>Negative prompt <textarea id="ai-neg" placeholder="What to avoid"></textarea></label>
@@ -89,12 +90,15 @@
       <label id="ai-framewrap" hidden>Frames <input id="ai-frames" type="number" value="17" min="5" max="129"></label>
       <label id="ai-strwrap" hidden>Edit strength <input id="ai-strength" type="range" min="0.1" max="1" step="0.05" value="0.7"></label>
       <details><summary>Engines and advanced</summary><div id="ai-engines"></div><label>Extra engine arguments <input id="ai-extra" placeholder="optional, for example --diffusion-fa"></label></details>
+      </div>
+      <div id="ai-foot">
       <div id="ai-plan"></div>
       <div class="dact"><button id="ai-go" class="pri">Generate</button><button id="ai-cancel" hidden>Cancel</button></div>
       <progress id="ai-prog" hidden max="1" value="0"></progress>
       <div id="ai-err"></div>
+      </div>
     </div>
-    <div id="ai-result"><img id="ai-img" alt=""><video id="ai-vid" controls loop hidden></video><div class="dact"><button id="ai-add" disabled>Add to design</button><button id="ai-src" disabled>Save to Sources</button></div></div>
+    <div id="ai-result"><p id="ai-empty">Your result will appear here.</p><img id="ai-img" alt=""><video id="ai-vid" controls loop hidden></video><div class="dact"><button id="ai-add" disabled>Add to design</button><button id="ai-src" disabled>Save to Sources</button></div></div>
   </div>
 </dialog>
 <dialog id="imgdlg">
