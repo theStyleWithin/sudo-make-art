@@ -15,9 +15,9 @@
     "android:sync": "node scripts/web-build.js && cap sync android"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.2",
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "@capacitor/cli": "^8.6.0",
+    "electron": "^42.11.16",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "io.github.thestylewithin.SudoMakeArt",
