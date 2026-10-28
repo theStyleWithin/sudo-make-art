@@ -113,3 +113,7 @@ body.video-mode main,body.video-mode footer,body.video-mode .dz{display:none}
   #newcats{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
   #ie-tools{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}
 }
+
+.native-only{max-width:520px;margin:18vh auto;padding:24px;text-align:center}
+.native-only h1{color:var(--acc)}
+.native-only p{line-height:1.5;opacity:.85}
