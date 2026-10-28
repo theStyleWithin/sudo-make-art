@@ -44,7 +44,24 @@
   <div class="dhead"><h2>Create a design</h2><button id="newclose">✕</button></div>
   <div class="dbody"><nav id="newcats"></nav><div id="newgrid"></div></div>
 </dialog>
+<dialog id="imgdlg">
+  <div class="dhead"><h2>Edit image</h2><div class="dact"><button id="ie-undo">Undo</button><button id="ie-cancel">Cancel</button><button id="ie-apply" class="pri">Apply</button></div></div>
+  <div class="ie-body">
+    <div id="ie-tools">
+      <button data-tool="erase">Erase</button>
+      <button data-tool="restore">Restore</button>
+      <button data-tool="magic">Magic remove</button>
+      <button data-tool="mark">Remove mark</button>
+      <button id="ie-auto">Auto-remove plain background</button>
+      <label id="ie-sizewrap">Brush size <input id="ie-size" type="range" min="4" max="120" value="30"></label>
+      <label id="ie-tolwrap" hidden>Tolerance <input id="ie-tol" type="range" min="0" max="100" value="12"></label>
+      <p id="ie-hint"></p>
+    </div>
+    <div id="ie-stage"><canvas id="ie-canvas"></canvas></div>
+  </div>
+</dialog>
 <input type="file" id="file" hidden>
+<script src="src/imgedit.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

@@ -44,3 +44,15 @@ main{flex:1;display:flex;min-height:0}
 #newgrid .card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px}
 #newgrid .card small{opacity:.6}
 #newgrid label{display:flex;gap:8px;align-items:center}
+#imgdlg{width:min(1100px,95vw);height:min(760px,92vh);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg)}
+#imgdlg::backdrop{background:#000b}
+#imgdlg[open]{display:flex;flex-direction:column}
+.dact{display:flex;gap:6px}
+.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.ie-body{flex:1;display:flex;min-height:0}
+#ie-tools{width:230px;display:flex;flex-direction:column;gap:6px;padding:12px;border-right:1px solid var(--line);overflow:auto}
+#ie-tools button.on{background:#3a3560;border-color:var(--acc)}
+#ie-tools label{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+#ie-hint{opacity:.7;font-size:12px}
+#ie-stage{flex:1;display:grid;place-items:center;overflow:auto;background:#14151a}
+#ie-canvas{background:conic-gradient(#555 25%,#777 0 50%,#555 0 75%,#777 0) 0 0/16px 16px;cursor:crosshair;touch-action:none}

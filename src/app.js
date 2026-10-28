@@ -239,6 +239,11 @@ function renderProps() {
   if (e.type === 'line') p.append(row('Thickness', field(e, 'sw', 'number', { min: 1 })));
   if (e.type === 'rect') p.append(row('Corner radius', field(e, 'radius', 'number', { min: 0 })));
   if (e.type === 'image' && e.nw) cropPanel(e, h, p);
+  if (e.type === 'image' && window.openImageEditor) {
+    const b = document.createElement('button'); b.textContent = 'Edit image: cut out, erase, remove marks';
+    b.onclick = () => openImageEditor(e.src, e.orig || e.src, url => { commit(); e.orig = e.orig || e.src; e.src = url; render(); });
+    p.append(b);
+  }
   h('Arrange');
   p.append(row('Opacity', field(e, 'opacity', 'range')), row('Rotation', field(e, 'rot')),
     row('X', field(e, 'x')), row('Y', field(e, 'y')));
