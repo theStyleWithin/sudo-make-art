@@ -31,9 +31,10 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - **Detach audio** onto its own track, trim/split/move it separately, or **replace the visuals** and keep the audio
 - Text over video (drag it in the preview), volume per clip, fill-frame or fit-inside framing, undo/redo
 - **Speed** (0.25x to 4x) and **fade in/out** per clip, for picture and sound
-- **Watermark removal** on video: drag a box over a fixed logo and it is filled from the surrounding pixels on every frame (small marks over simple backgrounds work best). Filters work on video clips too
+- **Watermark removal** on video: drag a box over a logo and it is filled from the surrounding pixels on every frame. *Track movement* makes the box follow a logo that moves around (small marks over simple backgrounds work best). Filters work on video clips too
+- **Overlay images** on video (your own logo or watermark): move, resize, rotate, fade, swap the image
 - **Transitions** between clips: cross-fade, dip to black, wipes, slides and zoom. Picture and sound both cross over
-- Export to **WebM** everywhere (records the preview in real time), and **MP4 (H.264/AAC), fast** in the desktop app: every frame is rendered on its own and encoded by the bundled FFmpeg, which is quicker than real time on a typical PC (about 1.1x on a 4-core machine with no GPU)
+- Export to **WebM** everywhere (records the preview in real time), and **MP4 (H.264/AAC), fast** in the desktop app: every frame is rendered on its own and encoded by the bundled FFmpeg, which is quicker than real time on a typical PC (about 1.1x on a 4-core machine with no GPU). If your FFmpeg build has NVIDIA's encoder (set `SMA_FFMPEG` to its path), export uses the GPU automatically; the bundled build does not include it
 
 ## Local AI image generation (desktop only)
 Open the **AI** tool: generate an image from a prompt, or edit the selected image (img2img with a strength slider), then add the result to your design. Everything runs on your computer; nothing is sent anywhere.
@@ -56,7 +57,7 @@ Build the debug APK with the `android` CI job, or locally with the Android SDK: 
 
 ## Planned
 - Sources linking to files in place (desktop)
-- Video: moving-watermark tracking, GPU-accelerated export
+- A background-removal and upscaling model that runs locally
 - AI background cutout for busy backgrounds (local model); the current cutout is colour-based
 - Better watermark inpainting for large marks
 

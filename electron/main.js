@@ -30,7 +30,7 @@ function createWindow() {
 }
 
 // Fast video export: the page renders every frame and streams JPEG frames here; FFmpeg (bundled, local) builds the MP4.
-const ffmpegPath = () => require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
+const ffmpegPath = () => process.env.SMA_FFMPEG || require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked'); // SMA_FFMPEG: use your own FFmpeg build (for example one with NVENC)
 const vexports = new Map();
 let nvenc = null; // use the NVIDIA hardware encoder when this FFmpeg build has it and the GPU accepts it; otherwise x264 on the CPU
 function videoEncoder() {

@@ -31,7 +31,7 @@ function listModels() {
 }
 const clamp = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
 const jobs = new Map();
-const ffmpegPath = () => require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
+const ffmpegPath = () => process.env.SMA_FFMPEG || require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked'); // SMA_FFMPEG: use your own FFmpeg build (for example one with NVENC)
 
 function register() {
   ipcMain.handle('ai:hardware', hardware);
