@@ -244,6 +244,20 @@ svg.addEventListener('pointermove', ev => {
 });
 svg.addEventListener('pointerup', () => { drag = null; });
 
+// two-finger pinch zooms the canvas (touch screens)
+const fingers = new Map(); let pinch = null;
+const gap = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+svg.addEventListener('pointerdown', ev => {
+  if (ev.pointerType !== 'touch') return; fingers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (fingers.size === 2) { drag = null; pinch = { d: gap(), z: zoom }; ev.stopImmediatePropagation(); }
+}, true);
+svg.addEventListener('pointermove', ev => {
+  if (!fingers.has(ev.pointerId)) return; fingers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (pinch && fingers.size === 2) { ev.stopImmediatePropagation(); setZoom(pinch.z * gap() / pinch.d); }
+}, true);
+const lift = ev => { fingers.delete(ev.pointerId); if (fingers.size < 2) pinch = null; };
+svg.addEventListener('pointerup', lift, true); svg.addEventListener('pointercancel', lift, true);
+
 // ---------- properties panel ----------
 function row(label, input) { const l = document.createElement('label'); l.append(label, input); return l; }
 function field(e, key, type = 'number', opts = {}) {
