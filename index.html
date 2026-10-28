@@ -28,6 +28,7 @@
     <button data-add="ellipse">◯<small>Ellipse</small></button>
     <button data-add="line">／<small>Line</small></button>
     <button data-add="star">★<small>Star</small></button>
+    <button id="tool-ai" hidden>✨<small>AI</small></button>
     <button data-panel="sources">🗂<small>Sources</small></button>
   </nav>
   <aside id="sources" hidden>
@@ -67,6 +68,26 @@
   <div class="dhead"><h2>Create a design</h2><button id="newclose">✕</button></div>
   <div class="dbody"><nav id="newcats"></nav><div id="newgrid"></div></div>
 </dialog>
+<dialog id="aidlg">
+  <div class="dhead"><h2>AI image (runs on this computer)</h2><button id="ai-close">✕</button></div>
+  <div class="ai-body">
+    <div id="ai-form">
+      <label>Mode <select id="ai-mode"><option value="gen">Generate from a prompt</option><option value="edit">Edit the selected image</option></select></label>
+      <label>Prompt <textarea id="ai-prompt" placeholder="Describe what you want"></textarea></label>
+      <label>Negative prompt <textarea id="ai-neg" placeholder="What to avoid"></textarea></label>
+      <label>Model <span class="row2"><select id="ai-model"></select><button id="ai-folder" title="Put model files (.safetensors, .ckpt, .gguf) in this folder">Models folder</button></span></label>
+      <label>Size <select id="ai-size"><option>512x512</option><option>512x768</option><option>768x512</option><option>768x768</option><option>1024x1024</option><option>1024x576</option><option>576x1024</option></select></label>
+      <div class="row3"><label>Steps <input id="ai-steps" type="number" value="20" min="1" max="150"></label><label>CFG <input id="ai-cfg" type="number" value="7" step="0.5" min="0" max="30"></label><label>Seed <input id="ai-seed" type="number" value="-1"></label></div>
+      <label id="ai-strwrap" hidden>Edit strength <input id="ai-strength" type="range" min="0.1" max="1" step="0.05" value="0.7"></label>
+      <details><summary>Engines and advanced</summary><div id="ai-engines"></div><label>Extra engine arguments <input id="ai-extra" placeholder="optional, for example --diffusion-fa"></label></details>
+      <div id="ai-plan"></div>
+      <div class="dact"><button id="ai-go" class="pri">Generate</button><button id="ai-cancel" hidden>Cancel</button></div>
+      <progress id="ai-prog" hidden max="1" value="0"></progress>
+      <div id="ai-err"></div>
+    </div>
+    <div id="ai-result"><img id="ai-img" alt=""><div class="dact"><button id="ai-add" disabled>Add to design</button><button id="ai-src" disabled>Save to Sources</button></div></div>
+  </div>
+</dialog>
 <dialog id="imgdlg">
   <div class="dhead"><h2>Edit image</h2><div class="dact"><button id="ie-undo">Undo</button><button id="ie-cancel">Cancel</button><button id="ie-apply" class="pri">Apply</button></div></div>
   <div class="ie-body">
@@ -88,5 +109,6 @@
 <script src="src/imgedit.js"></script>
 <script src="src/app.js"></script>
 <script src="src/video.js"></script>
+<script src="src/ai.js"></script>
 </body>
 </html>

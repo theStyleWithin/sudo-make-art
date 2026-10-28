@@ -3,6 +3,7 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
+const ai = require('./ai');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
@@ -46,6 +47,7 @@ ipcMain.handle('video:to-mp4', async (event, data) => {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+ai.register();
 app.setName('Sudo Make Art');
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {

@@ -30,6 +30,19 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - Export to **WebM** everywhere, and **MP4 (H.264/AAC)** in the desktop app via the bundled FFmpeg
 - Export records in real time, so a 2-minute video takes about 2 minutes to export
 
+## Local AI image generation (desktop only)
+Open the **AI** tool: generate an image from a prompt, or edit the selected image (img2img with a strength slider), then add the result to your design. Everything runs on your computer; nothing is sent anywhere.
+
+The app does not include an engine or models. You bring your own:
+1. **Engine**: a `stable-diffusion.cpp`-compatible command-line build (CUDA for NVIDIA, Vulkan for AMD/Intel, and/or a CPU build). Download it from that project's releases and point to it under *Engines and advanced*.
+2. **Models**: put `.safetensors`, `.ckpt` or `.gguf` files in the models folder (the **Models folder** button opens it). SD 1.5 and SDXL style single-file models are the supported path; other model families can be tried through *Extra engine arguments*.
+
+**Memory fallback.** The app reads your free VRAM and RAM and picks a mode for every run: fits in VRAM, runs on the GPU. Not enough VRAM (for example SDXL on an RTX 2060 with 6 GB), keeps the compute on the GPU and parks the weights in system RAM. Little or no VRAM, or no GPU, runs on the CPU using system RAM. The AI panel shows which mode it chose and why. Slower modes still finish; they just take longer.
+
+The app adds no content filter of its own: what you can generate depends on the model you load, and you are responsible for what you make with it.
+
+Not done yet: video generation, and AI inpainting with a painted mask.
+
 ## Android
 A Capacitor wrapper lives in `android/` (same web code, no internet permission, no cloud backup). The phone layout is responsive.
 Build the debug APK with the `android` CI job, or locally with the Android SDK: `npm run android:sync` then `cd android && ./gradlew assembleDebug`.
