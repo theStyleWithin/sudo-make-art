@@ -4,6 +4,8 @@ An always-offline, local-only design tool inspired by Canva. No accounts, no clo
 
 This is a native app (desktop and Android). It does not run in a web browser.
 
+> **⚠️ Windows testers wanted.** The Windows installer and portable exe are built automatically but have **never been run by the maintainer**, who only uses Linux (and tests Android on their own time). They are untested and unsigned, so Windows may show a SmartScreen warning. If you use Windows and try them, please [open an issue](https://github.com/theStyleWithin/sudo-make-art/issues) with what worked and what broke. Fixes are welcome as pull requests.
+
 ```
 npm install
 npm start            # run the desktop app
