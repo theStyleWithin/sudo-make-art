@@ -27,7 +27,7 @@ const find = id => project.clips.find(c => c.id === id);
 const hasMedia = c => c.kind === 'video' || c.kind === 'audio';
 
 function save() { try { localStorage.setItem('sma-video', JSON.stringify(project)); } catch (e) {} }
-function commit() { undoS.push(JSON.stringify(project)); if (undoS.length > 100) undoS.shift(); redoS = []; }
+function commit() { undoS.push(JSON.stringify(project)); if (undoS.length > 100) undoS.shift(); redoS = []; document.dispatchEvent(new Event('sma-edit')); }
 function restore(j) { project = JSON.parse(j); if (sel && !find(sel)) sel = null; sizeCanvas(); refreshAll(); }
 
 function probe(id) { // read duration/dimensions once per source
@@ -291,7 +291,12 @@ document.addEventListener('keydown', ev => {
 });
 window.addEventListener('resize', () => { if (document.body.classList.contains('video-mode')) { sizeCanvas(); draw(); } });
 
-window.SMA_video = { show() { sizeCanvas(); refreshAll(); project.clips.forEach(c => { if (c.src) probe(c.src); }); draw(); }, hide() { if (playing) pause(); } };
+window.SMA_video = {
+  serialize: () => JSON.stringify(project), getPid: () => project.pid, setPid: p => { project.pid = p; }, getName: () => project.name || 'Untitled video', setName: n => { project.name = n; },
+  load(json) { pause(); media.forEach((m, id) => disposeMedia(id)); project = JSON.parse(json); sel = null; t = 0; undoS = []; redoS = []; },
+  reset() { pause(); media.forEach((m, id) => disposeMedia(id)); project = { w: 1080, h: 1920, clips: [] }; sel = null; t = 0; undoS = []; redoS = []; },
+  thumb: async () => { const k = 320 / Math.max(project.w, project.h), c = document.createElement('canvas'); c.width = Math.round(project.w * k); c.height = Math.round(project.h * k); draw(); c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.7); },
+  show() { sizeCanvas(); refreshAll(); project.clips.forEach(c => { if (c.src) probe(c.src); }); draw(); }, hide() { if (playing) pause(); } };
 try { const s = localStorage.getItem('sma-video'); if (s) project = JSON.parse(s); } catch (e) {}
 project.clips.forEach(c => { if (hasMedia(c) || c.kind === 'image') probe(c.src); });
 })();

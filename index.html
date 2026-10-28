@@ -10,7 +10,8 @@
 <body>
 <header id="top">
   <b class="logo">Sudo Make Art</b>
-  <span class="modes"><button id="mode-design" class="on">Design</button><button id="mode-video">Video</button></span>
+  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button></span>
+  <input id="docname" class="nm" placeholder="Untitled" maxlength="120">
   <button class="dz" id="new">+ New design</button>
   <select class="dz" id="size" title="Resize page"></select>
   <button class="dz" id="undo" title="Undo (Ctrl+Z)">↶</button>
@@ -19,7 +20,7 @@
   <select class="dz" id="tpl" title="Templates"><option value="">Templates…</option></select>
   <button class="dz" id="open">Open</button>
   <button class="dz" id="save">Save</button>
-  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option></select>
+  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option><option value="pdf">pdf (all pages)</option></select>
 </header>
 <main>
   <nav id="tools">
@@ -38,6 +39,12 @@
   <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
   <aside id="props"></aside>
 </main>
+<section id="home">
+  <div class="home-hero"><h1>What will you design today?</h1><input id="h-search" placeholder="Search your projects"></div>
+  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-folder">Open projects folder</button></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option></select></div>
+  <div id="h-grid"></div>
+</section>
 <div id="videoview">
   <div class="v-top">
     <select id="v-size" title="Video size"></select>
@@ -60,6 +67,7 @@
     </div>
   </div>
 </div>
+<div id="pages"></div>
 <footer>
   <span id="status"></span><span class="sp"></span>
   <button id="zoomout">−</button><span id="zoomlbl">100%</span><button id="zoomin">+</button><button id="fit">Fit</button>
@@ -110,5 +118,6 @@
 <script src="src/app.js"></script>
 <script src="src/video.js"></script>
 <script src="src/ai.js"></script>
+<script src="src/home.js"></script>
 </body>
 </html>

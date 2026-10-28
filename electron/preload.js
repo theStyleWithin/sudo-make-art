@@ -5,6 +5,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 const on = (channel, cb) => { const h = (e, d) => cb(d); ipcRenderer.on(channel, h); return () => ipcRenderer.removeListener(channel, h); };
 contextBridge.exposeInMainWorld('sma', {
   toMp4: arrayBuffer => ipcRenderer.invoke('video:to-mp4', arrayBuffer),
+  projects: {
+    list: () => ipcRenderer.invoke('projects:list'),
+    get: id => ipcRenderer.invoke('projects:get', id),
+    put: rec => ipcRenderer.invoke('projects:put', rec),
+    del: id => ipcRenderer.invoke('projects:del', id),
+    folder: () => ipcRenderer.invoke('projects:folder'),
+  },
   ai: {
     hardware: () => ipcRenderer.invoke('ai:hardware'),
     settings: () => ipcRenderer.invoke('ai:settings'),
