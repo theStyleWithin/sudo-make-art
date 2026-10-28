@@ -161,3 +161,5 @@ body.home-mode #home{display:flex}
 #ie-ai{display:flex;flex-direction:column;gap:6px}#ie-ai[hidden]{display:none}.err{color:#ff8787;font-size:12px;white-space:pre-wrap}
 
 #ai-vid{max-width:100%;max-height:calc(100% - 50px)}#ai-vid:not([src]){display:none}
+
+.clip .tr{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#fffa,#fff0);pointer-events:none;border-right:1px dashed #fff8}

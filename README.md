@@ -30,6 +30,7 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - **Detach audio** onto its own track, trim/split/move it separately, or **replace the visuals** and keep the audio
 - Text over video (drag it in the preview), volume per clip, fill-frame or fit-inside framing, undo/redo
 - **Speed** (0.25x to 4x) and **fade in/out** per clip, for picture and sound
+- **Transitions** between clips: cross-fade, dip to black, wipes, slides and zoom. Picture and sound both cross over
 - Export to **WebM** everywhere, and **MP4 (H.264/AAC)** in the desktop app via the bundled FFmpeg
 - Export records in real time, so a 2-minute video takes about 2 minutes to export
 
@@ -54,7 +55,7 @@ Build the debug APK with the `android` CI job, or locally with the Android SDK: 
 
 ## Planned
 - Sources linking to files in place (desktop)
-- Video: transitions, watermark removal on video, frame-accurate faster-than-real-time export
+- Video: watermark removal on video, frame-accurate faster-than-real-time export
 - Photo tools: filters, brightness/contrast, shape/text effects
 - AI background cutout for busy backgrounds (local model); the current cutout is colour-based
 - Better watermark inpainting for large marks
