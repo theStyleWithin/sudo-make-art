@@ -56,3 +56,60 @@ main{flex:1;display:flex;min-height:0}
 #ie-hint{opacity:.7;font-size:12px}
 #ie-stage{flex:1;display:grid;place-items:center;overflow:auto;background:#14151a}
 #ie-canvas{background:conic-gradient(#555 25%,#777 0 50%,#555 0 75%,#777 0) 0 0/16px 16px;cursor:crosshair;touch-action:none}
+
+.modes{display:flex;gap:2px;margin-right:6px}
+.modes button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#videoview{display:none;flex:1;flex-direction:column;min-height:0}
+body.video-mode #videoview{display:flex}
+body.video-mode main,body.video-mode footer,body.video-mode .dz{display:none}
+.v-top{display:flex;gap:6px;align-items:center;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+#v-time{font-variant-numeric:tabular-nums;min-width:120px}
+.zl{display:flex;gap:6px;align-items:center}
+#v-banner{background:#3a3560;padding:6px 12px;text-align:center}
+.v-mid{flex:1;display:flex;min-height:0}
+#v-bin{width:200px;background:var(--panel);border-right:1px solid var(--line);padding:10px;overflow:auto}
+#v-binlist{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#v-binlist .hint{grid-column:1/-1;opacity:.6}
+#v-stage{flex:1;display:grid;place-items:center;background:#0b0b0f;overflow:hidden}
+#v-canvas{background:#000;box-shadow:0 4px 30px #000a}
+#v-props{width:250px;background:var(--panel);border-left:1px solid var(--line);padding:10px;overflow:auto}
+#v-props h4{margin:12px 0 6px;font-size:11px;text-transform:uppercase;opacity:.6}
+#v-props label{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0}
+#v-props input[type=number]{width:80px}#v-props input[type=color]{padding:0;width:44px;height:26px}
+#v-props textarea{width:100%;height:60px}#v-props button{margin:4px 4px 0 0}
+#v-timeline{height:210px;background:#17181e;border-top:1px solid var(--line)}
+#v-scroll{height:100%;overflow:auto;position:relative}
+#v-ruler{position:relative;height:22px;border-bottom:1px solid var(--line);cursor:pointer;background:#1e1f26}
+#v-ruler span{position:absolute;top:4px;font-size:10px;opacity:.6;padding-left:3px;border-left:1px solid var(--line)}
+#v-lanes{position:relative;touch-action:none}
+.lane{position:relative;height:52px;border-bottom:1px solid #262833}
+.lane::before{content:attr(data-name);display:block;height:0;position:sticky;left:6px;top:2px;font-size:10px;opacity:.35;padding-left:6px;pointer-events:none}
+.clip{position:absolute;top:6px;height:40px;border-radius:6px;padding:4px 8px;font-size:11px;overflow:hidden;cursor:grab;color:#fff;border:1px solid #0006;user-select:none}
+.clip span{pointer-events:none;white-space:nowrap}
+.clip.k-video{background:#4c6ef5}.clip.k-image{background:#0ca678}.clip.k-audio{background:#d6336c}.clip.k-text{background:#f59f00;color:#111}
+.clip.sel{outline:2px solid #fff}
+.clip .h{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize;background:#fff3}
+.clip .h.l{left:0}.clip .h.r{right:0}
+#v-playhead{position:absolute;top:0;bottom:0;width:2px;background:#ff5d5d;pointer-events:none;z-index:5}
+
+#v-lanes,#v-ruler{min-width:100%}
+@media (max-width:820px){
+  header{overflow-x:auto;white-space:nowrap;flex-wrap:nowrap}
+  main{flex-direction:column}
+  #tools{order:3;width:100%;flex-direction:row;justify-content:space-around;border-right:0;border-top:1px solid var(--line);padding:4px}
+  #tools button{padding:4px 10px;font-size:18px}
+  #stage{padding:12px;min-height:0}
+  #props{display:none;order:2;width:auto;max-height:38vh;border:0;border-top:1px solid var(--line)}
+  body.has-sel #props{display:block}
+  #sources{position:fixed;inset:44px 0 62px 0;width:auto;z-index:30}
+  #sources[hidden]{display:none}
+  footer{padding:4px 8px}
+  .v-mid{flex-direction:column}
+  #v-bin,#v-props{width:auto;max-height:120px;border:0;border-bottom:1px solid var(--line)}
+  #v-binlist{grid-template-columns:repeat(4,1fr)}
+  #v-timeline{height:170px}
+  #newdlg,#imgdlg{width:100vw;height:100vh;border-radius:0}
+  .dbody,.ie-body{flex-direction:column}
+  #newcats{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  #ie-tools{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}
+}

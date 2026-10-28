@@ -1,11 +1,12 @@
 # Android
 
-Electron does not run on Android, so Android needs its own wrapper around the same web code
-(`index.html` + `src/`). Plan: **Capacitor** (an Android WebView app that bundles the files, no network needed).
+The Android app is a Capacitor wrapper (`../../android`) around the same web code as the desktop app.
+It declares no internet permission and disables cloud backup, so your files stay on the phone.
 
-Not scaffolded yet. It needs the Android SDK, and the editor UI needs a touch/phone layout first
-(pointer events already work for touch; the side panels do not fit a phone screen).
+- CI builds an unsigned **debug APK** (`android` job in `.github/workflows/build.yml`); sideload it to try it.
+- Local build needs the Android SDK and JDK 17+: `npm run android:sync`, then `cd android && ./gradlew assembleDebug`.
+- Play Store / F-Droid need a signed release build and listing, which is not set up.
 
-What carries over unchanged: the editor, curved text, crop, IndexedDB-backed Sources, PNG/JPG/SVG export.
-What needs Android-specific work: opening and saving files through Android's picker, and the heavy tools
-(video via FFmpeg, background remover and watermark removal via local models), which must be ported to native plugins.
+Status: written without an Android SDK available, so the APK has not been run on a device yet.
+Known gaps: video export is WebM only (no FFmpeg on Android), the editor uses the same UI scaled to phone width
+(no pinch-to-zoom), and saving goes through the Android share sheet.

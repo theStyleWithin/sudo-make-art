@@ -1,0 +1,6 @@
+{
+  "appId": "io.github.thestylewithin.SudoMakeArt",
+  "appName": "Sudo Make Art",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}
