@@ -75,7 +75,9 @@ function star(w, h) {
 }
 function drawEl(e, parent) {
   if (e.type === 'text') layoutText(e); // text height depends on content/curve; needed before the rotate transform
+  const F = window.SMA_FILTERS, hasFl = e.fl && !F.isDefault(e.fl), hasSh = !!e.shadow;
   const g = el('g', { 'data-id': e.id, transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})`, opacity: e.opacity }, parent);
+  if (hasFl || hasSh) g.setAttribute('filter', `url(#${addFilter(e, g, hasFl, hasSh)})`);
   const paint = { fill: e.fill, stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw };
   if (e.type === 'rect') el('rect', { width: e.w, height: e.h, rx: e.radius, ...paint }, g);
   else if (e.type === 'ellipse') el('ellipse', { cx: e.w / 2, cy: e.h / 2, rx: e.w / 2, ry: e.h / 2, ...paint }, g);
@@ -90,6 +92,46 @@ function drawEl(e, parent) {
   }
   else if (e.type === 'text') drawText(e, g);
   if (e.type === 'line') { e.h = 0; el('rect', { y: -10, width: e.w, height: 20, fill: 'transparent' }, g); }
+}
+
+// ---------- filters and shadow (SVG, so they export with the design) ----------
+function addFilter(e, g, hasFl, hasSh) {
+  const id = 'flt-' + e.id, f = el('filter', { id, x: '-40%', y: '-40%', width: '180%', height: '180%', 'color-interpolation-filters': 'sRGB' }, g);
+  if (hasFl) {
+    const v = window.SMA_FILTERS.full(e.fl), fn = (tag, attrs) => el(tag, attrs, f);
+    const transfer = (type, attrs) => { const t = fn('feComponentTransfer', {}); ['feFuncR', 'feFuncG', 'feFuncB'].forEach(n => el(n, { type, ...attrs }, t)); };
+    if (v.brightness !== 1) transfer('linear', { slope: v.brightness });
+    if (v.contrast !== 1) transfer('linear', { slope: v.contrast, intercept: 0.5 - 0.5 * v.contrast });
+    if (v.saturate !== 1) fn('feColorMatrix', { type: 'saturate', values: v.saturate });
+    if (v.gray > 0) fn('feColorMatrix', { type: 'saturate', values: 1 - v.gray });
+    if (v.sepia > 0) { const k = v.sepia, S = [[.393, .769, .189], [.349, .686, .168], [.272, .534, .131]], I = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+      fn('feColorMatrix', { type: 'matrix', values: S.map((r, i) => r.map((x, j) => I[i][j] * (1 - k) + x * k).concat([0, 0]).join(' ')).concat(['0 0 0 1 0']).join(' ') }); }
+    if (v.hue) fn('feColorMatrix', { type: 'hueRotate', values: v.hue });
+    if (v.invert > 0) transfer('table', { tableValues: `${v.invert} ${1 - v.invert}` });
+    if (v.blur > 0) fn('feGaussianBlur', { stdDeviation: v.blur });
+  }
+  if (hasSh) el('feDropShadow', { dx: e.shadow.x, dy: e.shadow.y, stdDeviation: e.shadow.blur, 'flood-color': e.shadow.color, 'flood-opacity': e.shadow.opacity ?? 0.6 }, f);
+  return id;
+}
+function filterPanel(e, p, h) { // sliders + presets
+  const F = window.SMA_FILTERS; h('Filters');
+  const pre = document.createElement('select'); Object.keys(F.PRESETS).forEach(n => pre.add(new Option(n, n)));
+  pre.onchange = () => { commit(); e.fl = { ...F.PRESETS[pre.value] }; render(); }; p.append(row('Preset', pre));
+  [['Brightness', 'brightness', 0, 2, 0.05], ['Contrast', 'contrast', 0, 2, 0.05], ['Saturation', 'saturate', 0, 3, 0.05], ['Hue', 'hue', -180, 180, 1], ['Blur', 'blur', 0, 20, 0.5], ['Grayscale', 'gray', 0, 1, 0.05], ['Sepia', 'sepia', 0, 1, 0.05]]
+    .forEach(([label, key, min, max, step]) => {
+      const i = document.createElement('input'); i.type = 'range'; i.min = min; i.max = max; i.step = step; i.value = F.full(e.fl)[key]; i.id = 'fl-' + key;
+      i.onfocus = () => { i._c = false; };
+      i.oninput = () => { if (!i._c) { commit(); i._c = true; } e.fl = { ...(e.fl || {}), [key]: +i.value }; if (F.isDefault(e.fl)) delete e.fl; render(); document.getElementById(i.id)?.focus(); };
+      p.append(row(label, i));
+    });
+  const r = document.createElement('button'); r.textContent = 'Reset filters'; r.onclick = () => { commit(); delete e.fl; render(); }; p.append(r);
+}
+function shadowPanel(e, p, h) {
+  h('Shadow');
+  const on = document.createElement('input'); on.type = 'checkbox'; on.checked = !!e.shadow;
+  on.onchange = () => { commit(); if (on.checked) e.shadow = { x: 6, y: 6, blur: 6, color: '#000000', opacity: 0.6 }; else delete e.shadow; render(); };
+  p.append(row('Drop shadow', on));
+  if (e.shadow) p.append(row('Offset X', field(e.shadow, 'x')), row('Offset Y', field(e.shadow, 'y')), row('Blur', field(e.shadow, 'blur', 'number', { min: 0 })), row('Colour', field(e.shadow, 'color', 'color')), row('Strength', field(e.shadow, 'opacity', 'range')));
 }
 
 // ---------- text (flat and curved) ----------
@@ -256,6 +298,8 @@ function renderProps() {
     b.onclick = () => openImageEditor(e.src, e.orig || e.src, url => { commit(); e.orig = e.orig || e.src; e.src = url; render(); });
     p.append(b);
   }
+  if (e.type === 'image') filterPanel(e, p, h);
+  if (e.type !== 'line') shadowPanel(e, p, h);
   h('Arrange');
   p.append(row('Opacity', field(e, 'opacity', 'range')), row('Rotation', field(e, 'rot')),
     row('X', field(e, 'x')), row('Y', field(e, 'y')));

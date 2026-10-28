@@ -43,6 +43,8 @@ function setTransition(b, type, dur) { // keeps the outgoing clip ending exactly
   const d = Math.max(0.1, Math.min(+dur || 1, b.dur)); b.trans = { type, dur: d };
   const a = prevOf(b); if (a) a.dur = Math.max(0.1, b.start + d - a.start);
 }
+let cancelFlag = false;
+function banner(text, cancellable) { $('#v-banner-t').textContent = text || ''; $('#v-banner-x').hidden = !cancellable; $('#v-banner').hidden = !text; }
 function save() { try { localStorage.setItem('sma-video', JSON.stringify(project)); } catch (e) {} }
 function commit() { undoS.push(JSON.stringify(project)); if (undoS.length > 100) undoS.shift(); redoS = []; document.dispatchEvent(new Event('sma-edit')); }
 function restore(j) { project = JSON.parse(j); if (sel && !find(sel)) sel = null; sizeCanvas(); refreshAll(); }
@@ -82,23 +84,51 @@ function mediaFor(c) {
     m = { el, url }; wire(m); }
   media.set(c.id, m); return m;
 }
-function transGain(c) {
+function transGain(c, x = t) {
   if (c.kind !== 'video') return 1; let g = 1;
-  const pin = inTrans(c, t); if (pin !== null) g *= ease(pin);
-  const o = outTrans(c, t); if (o) g *= 1 - ease(o.p);
+  const pin = inTrans(c, x); if (pin !== null) g *= ease(pin);
+  const o = outTrans(c, x); if (o) g *= 1 - ease(o.p);
   return g;
 }
 function applyVolume(c) { const m = media.get(c.id); if (m?.gain) m.gain.gain.value = c.mute ? 0 : (c.vol ?? 1) * fadeAt(c, t) * transGain(c); }
 
 // ---------- rendering ----------
 function sizeCanvas() { canvas.width = project.w; canvas.height = project.h; const st = $('#v-stage'); const s = Math.min((st.clientWidth - 20) / project.w, (st.clientHeight - 20) / project.h, 1); canvas.style.width = project.w * s + 'px'; canvas.style.height = project.h * s + 'px'; }
-function drawFit(el, w, h, fit) {
+function drawFit(el, w, h, fit, g, c) {
   if (!w || !h) return; const r = fit === 'cover' ? Math.max(project.w / w, project.h / h) : Math.min(project.w / w, project.h / h);
-  ctx.drawImage(el, (project.w - w * r) / 2, (project.h - h * r) / 2, w * r, h * r);
+  const ox = (project.w - w * r) / 2, oy = (project.h - h * r) / 2; if (c) c._map = { ox, oy, r, w, h }; // remembered so a marked box can be mapped back to the source frame
+  g.drawImage(el, ox, oy, w * r, h * r);
 }
+// Fill a box by interpolating between the pixels just outside it (the same idea as FFmpeg's delogo). Cheap enough to run every frame.
+function delogo(g, c, r) {
+  const m = c._map; if (!m) return;
+  let x0 = Math.round(m.ox + r.x * m.w * m.r), y0 = Math.round(m.oy + r.y * m.h * m.r), W = Math.round(r.w * m.w * m.r), H = Math.round(r.h * m.h * m.r);
+  if (x0 < 1) { W += x0 - 1; x0 = 1; } if (y0 < 1) { H += y0 - 1; y0 = 1; } W = Math.min(W, project.w - 1 - x0); H = Math.min(H, project.h - 1 - y0);
+  if (W < 1 || H < 1) return;
+  const img = g.getImageData(x0 - 1, y0 - 1, W + 2, H + 2), d = img.data, S = W + 2, at = (x, y) => (y * S + x) * 4;
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const dx = Math.min(i + 1, W - i), dy = Math.min(j + 1, H - j), o = at(i + 1, j + 1);
+    const L = at(0, j + 1), R = at(W + 1, j + 1), T = at(i + 1, 0), B = at(i + 1, H + 1), fx = (i + 1) / (W + 1), fy = (j + 1) / (H + 1);
+    for (let k = 0; k < 3; k++) { const hx = d[L + k] + (d[R + k] - d[L + k]) * fx, vy = d[T + k] + (d[B + k] - d[T + k]) * fy; d[o + k] = (hx * dy + vy * dx) / (dx + dy); }
+    d[o + 3] = 255;
+  }
+  g.putImageData(img, x0 - 1, y0 - 1);
+}
+const tmp = document.createElement('canvas'), tmpCtx = tmp.getContext('2d', { willReadFrequently: true });
 function drawBody(c) {
-  if (c.kind === 'video') { const m = mediaFor(c); if (m && m.el.readyState >= 2) drawFit(m.el, m.el.videoWidth, m.el.videoHeight, c.fit); }
-  else if (c.kind === 'image') { const m = mediaFor(c); if (m && m.el.complete) drawFit(m.el, m.el.naturalWidth, m.el.naturalHeight, c.fit); }
+  const F = window.SMA_FILTERS, filt = c.fl ? F.css(c.fl, project.w / 1000) : 'none';
+  if (c.wm && c.wm.length) { // draw to a scratch canvas, remove the marked boxes, then place it with the clip's filter
+    if (tmp.width !== project.w || tmp.height !== project.h) { tmp.width = project.w; tmp.height = project.h; }
+    tmpCtx.clearRect(0, 0, tmp.width, tmp.height); drawBody2(c, tmpCtx); c.wm.forEach(r => delogo(tmpCtx, c, r));
+    ctx.filter = filt; ctx.drawImage(tmp, 0, 0); ctx.filter = 'none';
+  } else { ctx.filter = filt; drawBody2(c, ctx); ctx.filter = 'none'; }
+}
+let exportFrames = null; // clip id -> decoded frame, only while a fast export is running
+function drawBody2(c, g) {
+  const fb = exportFrames && exportFrames.get(c.id);
+  if (fb) drawFit(fb, fb.width, fb.height, c.fit, g, c);
+  else if (c.kind === 'video') { const m = mediaFor(c); if (m && m.el.readyState >= 2) drawFit(m.el, m.el.videoWidth, m.el.videoHeight, c.fit, g, c); }
+  else if (c.kind === 'image') { const m = mediaFor(c); if (m && m.el.complete) drawFit(m.el, m.el.naturalWidth, m.el.naturalHeight, c.fit, g, c); }
 }
 function drawIncoming(c, p) { // the clip that is arriving, shaped by its transition
   const w = project.w, h = project.h, e = ease(p); ctx.save();
@@ -173,7 +203,7 @@ function seek(x) {
 async function addFromSource(id, at) {
   const s = src(id); if (!s) return;
   if (replacing) { // swap the visual of an existing clip, keep its timing (and any detached audio)
-    const c = find(replacing); replacing = null; $('#v-banner').hidden = true;
+    const c = find(replacing); replacing = null; banner('');
     if (c && (s.kind === 'video' || s.kind === 'image')) { commit(); disposeMedia(c.id); c.src = id; c.kind = s.kind; c.in = 0; c.fit ||= 'cover'; refreshAll(); seek(t); }
     return;
   }
@@ -255,6 +285,13 @@ function renderProps() {
   c.speed ||= 1; c.fadeIn ||= 0; c.fadeOut ||= 0; c._ps = c.speed;
   if (hasMedia(c)) p.append(num('Source in', c, 'in', { min: 0, step: 0.1 }), num('Speed (x)', c, 'speed', { min: 0.25, max: 4, step: 0.25, after: () => { const ns = Math.min(4, Math.max(0.25, +c.speed || 1)); c.dur = Math.max(0.1, c.dur * (c._ps || 1) / ns); c._ps = c.speed = ns; } }));
   if (c.kind === 'video' || c.kind === 'image') {
+    h('Filters'); const F = window.SMA_FILTERS;
+    const pre = document.createElement('select'); Object.keys(F.PRESETS).forEach(n => pre.add(new Option(n, n))); pre.onchange = () => { commit(); c.fl = { ...F.PRESETS[pre.value] }; refreshAll(); draw(); };
+    const pl = document.createElement('label'); pl.append('Preset', pre); p.append(pl);
+    [['Brightness', 'brightness', 0, 2, 0.05], ['Contrast', 'contrast', 0, 2, 0.05], ['Saturation', 'saturate', 0, 3, 0.05], ['Hue', 'hue', -180, 180, 1], ['Blur', 'blur', 0, 20, 0.5], ['Grayscale', 'gray', 0, 1, 0.05], ['Sepia', 'sepia', 0, 1, 0.05]].forEach(([label, key, min, max, step]) => {
+      const i = document.createElement('input'); i.type = 'range'; i.min = min; i.max = max; i.step = step; i.value = F.full(c.fl)[key]; i.id = 'vfl-' + key; i.onfocus = () => { i._c = false; };
+      i.oninput = () => { if (!i._c) { commit(); i._c = true; } c.fl = { ...(c.fl || {}), [key]: +i.value }; if (F.isDefault(c.fl)) delete c.fl; draw(); save(); };
+      const l = document.createElement('label'); l.append(label, i); p.append(l); });
     h('Transition into this clip');
     const sel2 = document.createElement('select'); sel2.add(new Option('None', '')); TRANS.forEach(([v, n]) => sel2.add(new Option(n, v, false, c.trans?.type === v)));
     sel2.onchange = () => { commit(); setTransition(c, sel2.value, c.trans?.dur || 1); refreshAll(); draw(); };
@@ -262,10 +299,11 @@ function renderProps() {
     if (c.trans) { const dl = document.createElement('label'); const di = document.createElement('input'); di.type = 'number'; di.min = 0.1; di.step = 0.1; di.value = c.trans.dur;
       di.onchange = () => { commit(); setTransition(c, c.trans.type, di.value); refreshAll(); draw(); }; dl.append('Length (s)', di); p.append(dl);
       p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'The previous clip is extended so the two overlap for this long. If it has no spare footage, its last frame is held.' })); }
+    wmPanel(c, p, h);
     h('Timing and fades');
   }
   p.append(num('Fade in (s)', c, 'fadeIn', { min: 0, step: 0.1 }), num('Fade out (s)', c, 'fadeOut', { min: 0, step: 0.1 }));
-  if (c.kind === 'video') { btn('Detach audio to its own track', detachAudio); btn('Replace visuals (keep audio)', () => { replacing = c.id; const b = $('#v-banner'); b.textContent = 'Pick a video or image in Media to replace this clip’s visuals. Esc to cancel.'; b.hidden = false; }); }
+  if (c.kind === 'video') { btn('Detach audio to its own track', detachAudio); btn('Replace visuals (keep audio)', () => { replacing = c.id; banner('Pick a video or image in Media to replace this clip’s visuals. Esc to cancel.'); }); }
   btn('Split at playhead (S)', split); btn('Delete', del);
 }
 function refreshAll() { renderBin(); renderTimeline(); renderProps(); $('#v-play').disabled = !project.clips.length; save(); }
@@ -305,28 +343,117 @@ canvas.addEventListener('pointermove', ev => { if (!tdrag) return; const r = can
 canvas.addEventListener('pointerup', () => { if (tdrag) { tdrag = null; renderProps(); save(); } });
 
 // ---------- export ----------
+// WebM: records the preview in real time (works everywhere). MP4 (desktop): renders every frame on its own, faster than real time.
 async function startExport(kind) {
-  if (!project.clips.length || exporting) return;
+  if (exporting || !project.clips.length) return;
+  if (kind === 'mp4') return fastExport();
   if (typeof MediaRecorder === 'undefined') { alert('This device cannot record video in the app.'); return; }
   ensureAudio(); project.clips.forEach(c => { if (hasMedia(c)) { const m = mediaFor(c); if (m) wire(m); } });
   const stream = canvas.captureStream(30); exportDest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
   const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
   recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8e6 }); chunks = [];
   recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  recorder.onstop = async () => {
-    speaker.gain.value = 1; exporting = false; $('#v-banner').hidden = true;
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    if (kind === 'mp4' && window.sma?.toMp4) {
-      const b = $('#v-banner'); b.textContent = 'Converting to MP4…'; b.hidden = false;
-      try { const out = await window.sma.toMp4(await blob.arrayBuffer()); SMA.download('video.mp4', new Blob([out], { type: 'video/mp4' })); } catch (e) { alert('MP4 conversion failed: ' + e.message); SMA.download('video.webm', blob); }
-      b.hidden = true;
-    } else SMA.download('video.webm', blob);
-  };
+  recorder.onstop = () => { speaker.gain.value = 1; exporting = false; banner(''); SMA.download('video.webm', new Blob(chunks, { type: 'video/webm' })); };
   exporting = true; speaker.gain.value = 0; // record silently
-  const b = $('#v-banner'); b.textContent = 'Exporting in real time. Keep this window open…'; b.hidden = false;
+  banner('Exporting in real time. Keep this window open…');
   t = 0; seek(0); await new Promise(r => setTimeout(r, 400)); recorder.start(250); play();
 }
 function finishExport() { if (recorder && recorder.state !== 'inactive') setTimeout(() => recorder.stop(), 300); }
+
+const wavOf = buf => { // AudioBuffer -> 16-bit PCM WAV
+  const ch = buf.numberOfChannels, n = buf.length, out = new DataView(new ArrayBuffer(44 + n * ch * 2)), w = (o, x) => [...x].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); out.setUint32(4, 36 + n * ch * 2, true); w(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, ch, true);
+  out.setUint32(24, buf.sampleRate, true); out.setUint32(28, buf.sampleRate * ch * 2, true); out.setUint16(32, ch * 2, true); out.setUint16(34, 16, true); w(36, 'data'); out.setUint32(40, n * ch * 2, true);
+  const data = [...Array(ch).keys()].map(i => buf.getChannelData(i)); let o = 44;
+  for (let i = 0; i < n; i++) for (let k = 0; k < ch; k++) { const v = Math.max(-1, Math.min(1, data[k][i])); out.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2; }
+  return out.buffer;
+};
+async function mixAudio(dur) { // the whole soundtrack, rendered without playing it
+  const rate = 48000, oac = new OfflineAudioContext(2, Math.max(1, Math.ceil(dur * rate)), rate), cache = new Map(); let any = false;
+  for (const c of project.clips) {
+    if (!hasMedia(c) || (c.kind === 'video' && c.mute)) continue; const s = src(c.src); if (!s) continue;
+    let buf = cache.get(c.src);
+    if (buf === undefined) { try { buf = await oac.decodeAudioData(await s.blob.arrayBuffer()); } catch (e) { buf = null; } cache.set(c.src, buf); } // null: file has no audio
+    if (!buf) continue;
+    const node = oac.createBufferSource(), gain = oac.createGain(); node.buffer = buf; node.playbackRate.value = spd(c);
+    const n = Math.max(2, Math.ceil(c.dur * 50)), curve = new Float32Array(n); for (let i = 0; i < n; i++) { const x = c.start + c.dur * i / (n - 1); curve[i] = (c.vol ?? 1) * fadeAt(c, x) * transGain(c, x); }
+    gain.gain.setValueCurveAtTime(curve, c.start, c.dur); node.connect(gain); gain.connect(oac.destination); node.start(c.start, c.in, c.dur * spd(c)); any = true;
+  }
+  return any ? wavOf(await oac.startRendering()) : null;
+}
+function seekClips(x) { // put every video on the exact time of this frame and wait until it has arrived
+  const waits = [];
+  for (const c of project.clips) {
+    if (c.kind !== 'video' || !(x >= c.start && x < c.start + c.dur) || (exportFrames && exportFrames.has(c.id))) continue; const m = mediaFor(c); if (!m) continue;
+    const want = Math.min(c.in + (x - c.start) * spd(c), (m.el.duration || 1e9) - 0.001);
+    if (Math.abs(m.el.currentTime - want) < 0.0005 && m.el.readyState >= 2) continue;
+    waits.push(new Promise(res => { const done = () => { m.el.removeEventListener('seeked', done); res(); }; m.el.addEventListener('seeked', done); setTimeout(done, 4000); m.el.currentTime = want; }));
+  }
+  return Promise.all(waits);
+}
+async function fastExport() {
+  const X = window.sma && window.sma.exportVideo; if (!X) { alert('Fast MP4 export is only in the desktop app. Use WebM here.'); return; }
+  if (playing) pause(); exporting = true; cancelFlag = false; const keepT = t; let id = null;
+  try {
+    const fps = 30, dur = endTime(), total = Math.max(1, Math.ceil(dur * fps));
+    banner('Mixing audio…', true); const wav = await mixAudio(dur);
+    id = await X.start({ w: project.w, h: project.h, fps, wav });
+    // hand each source file to the exporter once, and let FFmpeg decode every video clip's frames in the background
+    const extracted = new Set(), sent = new Set(); exportFrames = new Map(); const pending = new Map();
+    for (const c of project.clips.filter(k => k.kind === 'video')) {
+      const s = src(c.src); if (!s) continue; const key = 's' + c.src.replace(/[^A-Za-z0-9]/g, '').slice(0, 40);
+      if (!sent.has(key)) { sent.add(key); for (let off = 0; off < s.blob.size; off += 32 * 1048576) { banner(`Preparing ${s.name}…`, true); await X.srcChunk(id, key, off, await s.blob.slice(off, off + 32 * 1048576).arrayBuffer()); if (cancelFlag) break; } }
+      if (cancelFlag) break;
+      await X.extract(id, { clipKey: c.id.replace(/[^A-Za-z0-9]/g, ''), srcKey: key, ss: c.in, len: c.dur * spd(c), fps: fps / spd(c), w: project.w, h: project.h }); extracted.add(c.id);
+    }
+    const grab = (c, k) => { const key = c.id + ':' + k; if (!pending.has(key)) pending.set(key, X.readFrame(id, c.id.replace(/[^A-Za-z0-9]/g, ''), k).then(buf => buf && createImageBitmap(new Blob([buf], { type: 'image/jpeg' })))); return pending.get(key); };
+    // pipeline: frames are JPEG-encoded by a few workers in parallel while the page already seeks and draws the next one; results go to FFmpeg in order
+    let sendChain = Promise.resolve(), inflight = 0, failed = null;
+    const nWorkers = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1)), pool = [...Array(nWorkers)].map(() => new Worker('src/encode-worker.js')), waiting = new Map();
+    pool.forEach(wk => { wk.onmessage = ev => { const r = waiting.get(ev.data.n); waiting.delete(ev.data.n); r(ev.data.buf); }; wk.onerror = ev => { failed = new Error('Frame encoder failed: ' + ev.message); }; });
+    const encodeAsync = (bmp, n) => new Promise(res => { waiting.set(n, res); pool[n % nWorkers].postMessage({ bmp, w: project.w, h: project.h, q: 0.9, n }, [bmp]); });
+    try {
+      for (let i = 0; i < total && !cancelFlag && !failed; i++) {
+        t = i / fps; exportFrames.clear();
+        const act = project.clips.filter(c => c.kind === 'video' && extracted.has(c.id) && t >= c.start && t < c.start + c.dur);
+        await Promise.all(act.map(async c => {
+          const k = Math.round((t - c.start) * fps) + 1, bmp = await grab(c, k); pending.delete(c.id + ':' + (k - 2));
+          if (bmp) { exportFrames.set(c.id, bmp); grab(c, k + 1); grab(c, k + 2); } else extracted.delete(c.id); // no frame from FFmpeg: fall back to seeking this clip
+        }));
+        await seekClips(t); draw(); const bmp = await createImageBitmap(canvas);
+        const job = encodeAsync(bmp, i); inflight++; sendChain = sendChain.then(async () => X.frame(id, await job)).catch(e => { failed = e; }).finally(() => { inflight--; });
+        while (inflight > 8 && !failed) { await sendChain; } // keep the queue bounded
+        if (i % 5 === 0) { banner(`Rendering frame ${i + 1} of ${total} (${Math.round(100 * (i + 1) / total)}%)`, true); updatePlayhead(); await new Promise(r => setTimeout(r)); }
+      }
+      await sendChain;
+    } finally { pool.forEach(wk => wk.terminate()); }
+    if (failed) throw failed;
+    if (cancelFlag) { await X.cancel(id); id = null; return; }
+    banner('Finishing the file…'); const out = await X.finish(id); id = null; SMA.download('video.mp4', new Blob([out], { type: 'video/mp4' }));
+  } catch (e) { if (id) X.cancel(id).catch(() => {}); alert('Export failed: ' + String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')); }
+  finally { exporting = false; exportFrames = null; banner(''); seek(keepT); }
+}
+
+// ---------- watermark removal: mark boxes on the preview ----------
+let wmMode = null, wmDrag = null;
+function startMarking(c) { wmMode = c.id; banner('Drag a box over the watermark on the preview. Esc to cancel.'); }
+function wmPanel(c, p, h) {
+  h('Watermark removal');
+  p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Fills the marked box from the pixels around it, on every frame. Works for fixed logos, best on small marks over simple backgrounds.' }));
+  (c.wm || []).forEach((r, i) => { const b = document.createElement('button'); b.textContent = `Region ${i + 1} ✕`; b.onclick = () => { commit(); c.wm.splice(i, 1); if (!c.wm.length) delete c.wm; refreshAll(); draw(); }; p.append(b); });
+  const add = document.createElement('button'); add.textContent = '+ Mark a watermark'; add.onclick = () => startMarking(c); p.append(add);
+}
+canvas.addEventListener('pointerdown', ev => {
+  if (!wmMode) return; const r = canvas.getBoundingClientRect(); wmDrag = { x: (ev.clientX - r.left) / r.width * project.w, y: (ev.clientY - r.top) / r.height * project.h }; wmDrag.x2 = wmDrag.x; wmDrag.y2 = wmDrag.y; canvas.setPointerCapture(ev.pointerId); ev.stopImmediatePropagation();
+}, true);
+canvas.addEventListener('pointermove', ev => { if (!wmDrag) return; const r = canvas.getBoundingClientRect(); wmDrag.x2 = (ev.clientX - r.left) / r.width * project.w; wmDrag.y2 = (ev.clientY - r.top) / r.height * project.h; draw(); ctx.save(); ctx.strokeStyle = '#ffd43b'; ctx.lineWidth = Math.max(2, project.w / 400); ctx.setLineDash([12, 8]); ctx.strokeRect(Math.min(wmDrag.x, wmDrag.x2), Math.min(wmDrag.y, wmDrag.y2), Math.abs(wmDrag.x2 - wmDrag.x), Math.abs(wmDrag.y2 - wmDrag.y)); ctx.restore(); }, true);
+canvas.addEventListener('pointerup', () => {
+  if (!wmDrag) return; const d = wmDrag; wmDrag = null; const c = find(wmMode), m = c && c._map; wmMode = null; banner('');
+  const X0 = Math.min(d.x, d.x2), Y0 = Math.min(d.y, d.y2), X1 = Math.max(d.x, d.x2), Y1 = Math.max(d.y, d.y2);
+  if (!m || X1 - X0 < 4 || Y1 - Y0 < 4) { draw(); return; }
+  const cl = v => Math.max(0, Math.min(1, v)), fx = x => cl((x - m.ox) / (m.w * m.r)), fy = y => cl((y - m.oy) / (m.h * m.r));
+  commit(); (c.wm ||= []).push({ x: fx(X0), y: fy(Y0), w: fx(X1) - fx(X0), h: fy(Y1) - fy(Y0) }); refreshAll(); draw();
+}, true);
 
 // ---------- wiring ----------
 SIZES.forEach(([n], i) => $('#v-size').add(new Option(n, i)));
@@ -336,7 +463,8 @@ $('#v-split').onclick = split; $('#v-del').onclick = del; $('#v-addtext').onclic
 $('#v-add').onclick = () => { const f = $('#file'); f.accept = 'video/*,audio/*,image/*'; f.multiple = true; f.value = ''; f.onchange = () => { SMA.addFiles([...f.files]); f.multiple = false; }; f.click(); };
 $('#v-zoom').oninput = e => { pps = +e.target.value; renderTimeline(); };
 $('#v-export').onchange = e => { const k = e.target.value; e.target.value = ''; if (k) startExport(k); };
-if (window.sma?.toMp4) $('#v-export').add(new Option('MP4 (desktop)', 'mp4'));
+if (window.sma?.exportVideo) { $('#v-export').add(new Option('MP4 (fast, desktop)', 'mp4')); }
+$('#v-banner-x').onclick = () => { cancelFlag = true; if (recorder && recorder.state !== 'inactive') { exporting = false; recorder.stop(); } };
 SMA.subscribe(() => { renderBin(); project.clips.forEach(c => { if (c.src) probe(c.src); }); if (document.body.classList.contains('video-mode')) draw(); });
 document.addEventListener('keydown', ev => {
   if (!document.body.classList.contains('video-mode') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
@@ -344,7 +472,7 @@ document.addEventListener('keydown', ev => {
   if (k === ' ') { ev.preventDefault(); playing ? pause() : play(); }
   else if (k === 's' && !mod) split();
   else if (k === 'delete' || k === 'backspace') del();
-  else if (k === 'escape') { replacing = null; $('#v-banner').hidden = true; }
+  else if (k === 'escape') { replacing = null; wmMode = null; banner(''); }
   else if (k === 'arrowleft') seek(t - (ev.shiftKey ? 1 : 1 / 30)); else if (k === 'arrowright') seek(t + (ev.shiftKey ? 1 : 1 / 30)); else if (k === 'home') seek(0);
   else if (mod && k === 'z') { ev.preventDefault(); if (ev.shiftKey) { if (redoS.length) { undoS.push(JSON.stringify(project)); restore(redoS.pop()); } } else if (undoS.length) { redoS.push(JSON.stringify(project)); restore(undoS.pop()); } }
 });

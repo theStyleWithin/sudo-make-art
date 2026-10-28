@@ -1,10 +1,18 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 
-// The only native capabilities exposed to the page: WebM -> MP4 conversion, and the local AI engine bridge.
+// The only native capabilities exposed to the page: fast video export, projects, and the local AI engine bridge.
 const on = (channel, cb) => { const h = (e, d) => cb(d); ipcRenderer.on(channel, h); return () => ipcRenderer.removeListener(channel, h); };
 contextBridge.exposeInMainWorld('sma', {
-  toMp4: arrayBuffer => ipcRenderer.invoke('video:to-mp4', arrayBuffer),
+  exportVideo: {
+    start: p => ipcRenderer.invoke('vexport:start', p),
+    frame: (id, jpeg) => ipcRenderer.invoke('vexport:frame', id, jpeg),
+    finish: id => ipcRenderer.invoke('vexport:finish', id),
+    cancel: id => ipcRenderer.invoke('vexport:cancel', id),
+    srcChunk: (id, key, offset, data) => ipcRenderer.invoke('vexport:src-chunk', id, key, offset, data),
+    extract: (id, p) => ipcRenderer.invoke('vexport:extract', id, p),
+    readFrame: (id, clipKey, k) => ipcRenderer.invoke('vexport:read-frame', id, clipKey, k),
+  },
   projects: {
     list: () => ipcRenderer.invoke('projects:list'),
     get: id => ipcRenderer.invoke('projects:get', id),
