@@ -8,7 +8,7 @@ if (!SMA) return;
 
 const SIZES = [['Landscape 1920×1080', 1920, 1080], ['YouTube / TikTok / Reels / Shorts 1080×1920', 1080, 1920], ['Square 1080×1080', 1080, 1080], ['Landscape 1280×720', 1280, 720]];
 const FONTS = ['Arial', 'Georgia', 'Impact', 'Verdana', 'Courier New', 'Trebuchet MS'];
-const LANE = { video: 'video', image: 'video', audio: 'audio', text: 'text' };
+const LANE = { video: 'video', image: 'video', audio: 'audio', text: 'text', overlay: 'overlay' };
 
 let project = { w: 1080, h: 1920, clips: [] };
 let sel = null, t = 0, playing = false, t0 = 0, w0 = 0, pps = 60, undoS = [], redoS = [];
@@ -78,7 +78,7 @@ function wire(m) { // connect an element to the graph once the audio context exi
 function mediaFor(c) {
   let m = media.get(c.id); if (m) return m;
   const s = src(c.src); if (!s) return null;
-  if (c.kind === 'image') { const el = new Image(); const url = URL.createObjectURL(s.blob); el.onload = () => { if (!playing) draw(); }; el.src = url; m = { el, url }; }
+  if (c.kind === 'image' || c.kind === 'overlay') { const el = new Image(); const url = URL.createObjectURL(s.blob); el.onload = () => { if (!playing) draw(); }; el.src = url; m = { el, url }; }
   else { const el = document.createElement(c.kind === 'audio' ? 'audio' : 'video'); const url = URL.createObjectURL(s.blob);
     el.src = url; el.preload = 'auto'; el.playsInline = true; el.onseeked = el.onloadeddata = () => { if (!playing) draw(); };
     m = { el, url }; wire(m); }
@@ -119,7 +119,7 @@ function drawBody(c) {
   const F = window.SMA_FILTERS, filt = c.fl ? F.css(c.fl, project.w / 1000) : 'none';
   if (c.wm && c.wm.length) { // draw to a scratch canvas, remove the marked boxes, then place it with the clip's filter
     if (tmp.width !== project.w || tmp.height !== project.h) { tmp.width = project.w; tmp.height = project.h; }
-    tmpCtx.clearRect(0, 0, tmp.width, tmp.height); drawBody2(c, tmpCtx); c.wm.forEach(r => delogo(tmpCtx, c, r));
+    tmpCtx.clearRect(0, 0, tmp.width, tmp.height); drawBody2(c, tmpCtx); c.wm.forEach(r => delogo(tmpCtx, c, regionAt(r, c, t)));
     ctx.filter = filt; ctx.drawImage(tmp, 0, 0); ctx.filter = 'none';
   } else { ctx.filter = filt; drawBody2(c, ctx); ctx.filter = 'none'; }
 }
@@ -157,7 +157,14 @@ function draw() {
     if (p !== null) drawIncoming(c, p); else drawBody(c);
     ctx.globalAlpha = 1;
   }
+  for (const c of project.clips) if (c.kind === 'overlay' && active(c)) drawOverlay(c);
   for (const c of project.clips) if (c.kind === 'text' && active(c)) { ctx.globalAlpha = fadeAt(c, t); drawText(c); ctx.globalAlpha = 1; }
+}
+function drawOverlay(c) { // an image placed on top of the video: move, resize, rotate, fade (e.g. your own watermark or logo)
+  const m = mediaFor(c); if (!m || !m.el.complete || !m.el.naturalWidth) return;
+  const w = c.scale * project.w, h = w * m.el.naturalHeight / m.el.naturalWidth, cx = c.x * project.w, cy = c.y * project.h;
+  ctx.save(); ctx.globalAlpha = (c.opacity ?? 1) * fadeAt(c, t); ctx.translate(cx, cy); ctx.rotate((c.rot || 0) * Math.PI / 180); ctx.drawImage(m.el, -w / 2, -h / 2, w, h); ctx.restore();
+  c._box = [cx - w / 2, cy - h / 2, w, h];
 }
 function drawText(c) {
   ctx.save(); ctx.font = `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${c.size}px "${c.font}"`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -204,7 +211,8 @@ async function addFromSource(id, at) {
   const s = src(id); if (!s) return;
   if (replacing) { // swap the visual of an existing clip, keep its timing (and any detached audio)
     const c = find(replacing); replacing = null; banner('');
-    if (c && (s.kind === 'video' || s.kind === 'image')) { commit(); disposeMedia(c.id); c.src = id; c.kind = s.kind; c.in = 0; c.fit ||= 'cover'; refreshAll(); seek(t); }
+    if (c && c.kind === 'overlay' && s.kind === 'image') { commit(); disposeMedia(c.id); c.src = id; refreshAll(); draw(); }
+    else if (c && c.kind !== 'overlay' && (s.kind === 'video' || s.kind === 'image')) { commit(); disposeMedia(c.id); c.src = id; c.kind = s.kind; c.in = 0; c.fit ||= 'cover'; refreshAll(); seek(t); }
     return;
   }
   const m = await probe(id); commit();
@@ -213,6 +221,11 @@ async function addFromSource(id, at) {
   if (s.kind === 'audio') c.start = at ?? t;
   else { c.start = project.clips.filter(k => LANE[k.kind] === 'video').reduce((e, k) => Math.max(e, k.start + k.dur), 0); if (first && m.w) { [project.w, project.h] = m.w >= m.h ? [1920, 1080] : [1080, 1920]; sizeCanvas(); $('#v-size').value = m.w >= m.h ? 0 : 1; } }
   project.clips.push(c); sel = c.id; refreshAll(); seek(c.start);
+}
+async function addOverlay(id) {
+  const s = src(id); if (!s || s.kind !== 'image') return; const m = await probe(id); commit();
+  const c = { id: uid(), kind: 'overlay', src: id, start: t, dur: Math.max(3, endTime() - t), x: 0.85, y: 0.12, scale: 0.18, rot: 0, opacity: 1 };
+  if (m.w && m.h && m.h > m.w * 2) c.scale = 0.1; project.clips.push(c); sel = c.id; refreshAll(); draw();
 }
 function addText() { commit(); const c = { id: uid(), kind: 'text', start: t, dur: 3, text: 'Your text', font: 'Arial', size: Math.round(project.h / 14), color: '#ffffff', stroke: '#000000', sw: 4, bold: true, italic: false, x: 0.5, y: 0.5 }; project.clips.push(c); sel = c.id; refreshAll(); seek(t); }
 function split() {
@@ -237,7 +250,9 @@ function renderBin() {
   list.forEach(s => {
     const d = document.createElement('div'); d.className = 'src'; d.title = s.name;
     const ic = { video: '🎞', audio: '♪', image: '🖼' }[s.kind]; d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: ic }));
-    d.append(Object.assign(document.createElement('small'), { textContent: s.name })); d.onclick = () => addFromSource(s.id); box.append(d);
+    d.append(Object.assign(document.createElement('small'), { textContent: s.name })); d.onclick = () => addFromSource(s.id);
+    if (s.kind === 'image') { const ov = Object.assign(document.createElement('button'), { className: 'x', textContent: 'Overlay', title: 'Place this image on top of the video (for a logo or watermark)' }); ov.onclick = ev => { ev.stopPropagation(); addOverlay(s.id); }; d.append(ov); }
+    box.append(d);
   });
 }
 function renderTimeline() {
@@ -271,6 +286,12 @@ function renderProps() {
   const btn = (x, fn) => { const b = document.createElement('button'); b.textContent = x; b.onclick = fn; p.append(b); };
   if (!c) { h('Project'); p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Click a clip to edit it. Space plays, S splits at the playhead, Delete removes. Drag clip edges to trim, drag the middle to move.' })); return; }
   h(c.kind + ' clip');
+  if (c.kind === 'overlay') {
+    p.append(num('Size (% of width)', c, 'scale', { min: 0.02, max: 1.5, step: 0.01 }), num('Rotation (°)', c, 'rot', { min: -360, max: 360, step: 1 }), num('Opacity', c, 'opacity', { type: 'range', min: 0, max: 1, step: 0.05 }),
+      num('X (0–1)', c, 'x', { step: 0.01, min: 0, max: 1 }), num('Y (0–1)', c, 'y', { step: 0.01, min: 0, max: 1 }));
+    btn('Swap the image…', () => { replacing = c.id; banner('Pick another image in Media to swap it in. Esc to cancel.'); });
+    p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Drag it in the preview to move it. Size is a fraction of the video width.' }));
+  }
   if (c.kind === 'text') {
     const ta = document.createElement('textarea'); ta.value = c.text; ta.oninput = () => { commit(); c.text = ta.value; renderTimeline(); draw(); }; p.append(ta);
     const f = document.createElement('select'); FONTS.forEach(n => f.add(new Option(n, n, false, n === c.font))); f.onchange = () => { commit(); c.font = f.value; draw(); };
@@ -336,7 +357,7 @@ $('#v-ruler').addEventListener('pointerdown', ev => { const mv = e => { const r 
 let tdrag = null;
 canvas.addEventListener('pointerdown', ev => {
   const r = canvas.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * project.w, y = (ev.clientY - r.top) / r.height * project.h;
-  const hit = [...project.clips].reverse().find(c => c.kind === 'text' && t >= c.start && t < c.start + c.dur && c._box && x >= c._box[0] && x <= c._box[0] + c._box[2] && y >= c._box[1] && y <= c._box[1] + c._box[3]);
+  const hit = [...project.clips].reverse().find(c => (c.kind === 'text' || c.kind === 'overlay') && t >= c.start && t < c.start + c.dur && c._box && x >= c._box[0] && x <= c._box[0] + c._box[2] && y >= c._box[1] && y <= c._box[1] + c._box[3]);
   if (!hit) return; sel = hit.id; commit(); tdrag = { c: hit, dx: x - hit.x * project.w, dy: y - hit.y * project.h }; canvas.setPointerCapture(ev.pointerId); renderTimeline(); renderProps();
 });
 canvas.addEventListener('pointermove', ev => { if (!tdrag) return; const r = canvas.getBoundingClientRect(); tdrag.c.x = ((ev.clientX - r.left) / r.width * project.w - tdrag.dx) / project.w; tdrag.c.y = ((ev.clientY - r.top) / r.height * project.h - tdrag.dy) / project.h; draw(); });
@@ -435,12 +456,48 @@ async function fastExport() {
 }
 
 // ---------- watermark removal: mark boxes on the preview ----------
+function regionAt(r, c, x) { // a box that moves follows its tracked path
+  const p = r.path; if (!p || !p.length) return r; const u = x - c.start;
+  if (u <= p[0].t) return { ...r, x: p[0].x, y: p[0].y }; const L = p[p.length - 1]; if (u >= L.t) return { ...r, x: L.x, y: L.y };
+  let i = 0; while (p[i + 1].t < u) i++; const f = (u - p[i].t) / (p[i + 1].t - p[i].t);
+  return { ...r, x: p[i].x + (p[i + 1].x - p[i].x) * f, y: p[i].y + (p[i + 1].y - p[i].y) * f };
+}
+async function autoTrack(c, ri) { // follow a moving mark: match the first-frame pixels of the box in each following frame
+  const r = c.wm[ri], m0 = mediaFor(c); if (!m0 || c.kind !== 'video') return; if (playing) pause();
+  const el = m0.el, step = 1 / 6, n = Math.floor(c.dur / step), tc = document.createElement('canvas'); tc.width = project.w; tc.height = project.h;
+  const tg = tc.getContext('2d', { willReadFrequently: true }); cancelFlag = false;
+  const grab = async k => { const want = Math.min(c.in + k * step * spd(c), (el.duration || 1e9) - 0.001);
+    await new Promise(res => { const d = () => { el.removeEventListener('seeked', d); res(); }; el.addEventListener('seeked', d); setTimeout(d, 3000); el.currentTime = want; });
+    tg.clearRect(0, 0, tc.width, tc.height); drawFit(el, el.videoWidth, el.videoHeight, c.fit, tg, c); };
+  const gray = (d, i) => d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+  try {
+    banner('Tracking the watermark…', true); await grab(0); const mp = c._map; if (!mp) return;
+    let px = Math.round(mp.ox + r.x * mp.w * mp.r), py = Math.round(mp.oy + r.y * mp.h * mp.r);
+    const W = Math.max(6, Math.round(r.w * mp.w * mp.r)), H = Math.max(6, Math.round(r.h * mp.h * mp.r)), S = Math.round(Math.max(40, project.w * 0.04));
+    const tpl = tg.getImageData(px, py, W, H).data, path = [{ t: 0, x: r.x, y: r.y }];
+    for (let k = 1; k <= n && !cancelFlag; k++) {
+      await grab(k); if (k % 3 === 0) banner(`Tracking the watermark… ${Math.round(100 * k / n)}%`, true);
+      const x0 = Math.max(0, px - S), y0 = Math.max(0, py - S), x1 = Math.min(tc.width - W, px + S), y1 = Math.min(tc.height - H, py + S);
+      const win = tg.getImageData(x0, y0, x1 - x0 + W, y1 - y0 + H), ww = win.width, d = win.data; let best = Infinity, bx = px, by = py;
+      const sad = (cx, cy, st) => { let sum = 0; for (let j = 0; j < H; j += st) for (let i = 0; i < W; i += st) sum += Math.abs(gray(d, ((cy - y0 + j) * ww + (cx - x0 + i)) * 4) - gray(tpl, (j * W + i) * 4)); return sum; };
+      for (let cy = y0; cy <= y1; cy += 3) for (let cx = x0; cx <= x1; cx += 3) { const v = sad(cx, cy, 3); if (v < best) { best = v; bx = cx; by = cy; } }
+      best = Infinity; px = bx; py = by; // fine search around the best coarse position, comparing every pixel
+      for (let cy = Math.max(y0, by - 2); cy <= Math.min(y1, by + 2); cy++) for (let cx = Math.max(x0, bx - 2); cx <= Math.min(x1, bx + 2); cx++) { const v = sad(cx, cy, 1); if (v < best) { best = v; px = cx; py = cy; } }
+      path.push({ t: k * step, x: (px - mp.ox) / (mp.w * mp.r), y: (py - mp.oy) / (mp.h * mp.r) });
+    }
+    if (!cancelFlag) { commit(); r.path = path; }
+  } finally { banner(''); refreshAll(); seek(t); }
+}
 let wmMode = null, wmDrag = null;
 function startMarking(c) { wmMode = c.id; banner('Drag a box over the watermark on the preview. Esc to cancel.'); }
 function wmPanel(c, p, h) {
   h('Watermark removal');
   p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Fills the marked box from the pixels around it, on every frame. Works for fixed logos, best on small marks over simple backgrounds.' }));
-  (c.wm || []).forEach((r, i) => { const b = document.createElement('button'); b.textContent = `Region ${i + 1} ✕`; b.onclick = () => { commit(); c.wm.splice(i, 1); if (!c.wm.length) delete c.wm; refreshAll(); draw(); }; p.append(b); });
+  (c.wm || []).forEach((r, i) => {
+    const b = document.createElement('button'); b.textContent = `Region ${i + 1} ✕`; b.onclick = () => { commit(); c.wm.splice(i, 1); if (!c.wm.length) delete c.wm; refreshAll(); draw(); }; p.append(b);
+    if (c.kind === 'video') { const tr = document.createElement('button'); tr.textContent = r.path ? 'Re-track' : 'Track movement'; tr.title = 'Follow a logo that moves around the frame'; tr.onclick = () => autoTrack(c, i); p.append(tr); }
+    if (r.path) { const cl = document.createElement('button'); cl.textContent = 'Stop tracking'; cl.onclick = () => { commit(); delete r.path; refreshAll(); draw(); }; p.append(cl); }
+  });
   const add = document.createElement('button'); add.textContent = '+ Mark a watermark'; add.onclick = () => startMarking(c); p.append(add);
 }
 canvas.addEventListener('pointerdown', ev => {

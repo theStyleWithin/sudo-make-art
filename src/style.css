@@ -163,3 +163,6 @@ body.home-mode #home{display:flex}
 #ai-vid{max-width:100%;max-height:calc(100% - 50px)}#ai-vid:not([src]){display:none}
 
 .clip .tr{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#fffa,#fff0);pointer-events:none;border-right:1px dashed #fff8}
+
+.clip.k-overlay{background:#7048e8}
+#v-binlist .src .x{font-size:10px;padding:1px 4px}

@@ -30,15 +30,23 @@ function createWindow() {
 }
 
 // Fast video export: the page renders every frame and streams JPEG frames here; FFmpeg (bundled, local) builds the MP4.
-const ffmpegPath = () => require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
+const ffmpegPath = () => process.env.SMA_FFMPEG || require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked'); // SMA_FFMPEG: use your own FFmpeg build (for example one with NVENC)
 const vexports = new Map();
+let nvenc = null; // use the NVIDIA hardware encoder when this FFmpeg build has it and the GPU accepts it; otherwise x264 on the CPU
+function videoEncoder() {
+  if (nvenc === null) {
+    const r = require('child_process').spawnSync(ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=128x128:d=0.2', '-c:v', 'h264_nvenc', '-f', 'null', '-'], { timeout: 8000 });
+    nvenc = r.status === 0;
+  }
+  return nvenc ? ['-c:v', 'h264_nvenc', '-preset', 'p4', '-cq', '21', '-b:v', '0'] : ['-c:v', 'libx264', '-preset', 'superfast', '-crf', '20'];
+}
 const int = (v, lo, hi) => { v = Math.round(Number(v)); if (!Number.isFinite(v) || v < lo || v > hi) throw new Error('Invalid video settings'); return v; };
 ipcMain.handle('vexport:start', (e, p) => {
   const w = int(p.w, 16, 7680), h = int(p.h, 16, 7680), fps = int(p.fps, 1, 120);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sma-vx-')), out = path.join(dir, 'out.mp4'), audio = path.join(dir, 'audio.wav');
   const hasAudio = p.wav instanceof ArrayBuffer && p.wav.byteLength > 44; if (hasAudio) fs.writeFileSync(audio, Buffer.from(p.wav));
   const args = ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', ...(hasAudio ? ['-i', audio] : []),
-    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-pix_fmt', 'yuv420p',
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', ...videoEncoder(), '-pix_fmt', 'yuv420p',
     ...(hasAudio ? ['-c:a', 'aac', '-b:a', '192k', '-shortest'] : []), '-movflags', '+faststart', out];
   const child = spawn(ffmpegPath(), args, { stdio: ['pipe', 'ignore', 'pipe'] });
   const job = { child, dir, out, err: '', closed: new Promise(res => child.on('close', code => res(code))) };
