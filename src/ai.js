@@ -51,10 +51,12 @@ async function initImage(w, h) { // selected image, resized to the generation si
   return new Promise(res => c.toBlob(b => b.arrayBuffer().then(res), 'image/png'));
 }
 function setBusy(b) { $('#ai-go').hidden = b; $('#ai-cancel').hidden = !b; $('#ai-prog').hidden = !b; if (b) $('#ai-prog').removeAttribute('value'); }
-$('#ai-go').onclick = async () => {
+let busy = false;
+const generate = async () => {
+  if (busy) return; busy = true;
   $('#ai-err').textContent = ''; const [width, height] = size(), edit = $('#ai-mode').value === 'edit', video = $('#ai-mode').value === 'video';
-  if (!$('#ai-prompt').value.trim()) { $('#ai-err').textContent = 'Write a prompt first.'; return; }
-  if (!$('#ai-model').value) { $('#ai-err').textContent = 'Choose a model.'; return; }
+  if (!$('#ai-prompt').value.trim()) { $('#ai-err').textContent = 'Write a prompt first.'; busy = false; return; }
+  if (!$('#ai-model').value) { $('#ai-err').textContent = 'Choose a model.'; busy = false; return; }
   setBusy(true); offProg?.();
   const off1 = api.onStarted(d => { jobId = d.id; }), off2 = api.onProgress(d => { const p = $('#ai-prog'); p.max = d.total; p.value = d.step; });
   offProg = () => { off1(); off2(); };
@@ -65,9 +67,26 @@ $('#ai-go').onclick = async () => {
     const isVid = !!r.video; lastBlob = new Blob([isVid ? r.video : r.image], { type: isVid ? 'video/mp4' : 'image/png' }); lastKind = isVid ? 'video' : 'image';
     const u = URL.createObjectURL(lastBlob); $('#ai-img').hidden = isVid; $('#ai-vid').hidden = !isVid; (isVid ? $('#ai-vid') : $('#ai-img')).src = u; $('#ai-add').disabled = isVid; $('#ai-src').disabled = false;
   } catch (e) { $('#ai-err').textContent = e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); }
-  finally { setBusy(false); offProg?.(); offProg = null; jobId = null; }
+  finally { busy = false; setBusy(false); offProg?.(); offProg = null; jobId = null; }
 };
+$('#ai-go').onclick = generate;
 $('#ai-cancel').onclick = () => { if (jobId) api.cancel(jobId); };
 $('#ai-add').onclick = () => { if (lastBlob) { SMA.addImageBlob(lastBlob); dlg.close(); } };
 $('#ai-src').onclick = () => { if (lastBlob) SMA.addFiles([new File([lastBlob], 'ai-' + Date.now() + (lastKind === 'video' ? '.mp4' : '.png'), { type: lastKind === 'video' ? 'video/mp4' : 'image/png' })]); };
+
+// ----- "sudo make art" quick start -----
+// A plain text box, never run as a command. It only ever holds the phrase below (or the start of it); anything else is refused.
+const PHRASE = 'sudo make art', cmd = $('#ai-cmd'); let okValue = '';
+const norm = s => s.toLowerCase().replace(/\s+/g, ' ');
+const refuse = () => { cmd.classList.remove('no'); void cmd.offsetWidth; cmd.classList.add('no'); $('#ai-err').textContent = 'That box only accepts the words: sudo make art'; };
+cmd.addEventListener('input', () => {
+  const v = cmd.value;
+  if (norm(v) === '' || PHRASE.startsWith(norm(v))) { okValue = v; $('#ai-err').textContent = ''; cmd.classList.remove('no'); } // still on the way to the phrase
+  else { cmd.value = okValue; refuse(); } // not part of the phrase: put back what was there before
+});
+cmd.addEventListener('keydown', ev => {
+  if (ev.key !== 'Enter') return; ev.preventDefault();
+  if (norm(cmd.value).trim() === PHRASE) { cmd.value = okValue = ''; $('#ai-err').textContent = ''; generate(); }
+  else { cmd.value = okValue = ''; refuse(); } // Enter on anything else clears and rejects it
+});
 })();
