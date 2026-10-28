@@ -5,11 +5,13 @@
 
 const MB = 1048576;
 
-function planRun(hw, { modelBytes, width, height, engines }) {
+function planRun(hw, { modelBytes, width, height, engines, frames }) {
   const modelMB = modelBytes / MB;
-  const activationMB = (width * height) / (512 * 512) * (modelMB > 4000 ? 2400 : 1200); // rough working memory
+  let activationMB = (width * height) / (512 * 512) * (modelMB > 4000 ? 2400 : 1200); // rough working memory
+  if (frames > 1) activationMB *= Math.max(2, frames / 4); // video keeps many frames in memory at once
   const needMB = modelMB * 1.15 + activationMB;
   const notes = [];
+  if (frames > 1) notes.push('Video generation is heavy: on a mid-range GPU expect many minutes for a few seconds of footage.');
   let mode, flags = ['--vae-tiling'];
 
   const gpu = hw.gpu;

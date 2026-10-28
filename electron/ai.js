@@ -31,6 +31,7 @@ function listModels() {
 }
 const clamp = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
 const jobs = new Map();
+const ffmpegPath = () => require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 
 function register() {
   ipcMain.handle('ai:hardware', hardware);
@@ -46,7 +47,7 @@ function register() {
   ipcMain.handle('ai:clear-engine', (e, kind) => { const s = loadSettings(); delete s.engines[kind]; saveSettings(s); return s; });
   ipcMain.handle('ai:plan', async (e, p) => {
     const m = listModels().find(x => x.name === p.model); if (!m) throw new Error('Model not found in the models folder');
-    return planRun(await hardware(), { modelBytes: m.bytes, width: clamp(p.width, 64, 2048, 512), height: clamp(p.height, 64, 2048, 512), engines: loadSettings().engines });
+    return planRun(await hardware(), { modelBytes: m.bytes, width: clamp(p.width, 64, 2048, 512), height: clamp(p.height, 64, 2048, 512), engines: loadSettings().engines, frames: p.video ? clamp(p.frames, 5, 129, 17) : 1 });
   });
 
   ipcMain.handle('ai:generate', async (e, p) => {
@@ -54,16 +55,17 @@ function register() {
     const m = listModels().find(x => x.name === p.model); if (!m) throw new Error('Model not found in the models folder');
     const modelPath = path.join(modelsDir(), m.name);
     const width = Math.round(clamp(p.width, 64, 2048, 512) / 8) * 8, height = Math.round(clamp(p.height, 64, 2048, 512) / 8) * 8;
-    const plan = planRun(await hardware(), { modelBytes: m.bytes, width, height, engines: loadSettings().engines });
+    const frames = p.video ? Math.round(clamp(p.frames, 5, 129, 17)) : 1;
+    const plan = planRun(await hardware(), { modelBytes: m.bytes, width, height, engines: loadSettings().engines, frames });
     if (!plan.engine) throw new Error(plan.notes[plan.notes.length - 1]);
     if (!fs.existsSync(plan.engine)) throw new Error('Engine not found: ' + plan.engine);
 
     const id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sma-ai-')), out = path.join(dir, 'out.png');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sma-ai-')), out = path.join(dir, p.video ? 'out.avi' : 'out.png');
     const extra = String(p.extraArgs || '').split(/\s+/).filter(Boolean);
     const args = [...extra, '-m', modelPath, '-p', String(p.prompt || '').slice(0, 4000), '-n', String(p.negative || '').slice(0, 4000),
       '-W', String(width), '-H', String(height), '--steps', String(Math.round(clamp(p.steps, 1, 150, 20))), '--cfg-scale', String(clamp(p.cfg, 0, 30, 7)),
-      '-s', String(Math.round(clamp(p.seed, -1, 2 ** 31 - 1, -1))), '-t', String(plan.threads), ...plan.flags, '-o', out];
+      '-s', String(Math.round(clamp(p.seed, -1, 2 ** 31 - 1, -1))), '-t', String(plan.threads), ...plan.flags, ...(p.video ? ['-M', 'vid_gen', '--video-frames', String(frames)] : []), '-o', out];
     if (p.init instanceof ArrayBuffer && p.init.byteLength) {
       const initPath = path.join(dir, 'init.png'); fs.writeFileSync(initPath, Buffer.from(p.init));
       args.push('-i', initPath, '--strength', String(clamp(p.strength, 0, 1, 0.75)));
@@ -85,8 +87,16 @@ function register() {
         try {
           if (cancelled) throw new Error('Cancelled');
           if (code !== 0 || !fs.existsSync(out)) throw new Error('Engine failed: ' + tail.trim().split('\n').slice(-3).join(' '));
+          if (p.video) { // the engine writes an AVI; convert to MP4 so it plays everywhere and can go on the video timeline
+            const mp4 = path.join(dir, 'out.mp4');
+            execFile(ffmpegPath(), ['-y', '-i', out, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4], { timeout: 120000 }, err => {
+              try { if (err) throw new Error('Could not convert the video: ' + err.message); const v = fs.readFileSync(mp4); resolve({ id, video: v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength), plan }); }
+              catch (e2) { reject(e2); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+            });
+            return;
+          }
           const b = fs.readFileSync(out); resolve({ id, image: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), plan });
-        } catch (err) { reject(err); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+        } catch (err) { reject(err); } finally { if (!p.video || !fs.existsSync(path.join(dir, 'out.avi'))) fs.rmSync(dir, { recursive: true, force: true }); }
       });
     });
   });

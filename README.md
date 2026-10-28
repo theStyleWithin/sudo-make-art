@@ -15,6 +15,8 @@ Pushing a tag like `v0.1.0` makes GitHub Actions build the AppImage and Windows 
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
 ## What works now
+- **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
+- **Multi-page designs** and **PDF export** (all pages, correct physical size for the print presets)
 - **Create a design**: social media, presentation and print size presets, plus custom sizes
 - **Text**: font, size, bold/italic/align, outline, and **curved text** (arch and smile)
 - **Shapes**: rectangle, ellipse, line, star; move, resize, rotate, layer order, duplicate
@@ -27,6 +29,7 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - Timeline with video/image, audio and text lanes; drag clips, drag edges to trim, **split** at the playhead
 - **Detach audio** onto its own track, trim/split/move it separately, or **replace the visuals** and keep the audio
 - Text over video (drag it in the preview), volume per clip, fill-frame or fit-inside framing, undo/redo
+- **Speed** (0.25x to 4x) and **fade in/out** per clip, for picture and sound
 - Export to **WebM** everywhere, and **MP4 (H.264/AAC)** in the desktop app via the bundled FFmpeg
 - Export records in real time, so a 2-minute video takes about 2 minutes to export
 
@@ -41,7 +44,9 @@ The app does not include an engine or models. You bring your own:
 
 The app adds no content filter of its own: what you can generate depends on the model you load, and you are responsible for what you make with it.
 
-Not done yet: video generation, and AI inpainting with a painted mask.
+**AI fill**: in *Edit image*, paint an area, describe what belongs there, and the engine replaces just that area.
+
+**Video generation (experimental)**: *Generate a short video* uses the engine's video mode and converts the result to MP4. Video models need extra files (VAE, text encoder); pass them under *Extra engine arguments*. Expect many minutes for a few seconds on a mid-range GPU.
 
 ## Android
 A Capacitor wrapper lives in `android/` (same web code, no internet permission, no cloud backup). The phone layout is responsive.
@@ -49,10 +54,10 @@ Build the debug APK with the `android` CI job, or locally with the Android SDK: 
 
 ## Planned
 - Sources linking to files in place (desktop)
-- Video: transitions, fades, speed, watermark removal on video, frame-accurate faster-than-real-time export
+- Video: transitions, watermark removal on video, frame-accurate faster-than-real-time export
+- Photo tools: filters, brightness/contrast, shape/text effects
 - AI background cutout for busy backgrounds (local model); the current cutout is colour-based
 - Better watermark inpainting for large marks
-- Multi-page designs, home screen with recents and folders, PDF export
 
 All code is original. No Canva code or assets are used.
 

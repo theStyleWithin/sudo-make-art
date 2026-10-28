@@ -11,7 +11,7 @@ const PRESETS = {
     ['WhatsApp Status', 1080, 1920], ['YouTube Thumbnail', 1280, 720], ['YouTube Banner', 2560, 1440], ['YouTube Profile Picture', 800, 800],
     ['YouTube Shorts', 1080, 1920]],
   'Presentation': [['Presentation 16:9', 1920, 1080], ['Presentation 4:3', 1600, 1200]],
-  'Print': [['A4 (150 dpi)', 1240, 1754], ['A3 Poster (300 dpi)', 3508, 4961], ['Letter (150 dpi)', 1275, 1650], ['Business Card', 1050, 600]],
+  'Print': [['A4 (150 dpi)', 1240, 1754, 150], ['A3 Poster (300 dpi)', 3508, 4961, 300], ['Letter (150 dpi)', 1275, 1650, 150], ['Business Card', 1050, 600, 300]],
 };
 const FLAT = Object.values(PRESETS).flat();
 const FONTS = ['Arial', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana', 'Impact', 'Trebuchet MS', 'Comic Sans MS'];
@@ -40,15 +40,25 @@ function mk(type, o = {}) {
 }
 
 // ---------- state ----------
-let doc = { w: 1080, h: 1080, bg: '#ffffff', els: [] };
+let doc = { w: 1080, h: 1080, bg: '#ffffff', els: [], pages: [{ bg: '#ffffff', els: [] }], cur: 0 };
+// doc.els / doc.bg are the working copy of the current page; pages[] holds all pages (synced before saving or switching).
+function syncPage() { doc.pages[doc.cur] = { bg: doc.bg, els: doc.els }; }
+function serialize() { syncPage(); const { els, bg, ...rest } = doc; return JSON.stringify(rest); }
+function adopt(d) { // accepts the old single-page format too
+  if (!d.pages) d = { w: d.w, h: d.h, pages: [{ bg: d.bg || '#ffffff', els: d.els || [] }], cur: 0 };
+  d.cur = Math.max(0, Math.min(d.cur || 0, d.pages.length - 1)); d.bg = d.pages[d.cur].bg; d.els = d.pages[d.cur].els; doc = d;
+}
+function newDoc(w, h, dpi) { adopt({ w, h, dpi, pages: [{ bg: '#ffffff', els: [] }], cur: 0 }); sel = null; }
+function goPage(i) { syncPage(); doc.cur = i; doc.bg = doc.pages[i].bg; doc.els = doc.pages[i].els; sel = null; render(); }
 let sel = null, zoom = 0.5, undoS = [], redoS = [];
 const find = id => doc.els.find(e => e.id === id);
 
 function commit() { // call BEFORE mutating
-  undoS.push(JSON.stringify(doc)); if (undoS.length > 100) undoS.shift(); redoS = [];
+  undoS.push(serialize()); if (undoS.length > 100) undoS.shift(); redoS = [];
+  document.dispatchEvent(new Event('sma-edit'));
 }
-function restore(json) { doc = JSON.parse(json); if (sel && !find(sel)) sel = null; render(); }
-function autosave() { try { localStorage.setItem('sma-doc', JSON.stringify(doc)); } catch (e) {} }
+function restore(json) { adopt(JSON.parse(json)); if (sel && !find(sel)) sel = null; render(); }
+function autosave() { try { localStorage.setItem('sma-doc', serialize()); } catch (e) {} }
 
 // ---------- rendering ----------
 function el(tag, attrs = {}, parent) {
@@ -131,6 +141,7 @@ function render() {
   document.body.classList.toggle('has-sel', !!sel);
   $('#zoomlbl').textContent = Math.round(zoom * 100) + '%';
   $('#status').textContent = `${doc.w}×${doc.h}px · ${doc.els.length} layers`;
+  renderPages();
   autosave();
 }
 
@@ -367,12 +378,12 @@ function buildDialog() {
       $('#cgo').onclick = () => make(Math.max(16, +$('#cw').value || 1080), Math.max(16, +$('#ch').value || 1080));
       return;
     }
-    PRESETS[cat].forEach(([n, w, h]) => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = `<b></b><small>${w} × ${h} px</small>`; b.firstChild.textContent = n; b.onclick = () => make(w, h); grid.append(b); });
+    PRESETS[cat].forEach(([n, w, h, dpi]) => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = `<b></b><small>${w} × ${h} px</small>`; b.firstChild.textContent = n; b.onclick = () => make(w, h, dpi); grid.append(b); });
   };
   [...Object.keys(PRESETS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
   show('Social media');
 }
-function make(w, h) { commit(); doc = { w, h, bg: '#ffffff', els: [] }; sel = null; dlg.close(); fit(); }
+function make(w, h, dpi) { commit(); newDoc(w, h, dpi); dlg.close(); setMode('design'); fit(); }
 $('#new').onclick = () => dlg.showModal();
 $('#newclose').onclick = () => dlg.close();
 buildDialog();
@@ -380,11 +391,11 @@ buildDialog();
 const sizeSel = $('#size');
 sizeSel.add(new Option('Custom size', ''));
 FLAT.forEach(([n, w, h], i) => sizeSel.add(new Option(`${n} ${w}×${h}`, i)));
-sizeSel.onchange = () => { commit(); [, doc.w, doc.h] = FLAT[sizeSel.value]; fit(); };
+sizeSel.onchange = () => { if (sizeSel.value === '') return; commit(); [, doc.w, doc.h, doc.dpi] = FLAT[sizeSel.value]; fit(); };
 Object.keys(TEMPLATES).forEach(k => $('#tpl').add(new Option(k, k)));
-$('#tpl').onchange = ev => { const t = TEMPLATES[ev.target.value]; if (!t) return; commit(); const d = t(); doc = { w: d.w, h: d.h, bg: d.bg, els: d.els }; sel = null; ev.target.value = ''; fit(); };
-$('#undo').onclick = () => { if (!undoS.length) return; redoS.push(JSON.stringify(doc)); restore(undoS.pop()); };
-$('#redo').onclick = () => { if (!redoS.length) return; undoS.push(JSON.stringify(doc)); restore(redoS.pop()); };
+$('#tpl').onchange = ev => { const t = TEMPLATES[ev.target.value]; if (!t) return; commit(); const d = t(); adopt({ w: d.w, h: d.h, bg: d.bg, els: d.els });  sel = null; ev.target.value = ''; fit(); };
+$('#undo').onclick = () => { if (!undoS.length) return; redoS.push(serialize()); restore(undoS.pop()); };
+$('#redo').onclick = () => { if (!redoS.length) return; undoS.push(serialize()); restore(redoS.pop()); };
 function setZoom(z) { zoom = Math.max(0.05, Math.min(4, z)); render(); }
 $('#zoomin').onclick = () => setZoom(zoom * 1.2); $('#zoomout').onclick = () => setZoom(zoom / 1.2);
 function fit() { const s = $('#stage'); const pi = FLAT.findIndex(([, w, h]) => w === doc.w && h === doc.h); sizeSel.value = pi < 0 ? '' : String(pi); const phone = matchMedia('(max-width:820px)').matches, pad = phone ? 24 : 80;
@@ -404,8 +415,8 @@ async function download(name, blob) {
     } catch (e) { alert('Could not save: ' + e.message); return; }
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
-$('#save').onclick = () => download('design.smart.json', new Blob([JSON.stringify(doc)], { type: 'application/json' }));
-$('#open').onclick = () => pick(f => f.text().then(t => { try { commit(); doc = JSON.parse(t); sel = null; fit(); } catch (e) { alert('Not a valid project file'); } }), '.json');
+$('#save').onclick = () => download('design.smart.json', new Blob([serialize()], { type: 'application/json' }));
+$('#open').onclick = () => pick(f => f.text().then(t => { try { const d = JSON.parse(t); commit(); adopt(d); sel = null; fit(); } catch (e) { alert('Not a valid project file'); } }), '.json');
 function cleanSVG() {
   const c = svg.cloneNode(true); c.querySelector('#ui')?.remove();
   c.setAttribute('width', doc.w); c.setAttribute('height', doc.h); c.style.background = '';
@@ -415,6 +426,7 @@ function cleanSVG() {
 }
 $('#export').onchange = ev => {
   const fmt = ev.target.value; ev.target.value = ''; if (!fmt) return;
+  if (fmt === 'pdf') return exportPDF();
   const xml = cleanSVG();
   if (fmt === 'svg') return download('design.svg', new Blob([xml], { type: 'image/svg+xml' }));
   const img = new Image();
@@ -426,6 +438,47 @@ $('#export').onchange = ev => {
   };
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
 };
+
+// ---------- pages ----------
+function renderPages() {
+  const box = $('#pages'); if (!box) return; box.textContent = '';
+  doc.pages.forEach((_, i) => { const b = document.createElement('button'); b.textContent = i + 1; b.className = i === doc.cur ? 'on' : ''; b.title = 'Page ' + (i + 1); b.onclick = () => goPage(i); box.append(b); });
+  const mk2 = (t, title, fn) => { const b = document.createElement('button'); b.textContent = t; b.title = title; b.onclick = fn; box.append(b); };
+  mk2('+', 'Add a blank page', () => { commit(); syncPage(); doc.pages.splice(doc.cur + 1, 0, { bg: '#ffffff', els: [] }); goPage(doc.cur + 1); });
+  mk2('⧉', 'Duplicate this page', () => { commit(); syncPage(); const c = JSON.parse(JSON.stringify(doc.pages[doc.cur])); c.els.forEach(e => { e.id = mk('x').id; }); doc.pages.splice(doc.cur + 1, 0, c); goPage(doc.cur + 1); });
+  mk2('🗑', 'Delete this page', () => { if (doc.pages.length < 2) return; commit(); doc.pages.splice(doc.cur, 1); goPage(Math.min(doc.cur, doc.pages.length - 1)); });
+}
+
+// ---------- PDF (all pages, one JPEG per page) ----------
+function buildPDF(pages) {
+  const enc = new TextEncoder(), parts = [], offs = []; let len = 0;
+  const put = x => { const u = typeof x === 'string' ? enc.encode(x) : x; parts.push(u); len += u.length; };
+  const obj = (n, body) => { offs[n] = len; put(`${n} 0 obj\n`); put(body); put('\nendobj\n'); };
+  put('%PDF-1.4\n'); const kids = pages.map((_, i) => `${3 + 3 * i} 0 R`).join(' ');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>'); obj(2, `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`);
+  pages.forEach((pg, i) => {
+    const n = 3 + 3 * i, content = `q ${pg.pw} 0 0 ${pg.ph} 0 0 cm /Im0 Do Q`;
+    obj(n, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pg.pw} ${pg.ph}] /Contents ${n + 1} 0 R /Resources << /XObject << /Im0 ${n + 2} 0 R >> >> >>`);
+    obj(n + 1, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+    offs[n + 2] = len; put(`${n + 2} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pg.w} /Height ${pg.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${pg.jpeg.length} >>\nstream\n`);
+    put(pg.jpeg); put('\nendstream\nendobj\n');
+  });
+  const total = 3 + 3 * pages.length, xref = len;
+  put(`xref\n0 ${total}\n0000000000 65535 f \n`); for (let n = 1; n < total; n++) put(String(offs[n]).padStart(10, '0') + ' 00000 n \n');
+  put(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+async function exportPDF() {
+  const keep = doc.cur, out = [], dpi = doc.dpi || 96;
+  for (let i = 0; i < doc.pages.length; i++) {
+    goPage(i); const xml = cleanSVG();
+    const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
+    const cv = document.createElement('canvas'); cv.width = doc.w; cv.height = doc.h; const cx = cv.getContext('2d'); cx.fillStyle = doc.bg; cx.fillRect(0, 0, doc.w, doc.h); cx.drawImage(img, 0, 0, doc.w, doc.h);
+    const b = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+    out.push({ w: doc.w, h: doc.h, pw: +(doc.w * 72 / dpi).toFixed(2), ph: +(doc.h * 72 / dpi).toFixed(2), jpeg: new Uint8Array(await b.arrayBuffer()) });
+  }
+  goPage(keep); download('design.pdf', buildPDF(out));
+}
 
 // ---------- keyboard ----------
 document.addEventListener('keydown', ev => {
@@ -441,19 +494,31 @@ document.addEventListener('keydown', ev => {
   } else if (k === 'escape') { sel = null; render(); }
 });
 
-// ---------- design / video mode ----------
+// ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video');
-  $('#mode-design').classList.toggle('on', m !== 'video'); $('#mode-video').classList.toggle('on', m === 'video');
-  if (m === 'video') window.SMA_video?.show(); else { window.SMA_video?.hide(); fit(); }
-  try { localStorage.setItem('sma-mode', m); } catch (e) {}
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home');
+  ['home', 'design', 'video'].forEach(k => $('#mode-' + k).classList.toggle('on', k === m));
+  if (m !== 'video') window.SMA_video?.hide();
+  if (m === 'video') window.SMA_video?.show(); else if (m === 'design') fit();
+  document.dispatchEvent(new CustomEvent('sma-mode', { detail: m }));
 }
-$('#mode-design').onclick = () => setMode('design'); $('#mode-video').onclick = () => setMode('video');
+$('#mode-home').onclick = () => setMode('home'); $('#mode-design').onclick = () => setMode('design'); $('#mode-video').onclick = () => setMode('video');
+async function designThumb() {
+  const xml = cleanSVG();
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
+  const k = 320 / Math.max(doc.w, doc.h), cv = document.createElement('canvas'); cv.width = Math.round(doc.w * k); cv.height = Math.round(doc.h * k);
+  const cx = cv.getContext('2d'); cx.fillStyle = doc.bg; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL('image/jpeg', 0.7);
+}
+window.SMA.design = {
+  serialize, thumb: designThumb, getPid: () => doc.pid, setPid: p => { doc.pid = p; }, getName: () => doc.name || 'Untitled design', setName: n => { doc.name = n; },
+  load: json => { adopt(JSON.parse(json)); sel = null; undoS = []; redoS = []; fit(); },
+};
+window.SMA.setMode = setMode;
 
 // ---------- boot ----------
-try { const s = localStorage.getItem('sma-doc'); if (s) doc = JSON.parse(s); } catch (e) {}
+try { const s = localStorage.getItem('sma-doc'); if (s) adopt(JSON.parse(s)); } catch (e) {}
 window.addEventListener('resize', () => { });
 fit();
 loadSources();
-try { if (localStorage.getItem('sma-mode') === 'video') setTimeout(() => setMode('video'), 0); } catch (e) {}
+setTimeout(() => setMode('home'), 0);
 })();

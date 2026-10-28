@@ -26,8 +26,10 @@ const fmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60); return m + 
 const find = id => project.clips.find(c => c.id === id);
 const hasMedia = c => c.kind === 'video' || c.kind === 'audio';
 
+const spd = c => c.speed || 1;
+const fadeAt = (c, x) => { let f = 1; if (c.fadeIn > 0) f = Math.min(f, (x - c.start) / c.fadeIn); if (c.fadeOut > 0) f = Math.min(f, (c.start + c.dur - x) / c.fadeOut); return Math.max(0, Math.min(1, f)); };
 function save() { try { localStorage.setItem('sma-video', JSON.stringify(project)); } catch (e) {} }
-function commit() { undoS.push(JSON.stringify(project)); if (undoS.length > 100) undoS.shift(); redoS = []; }
+function commit() { undoS.push(JSON.stringify(project)); if (undoS.length > 100) undoS.shift(); redoS = []; document.dispatchEvent(new Event('sma-edit')); }
 function restore(j) { project = JSON.parse(j); if (sel && !find(sel)) sel = null; sizeCanvas(); refreshAll(); }
 
 function probe(id) { // read duration/dimensions once per source
@@ -65,7 +67,7 @@ function mediaFor(c) {
     m = { el, url }; wire(m); }
   media.set(c.id, m); return m;
 }
-function applyVolume(c) { const m = media.get(c.id); if (m?.gain) m.gain.gain.value = c.mute ? 0 : (c.vol ?? 1); }
+function applyVolume(c) { const m = media.get(c.id); if (m?.gain) m.gain.gain.value = c.mute ? 0 : (c.vol ?? 1) * fadeAt(c, t); }
 
 // ---------- rendering ----------
 function sizeCanvas() { canvas.width = project.w; canvas.height = project.h; const st = $('#v-stage'); const s = Math.min((st.clientWidth - 20) / project.w, (st.clientHeight - 20) / project.h, 1); canvas.style.width = project.w * s + 'px'; canvas.style.height = project.h * s + 'px'; }
@@ -78,10 +80,12 @@ function draw() {
   const active = c => t >= c.start - 1e-6 && t < c.start + c.dur;
   for (const c of project.clips) {
     if (!active(c)) continue;
+    ctx.globalAlpha = fadeAt(c, t);
     if (c.kind === 'video') { const m = mediaFor(c); if (m && m.el.readyState >= 2) drawFit(m.el, m.el.videoWidth, m.el.videoHeight, c.fit); }
     else if (c.kind === 'image') { const m = mediaFor(c); if (m && m.el.complete) drawFit(m.el, m.el.naturalWidth, m.el.naturalHeight, c.fit); }
+    ctx.globalAlpha = 1;
   }
-  for (const c of project.clips) if (c.kind === 'text' && active(c)) drawText(c);
+  for (const c of project.clips) if (c.kind === 'text' && active(c)) { ctx.globalAlpha = fadeAt(c, t); drawText(c); ctx.globalAlpha = 1; }
 }
 function drawText(c) {
   ctx.save(); ctx.font = `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${c.size}px "${c.font}"`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -99,8 +103,8 @@ function sync() {
   for (const c of project.clips) {
     if (!hasMedia(c)) continue;
     const m = mediaFor(c); if (!m) continue;
-    const on = playing && t >= c.start && t < c.start + c.dur, want = c.in + (t - c.start);
-    if (on) { applyVolume(c); if (m.el.paused) { m.el.currentTime = want; m.el.play().catch(() => {}); } else if (Math.abs(m.el.currentTime - want) > 0.3) m.el.currentTime = want; }
+    const on = playing && t >= c.start && t < c.start + c.dur, want = c.in + (t - c.start) * spd(c);
+    if (on) { applyVolume(c); m.el.playbackRate = spd(c); if (m.el.paused) { m.el.currentTime = want; m.el.play().catch(() => {}); } else if (Math.abs(m.el.currentTime - want) > 0.3) m.el.currentTime = want; }
     else if (!m.el.paused) m.el.pause();
   }
 }
@@ -119,7 +123,7 @@ function pause() { playing = false; $('#v-play').textContent = '▶'; sync(); dr
 function seek(x) {
   t = Math.max(0, Math.min(x, Math.max(endTime(), 0)));
   if (playing) { t0 = t; w0 = performance.now(); }
-  for (const c of project.clips) if (c.kind === 'video' && t >= c.start && t < c.start + c.dur) { const m = mediaFor(c); if (m) m.el.currentTime = c.in + (t - c.start); }
+  for (const c of project.clips) if (c.kind === 'video' && t >= c.start && t < c.start + c.dur) { const m = mediaFor(c); if (m) m.el.currentTime = c.in + (t - c.start) * spd(c); }
   draw(); updatePlayhead();
 }
 
@@ -142,13 +146,13 @@ function addText() { commit(); const c = { id: uid(), kind: 'text', start: t, du
 function split() {
   const c = find(sel) || project.clips.find(k => LANE[k.kind] === 'video' && t > k.start && t < k.start + k.dur);
   if (!c || !(t > c.start + 0.05 && t < c.start + c.dur - 0.05)) return;
-  commit(); const n = { ...c, id: uid(), start: t, in: c.in + (t - c.start), dur: c.start + c.dur - t }; c.dur = t - c.start;
+  commit(); const n = { ...c, id: uid(), start: t, in: c.in + (t - c.start) * spd(c), dur: c.start + c.dur - t, fadeIn: 0 }; c.fadeOut = 0; c.dur = t - c.start;
   project.clips.push(n); sel = n.id; refreshAll(); draw();
 }
 function del() { if (!sel) return; commit(); disposeMedia(sel); project.clips = project.clips.filter(c => c.id !== sel); sel = null; refreshAll(); draw(); }
 function detachAudio() {
   const c = find(sel); if (!c || c.kind !== 'video' || c.mute) return; commit();
-  project.clips.push({ id: uid(), kind: 'audio', src: c.src, start: c.start, in: c.in, dur: c.dur, vol: c.vol ?? 1 });
+  project.clips.push({ id: uid(), kind: 'audio', src: c.src, start: c.start, in: c.in, dur: c.dur, vol: c.vol ?? 1, speed: c.speed || 1 });
   c.mute = true; applyVolume(c); refreshAll();
 }
 function disposeMedia(id) { const m = media.get(id); if (!m) return; try { m.el.pause?.(); m.el.removeAttribute?.('src'); } catch (e) {} URL.revokeObjectURL(m.url); media.delete(id); }
@@ -205,7 +209,9 @@ function renderProps() {
   if (c.kind === 'video' || c.kind === 'audio') p.append(num('Volume', c, 'vol', { type: 'range', min: 0, max: 1.5, step: 0.05 }));
   h('Timing (seconds)');
   p.append(num('Start', c, 'start', { min: 0, step: 0.1 }), num('Length', c, 'dur', { min: 0.1, step: 0.1 }));
-  if (hasMedia(c)) p.append(num('Source in', c, 'in', { min: 0, step: 0.1 }));
+  c.speed ||= 1; c.fadeIn ||= 0; c.fadeOut ||= 0; c._ps = c.speed;
+  if (hasMedia(c)) p.append(num('Source in', c, 'in', { min: 0, step: 0.1 }), num('Speed (x)', c, 'speed', { min: 0.25, max: 4, step: 0.25, after: () => { const ns = Math.min(4, Math.max(0.25, +c.speed || 1)); c.dur = Math.max(0.1, c.dur * (c._ps || 1) / ns); c._ps = c.speed = ns; } }));
+  p.append(num('Fade in (s)', c, 'fadeIn', { min: 0, step: 0.1 }), num('Fade out (s)', c, 'fadeOut', { min: 0, step: 0.1 }));
   if (c.kind === 'video') { btn('Detach audio to its own track', detachAudio); btn('Replace visuals (keep audio)', () => { replacing = c.id; const b = $('#v-banner'); b.textContent = 'Pick a video or image in Media to replace this clip’s visuals. Esc to cancel.'; b.hidden = false; }); }
   btn('Split at playhead (S)', split); btn('Delete', del);
 }
@@ -225,10 +231,10 @@ $('#v-lanes').addEventListener('pointermove', ev => {
   const { c, o, zone } = drag, dt = (ev.clientX - drag.x0) / pps, snapT = 8 / pps;
   const pts = [0, t, ...project.clips.filter(k => k !== c).flatMap(k => [k.start, k.start + k.dur])];
   const snap = v => { const n = pts.find(p => Math.abs(p - v) < snapT); return n ?? v; };
-  const maxLen = hasMedia(c) ? Math.max(0.1, (meta.get(c.src)?.duration ?? Infinity)) : Infinity;
+  const maxLen = hasMedia(c) ? Math.max(0.1, (meta.get(c.src)?.duration ?? Infinity) / spd(c)) : Infinity;
   if (zone === 'm') c.start = Math.max(0, snap(o.start + dt));
-  else if (zone === 'r') c.dur = Math.max(0.1, Math.min(snap(o.start + o.dur + dt) - o.start, maxLen - o.in));
-  else { let ns = snap(o.start + dt); ns = Math.max(Math.max(0, o.start - (hasMedia(c) ? o.in : o.start)), Math.min(ns, o.start + o.dur - 0.1)); const dd = ns - o.start; c.start = ns; c.dur = o.dur - dd; if (hasMedia(c)) c.in = o.in + dd; }
+  else if (zone === 'r') c.dur = Math.max(0.1, Math.min(snap(o.start + o.dur + dt) - o.start, maxLen - o.in / spd(c)));
+  else { let ns = snap(o.start + dt); ns = Math.max(Math.max(0, o.start - (hasMedia(c) ? o.in / spd(c) : o.start)), Math.min(ns, o.start + o.dur - 0.1)); const dd = ns - o.start; c.start = ns; c.dur = o.dur - dd; if (hasMedia(c)) c.in = o.in + dd * spd(c); }
   renderTimeline(); draw();
 });
 $('#v-lanes').addEventListener('pointerup', () => { if (drag && !drag.scrub) { renderProps(); save(); } drag = null; });
@@ -291,7 +297,12 @@ document.addEventListener('keydown', ev => {
 });
 window.addEventListener('resize', () => { if (document.body.classList.contains('video-mode')) { sizeCanvas(); draw(); } });
 
-window.SMA_video = { show() { sizeCanvas(); refreshAll(); project.clips.forEach(c => { if (c.src) probe(c.src); }); draw(); }, hide() { if (playing) pause(); } };
+window.SMA_video = {
+  serialize: () => JSON.stringify(project), getPid: () => project.pid, setPid: p => { project.pid = p; }, getName: () => project.name || 'Untitled video', setName: n => { project.name = n; },
+  load(json) { pause(); media.forEach((m, id) => disposeMedia(id)); project = JSON.parse(json); sel = null; t = 0; undoS = []; redoS = []; },
+  reset() { pause(); media.forEach((m, id) => disposeMedia(id)); project = { w: 1080, h: 1920, clips: [] }; sel = null; t = 0; undoS = []; redoS = []; },
+  thumb: async () => { const k = 320 / Math.max(project.w, project.h), c = document.createElement('canvas'); c.width = Math.round(project.w * k); c.height = Math.round(project.h * k); draw(); c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.7); },
+  show() { sizeCanvas(); refreshAll(); project.clips.forEach(c => { if (c.src) probe(c.src); }); draw(); }, hide() { if (playing) pause(); } };
 try { const s = localStorage.getItem('sma-video'); if (s) project = JSON.parse(s); } catch (e) {}
 project.clips.forEach(c => { if (hasMedia(c) || c.kind === 'image') probe(c.src); });
 })();

@@ -8,6 +8,7 @@ const HINTS = {
   erase: 'Paint over anything you want to make transparent.',
   restore: 'Paint to bring back parts of the original image you erased.',
   magic: 'Click a colour to make it transparent. Good for plain backgrounds. Raise Tolerance for gradients and soft shadows.',
+  aifill: 'Paint the area you want replaced, describe what should go there, and the local AI engine fills it in. The rest of the image is left untouched.',
   mark: 'Paint over a watermark or blemish, release, and it is filled in from the pixels around it. Works best on small marks over simple backgrounds.',
 };
 
@@ -40,7 +41,7 @@ window.openImageEditor = function (src, orig, done) {
   function setTool(t) {
     tool = t; $('#ie-hint').textContent = HINTS[t];
     document.querySelectorAll('#ie-tools [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
-    $('#ie-tolwrap').hidden = t !== 'magic'; $('#ie-sizewrap').hidden = t === 'magic';
+    $('#ie-tolwrap').hidden = t !== 'magic'; $('#ie-sizewrap').hidden = t === 'magic'; $('#ie-ai').hidden = t !== 'aifill';
   }
   document.querySelectorAll('#ie-tools [data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 
@@ -52,14 +53,14 @@ window.openImageEditor = function (src, orig, done) {
   function paint(a, b) {
     if (tool === 'erase') { wctx.save(); wctx.globalCompositeOperation = 'destination-out'; stroke(wctx, a, b, '#000'); wctx.restore(); }
     else if (tool === 'restore') stroke(wctx, a, b, wctx.createPattern(origC, 'no-repeat'));
-    else if (tool === 'mark') { stroke(mctx, a, b, '#ff2d55'); hasMask = true; }
+    else if (tool === 'mark' || tool === 'aifill') { stroke(mctx, a, b, '#ff2d55'); hasMask = true; }
     refresh();
   }
 
   disp.onpointerdown = ev => {
     const p = pos(ev);
     if (tool === 'magic') { snap(); magic(p); refresh(); return; }
-    if (tool !== 'mark') snap(); // mark takes its own snapshot when it fills
+    if (tool !== 'mark' && tool !== 'aifill') snap(); // these take their own snapshot when they fill
     drawing = true; last = p; disp.setPointerCapture(ev.pointerId); paint(p, p);
   };
   disp.onpointermove = ev => { if (!drawing) return; const p = pos(ev); paint(last, p); last = p; };
@@ -133,6 +134,34 @@ window.openImageEditor = function (src, orig, done) {
     }
     mctx.clearRect(0, 0, w, h); hasMask = false; refresh();
   }
+
+  // ----- AI fill: send the image and the painted mask to the local engine (desktop app only) -----
+  const ai = window.sma && window.sma.ai; let aiJob = null;
+  $('#ie-aibtn').hidden = !ai;
+  if (ai) ai.models().then(({ models }) => { const sel = $('#ie-aimodel'); sel.textContent = ''; models.forEach(m => sel.add(new Option(m.name, m.name))); if (!models.length) sel.add(new Option('No models: add one in the AI tool', '')); });
+  $('#ie-aicancel').onclick = () => { if (aiJob) ai.cancel(aiJob); };
+  $('#ie-aigo').onclick = async () => {
+    const err = $('#ie-aierr'); err.textContent = '';
+    if (!hasMask) { err.textContent = 'Paint the area to replace first.'; return; }
+    if (!$('#ie-aimodel').value) { err.textContent = 'Choose a model.'; return; }
+    const w0 = work.width, h0 = work.height, k = Math.min(1, 768 / Math.max(w0, h0)), r8 = v => Math.max(64, Math.round(v * k / 8) * 8), gw = r8(w0), gh = r8(h0);
+    const png = c => new Promise(res => c.toBlob(b => b.arrayBuffer().then(res), 'image/png'));
+    const ic = document.createElement('canvas'); ic.width = gw; ic.height = gh; const ix = ic.getContext('2d'); ix.fillStyle = '#fff'; ix.fillRect(0, 0, gw, gh); ix.drawImage(work, 0, 0, gw, gh);
+    const mc = document.createElement('canvas'); mc.width = gw; mc.height = gh; const mx = mc.getContext('2d'); mx.fillStyle = '#000'; mx.fillRect(0, 0, gw, gh);
+    const bin = document.createElement('canvas'); bin.width = gw; bin.height = gh; const bx = bin.getContext('2d'); bx.drawImage(mask, 0, 0, gw, gh); // alpha -> solid white
+    const bd = bx.getImageData(0, 0, gw, gh); for (let i = 0; i < bd.data.length; i += 4) { const on = bd.data[i + 3] > 40; bd.data[i] = bd.data[i + 1] = bd.data[i + 2] = 255; bd.data[i + 3] = on ? 255 : 0; } bx.putImageData(bd, 0, 0); mx.drawImage(bin, 0, 0);
+    $('#ie-aigo').hidden = true; $('#ie-aicancel').hidden = false; const off1 = ai.onStarted(d => { aiJob = d.id; }), prog = $('#ie-aiprog'); prog.hidden = false; prog.removeAttribute('value');
+    const off2 = ai.onProgress(d => { prog.max = d.total; prog.value = d.step; });
+    try {
+      const out = await ai.generate({ model: $('#ie-aimodel').value, prompt: $('#ie-aiprompt').value, negative: '', width: gw, height: gh, steps: 20, cfg: 7, seed: -1, strength: 1, init: await png(ic), mask: await png(mc) });
+      const res = await load(URL.createObjectURL(new Blob([out.image], { type: 'image/png' })));
+      snap();
+      const piece = document.createElement('canvas'); piece.width = w0; piece.height = h0; const px = piece.getContext('2d'); px.drawImage(res, 0, 0, w0, h0);
+      px.globalCompositeOperation = 'destination-in'; px.filter = 'blur(3px)'; px.drawImage(bin, 0, 0, w0, h0); // keep only the painted area, softly
+      wctx.drawImage(piece, 0, 0); mctx.clearRect(0, 0, w0, h0); hasMask = false; refresh();
+    } catch (e) { err.textContent = String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); }
+    finally { off1(); off2(); aiJob = null; $('#ie-aigo').hidden = false; $('#ie-aicancel').hidden = true; prog.hidden = true; }
+  };
 
   $('#ie-undo').onclick = () => { const s = undo.pop(); if (s) { wctx.putImageData(s, 0, 0); mctx.clearRect(0, 0, mask.width, mask.height); hasMask = false; refresh(); } };
   $('#ie-cancel').onclick = () => dlg.close();

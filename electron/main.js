@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const ai = require('./ai');
+const projects = require('./projects');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
@@ -48,6 +49,7 @@ ipcMain.handle('video:to-mp4', async (event, data) => {
 });
 
 ai.register();
+projects.register();
 app.setName('Sudo Make Art');
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
