@@ -1,7 +1,7 @@
 {
   "name": "sudo-make-art",
   "productName": "Sudo Make Art",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Offline, local-only design tool inspired by Canva",
   "main": "electron/main.js",
   "homepage": "https://github.com/theStyleWithin/sudo-make-art",

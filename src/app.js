@@ -152,7 +152,7 @@ function drawText(e, g) {
   const fs = e.fontSize, lh = fs * 1.2, lines = e.text.split('\n');
   const attrs = { 'font-family': e.font, 'font-size': fs, 'font-weight': e.bold ? 700 : 400,
     'font-style': e.italic ? 'italic' : 'normal', fill: e.fill, 'xml:space': 'preserve',
-    stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw };
+    stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }; // outline sits behind the letters, so thick outlines don't eat them
   if (!e.curve) {
     const x = e.align === 'middle' ? e.w / 2 : e.align === 'end' ? e.w : 0;
     const t = el('text', { ...attrs, 'text-anchor': e.align, x }, g);
@@ -384,6 +384,7 @@ let sources = [], thumbURLs = [];
 async function loadSources() { try { sources = (await dbDo('readonly', st => st.getAll())).sort((a, b) => a.added - b.added); } catch (e) { sources = []; } renderSources(); }
 async function addSource(file) {
   const kind = kindOf(file); if (!kind) return null;
+  const dup = sources.find(x => x.name === file.name && x.blob.size === file.size); if (dup) return dup; // already in the library
   const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now() };
   try { await dbDo('readwrite', st => st.put(rec)); } catch (e) { alert('Could not save to the local library: ' + e.message); }
   sources.push(rec); renderSources(); return rec;
