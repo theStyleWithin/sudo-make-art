@@ -1,0 +1,26 @@
+# Maintainer: FIXME(packager) <you@example.com>
+# UNTESTED draft: written without makepkg available. Run `makepkg -si` and `namcap` before submitting.
+pkgname=sudo-make-art
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Offline, local-only design tool inspired by Canva"
+arch=('any')
+url="https://github.com/theStyleWithin/sudo-make-art"
+license=('FIXME')  # owner must choose; use the SPDX id, e.g. GPL-3.0-or-later
+depends=('electron')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')  # FIXME(packager): run updpkgsums once the v0.1.0 tag exists
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  install -d "$pkgdir/usr/lib/$pkgname"
+  cp -r index.html package.json src electron build "$pkgdir/usr/lib/$pkgname/"
+
+  install -d "$pkgdir/usr/bin"
+  printf '#!/bin/sh\nexec electron /usr/lib/%s "$@"\n' "$pkgname" > "$pkgdir/usr/bin/$pkgname"
+  chmod 755 "$pkgdir/usr/bin/$pkgname"
+
+  install -Dm644 packaging/sudo-make-art.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 packaging/io.github.thestylewithin.SudoMakeArt.metainfo.xml "$pkgdir/usr/share/metainfo/io.github.thestylewithin.SudoMakeArt.metainfo.xml"
+  install -Dm644 build/icon.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/io.github.thestylewithin.SudoMakeArt.png"
+}

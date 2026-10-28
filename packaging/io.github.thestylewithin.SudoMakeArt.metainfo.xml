@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.thestylewithin.SudoMakeArt</id>
+  <name>Sudo Make Art</name>
+  <summary>Offline, local-only design tool</summary>
+  <!-- FIXME(owner): pick a license, then use its SPDX id here and in the PKGBUILD, e.g. GPL-3.0-or-later or MIT -->
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>FIXME</project_license>
+  <developer id="io.github.thestylewithin"><name>theStyleWithin</name></developer>
+  <description>
+    <p>Design thumbnails, posters and social media graphics without accounts, subscriptions or the cloud. Everything stays on your computer.</p>
+    <ul>
+      <li>Text, shapes and images, with curved text and cropping</li>
+      <li>A persistent local library of your own images</li>
+      <li>Export to PNG, JPG and SVG</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.thestylewithin.SudoMakeArt.desktop</launchable>
+  <url type="homepage">https://github.com/theStyleWithin/sudo-make-art</url>
+  <url type="bugtracker">https://github.com/theStyleWithin/sudo-make-art/issues</url>
+  <categories><category>Graphics</category></categories>
+  <content_rating type="oars-1.1"/>
+  <!-- FIXME(owner): Flathub requires at least one screenshot with a public URL -->
+  <releases><release version="0.1.0" date="2026-10-28"/></releases>
+</component>

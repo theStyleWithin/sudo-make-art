@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sudo Make Art
+Comment=Offline, local-only design tool
+Exec=sudo-make-art %U
+Icon=io.github.thestylewithin.SudoMakeArt
+Categories=Graphics;
+Terminal=false
+StartupWMClass=sudo-make-art

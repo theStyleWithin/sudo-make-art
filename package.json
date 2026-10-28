@@ -1,0 +1,28 @@
+{
+  "name": "sudo-make-art",
+  "productName": "Sudo Make Art",
+  "version": "0.1.0",
+  "description": "Offline, local-only design tool inspired by Canva",
+  "main": "electron/main.js",
+  "homepage": "https://github.com/theStyleWithin/sudo-make-art",
+  "author": "theStyleWithin",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist:win": "electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "io.github.thestylewithin.SudoMakeArt",
+    "productName": "Sudo Make Art",
+    "files": ["index.html", "src/**", "electron/**", "package.json"],
+    "directories": { "buildResources": "build", "output": "dist" },
+    "linux": { "target": ["AppImage"], "category": "Graphics", "icon": "build/icon.png", "executableName": "sudo-make-art" },
+    "win": { "target": ["nsis", "portable"], "icon": "build/icon.png" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}

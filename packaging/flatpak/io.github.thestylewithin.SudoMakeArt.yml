@@ -1,0 +1,36 @@
+# UNTESTED draft: written without flatpak-builder available. Whoever submits to Flathub should build and run it first.
+# The app has no npm runtime dependencies, so no flatpak-node-generator step is needed: the files are copied
+# as-is and run by the Electron runtime from the Electron BaseApp.
+app-id: io.github.thestylewithin.SudoMakeArt
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '24.08'
+command: sudo-make-art
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  # No --share=network and no broad --filesystem: files come in through the file chooser portal.
+modules:
+  - name: sudo-make-art
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/sudo-make-art
+      - cp -r index.html package.json src electron build /app/share/sudo-make-art/
+      - install -Dm755 sudo-make-art.sh /app/bin/sudo-make-art
+      - install -Dm644 packaging/sudo-make-art.desktop /app/share/applications/io.github.thestylewithin.SudoMakeArt.desktop
+      - install -Dm644 packaging/io.github.thestylewithin.SudoMakeArt.metainfo.xml /app/share/metainfo/io.github.thestylewithin.SudoMakeArt.metainfo.xml
+      - install -Dm644 build/icon.png /app/share/icons/hicolor/512x512/apps/io.github.thestylewithin.SudoMakeArt.png
+    sources:
+      - type: git
+        url: https://github.com/theStyleWithin/sudo-make-art.git
+        tag: v0.1.0
+        # commit: FIXME(packager) pin the commit hash of the tag
+      - type: script
+        dest-filename: sudo-make-art.sh
+        commands:
+          # Check the BaseApp docs for the exact electron path if this changes between versions.
+          - exec zypak-wrapper /app/lib/electron/electron /app/share/sudo-make-art "$@"
