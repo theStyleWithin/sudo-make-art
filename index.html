@@ -2,23 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Sudo Make Art</title>
 <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
 <header id="top">
-  <b class="logo">sudo-make-art</b>
-  <button id="new">+ New design</button>
-  <select id="size" title="Resize page"></select>
-  <button id="undo" title="Undo (Ctrl+Z)">↶</button>
-  <button id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+  <b class="logo">Sudo Make Art</b>
+  <span class="modes"><button id="mode-design" class="on">Design</button><button id="mode-video">Video</button></span>
+  <button class="dz" id="new">+ New design</button>
+  <select class="dz" id="size" title="Resize page"></select>
+  <button class="dz" id="undo" title="Undo (Ctrl+Z)">↶</button>
+  <button class="dz" id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
   <span class="sp"></span>
-  <select id="tpl" title="Templates"><option value="">Templates…</option></select>
-  <button id="open">Open</button>
-  <button id="save">Save</button>
-  <select id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option></select>
+  <select class="dz" id="tpl" title="Templates"><option value="">Templates…</option></select>
+  <button class="dz" id="open">Open</button>
+  <button class="dz" id="save">Save</button>
+  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option></select>
 </header>
 <main>
   <nav id="tools">
@@ -36,6 +37,28 @@
   <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
   <aside id="props"></aside>
 </main>
+<div id="videoview">
+  <div class="v-top">
+    <select id="v-size" title="Video size"></select>
+    <button id="v-play" title="Play / pause (Space)">▶</button><span id="v-time">0:00.0 / 0:00.0</span>
+    <button id="v-split" title="Split at playhead (S)">Split</button><button id="v-addtext">+ Text</button><button id="v-del">Delete</button>
+    <span class="sp"></span>
+    <label class="zl">Zoom <input id="v-zoom" type="range" min="10" max="240" value="60"></label>
+    <select id="v-export"><option value="">Export…</option><option value="webm">WebM</option></select>
+  </div>
+  <div id="v-banner" hidden></div>
+  <div class="v-mid">
+    <aside id="v-bin"><div class="shead"><b>Media</b><button id="v-add">+ Add files</button></div><div id="v-binlist"></div></aside>
+    <section id="v-stage"><canvas id="v-canvas"></canvas></section>
+    <aside id="v-props"></aside>
+  </div>
+  <div id="v-timeline">
+    <div id="v-scroll">
+      <div id="v-ruler"></div>
+      <div id="v-lanes"><div class="lane" data-lane="text" data-name="Text"></div><div class="lane" data-lane="video" data-name="Video"></div><div class="lane" data-lane="audio" data-name="Audio"></div><div id="v-playhead"></div></div>
+    </div>
+  </div>
+</div>
 <footer>
   <span id="status"></span><span class="sp"></span>
   <button id="zoomout">−</button><span id="zoomlbl">100%</span><button id="zoomin">+</button><button id="fit">Fit</button>
@@ -63,5 +86,6 @@
 <input type="file" id="file" hidden>
 <script src="src/imgedit.js"></script>
 <script src="src/app.js"></script>
+<script src="src/video.js"></script>
 </body>
 </html>

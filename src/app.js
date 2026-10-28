@@ -128,6 +128,7 @@ function render() {
   doc.els.forEach(e => drawEl(e, art));
   drawHandles();
   renderProps();
+  document.body.classList.toggle('has-sel', !!sel);
   $('#zoomlbl').textContent = Math.round(zoom * 100) + '%';
   $('#status').textContent = `${doc.w}×${doc.h}px · ${doc.els.length} layers`;
   autosave();
@@ -137,7 +138,7 @@ function render() {
 const HANDLES = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]];
 function drawHandles() {
   const e = sel && find(sel); if (!e) return;
-  const s = 1 / zoom, g = el('g', { id: 'ui', transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})` }, svg);
+  const s = (matchMedia('(pointer:coarse)').matches ? 1.9 : 1) / zoom, g = el('g', { id: 'ui', transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})` }, svg);
   el('rect', { width: e.w, height: e.h, fill: 'none', stroke: '#8b5cf6', 'stroke-width': 2 * s, 'pointer-events': 'none' }, g);
   if (e.type !== 'line') HANDLES.forEach(([n, fx, fy]) =>
     el('rect', { 'data-h': n, x: fx * e.w - 6 * s, y: fy * e.h - 6 * s, width: 12 * s, height: 12 * s, fill: '#fff', stroke: '#8b5cf6', 'stroke-width': 2 * s, style: 'cursor:nwse-resize' }, g));
@@ -319,7 +320,10 @@ async function addSource(file) {
   sources.push(rec); renderSources(); return rec;
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
+const smaSubs = [];
+window.SMA = { getSources: () => sources, addFiles: fs => ingest(fs, false), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 function renderSources() {
+  setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
   const box = $('#srclist'); box.textContent = '';
   if (!sources.length) box.innerHTML = '<p class="hint">Drop images, videos or audio here, or press Add files. They stay in your library next time you open the app.</p>';
@@ -383,12 +387,23 @@ $('#undo').onclick = () => { if (!undoS.length) return; redoS.push(JSON.stringif
 $('#redo').onclick = () => { if (!redoS.length) return; undoS.push(JSON.stringify(doc)); restore(redoS.pop()); };
 function setZoom(z) { zoom = Math.max(0.05, Math.min(4, z)); render(); }
 $('#zoomin').onclick = () => setZoom(zoom * 1.2); $('#zoomout').onclick = () => setZoom(zoom / 1.2);
-function fit() { const s = $('#stage'); const pi = FLAT.findIndex(([, w, h]) => w === doc.w && h === doc.h); sizeSel.value = pi < 0 ? '' : String(pi); zoom = Math.min((s.clientWidth - 80) / doc.w, (s.clientHeight - 80) / doc.h, 1); render(); }
+function fit() { const s = $('#stage'); const pi = FLAT.findIndex(([, w, h]) => w === doc.w && h === doc.h); sizeSel.value = pi < 0 ? '' : String(pi); const phone = matchMedia('(max-width:820px)').matches, pad = phone ? 24 : 80;
+  const room = s.clientHeight - (phone && !sel ? innerHeight * 0.38 : 0); // keep space for the properties sheet
+  zoom = Math.max(0.05, Math.min((s.clientWidth - pad) / doc.w, (room - pad) / doc.h, 1)); render(); }
 $('#fit').onclick = fit;
 $('#stage').addEventListener('wheel', ev => { if (ev.ctrlKey) { ev.preventDefault(); setZoom(zoom * (ev.deltaY < 0 ? 1.1 : 1 / 1.1)); } }, { passive: false });
 
 // ---------- save / open / export ----------
-function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+async function download(name, blob) {
+  const cap = window.Capacitor;
+  if (cap?.isNativePlatform?.() && cap.Plugins?.Filesystem && cap.Plugins?.Share) { // Android app: save to cache, then open the share sheet
+    try {
+      const data = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+      const f = await cap.Plugins.Filesystem.writeFile({ path: name, data, directory: 'CACHE' });
+      await cap.Plugins.Share.share({ title: name, url: f.uri }); return;
+    } catch (e) { alert('Could not save: ' + e.message); return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
 $('#save').onclick = () => download('design.smart.json', new Blob([JSON.stringify(doc)], { type: 'application/json' }));
 $('#open').onclick = () => pick(f => f.text().then(t => { try { commit(); doc = JSON.parse(t); sel = null; fit(); } catch (e) { alert('Not a valid project file'); } }), '.json');
 function cleanSVG() {
@@ -426,9 +441,19 @@ document.addEventListener('keydown', ev => {
   } else if (k === 'escape') { sel = null; render(); }
 });
 
+// ---------- design / video mode ----------
+function setMode(m) {
+  document.body.classList.toggle('video-mode', m === 'video');
+  $('#mode-design').classList.toggle('on', m !== 'video'); $('#mode-video').classList.toggle('on', m === 'video');
+  if (m === 'video') window.SMA_video?.show(); else { window.SMA_video?.hide(); fit(); }
+  try { localStorage.setItem('sma-mode', m); } catch (e) {}
+}
+$('#mode-design').onclick = () => setMode('design'); $('#mode-video').onclick = () => setMode('video');
+
 // ---------- boot ----------
 try { const s = localStorage.getItem('sma-doc'); if (s) doc = JSON.parse(s); } catch (e) {}
 window.addEventListener('resize', () => { });
 fit();
 loadSources();
+try { if (localStorage.getItem('sma-mode') === 'video') setTimeout(() => setMode('video'), 0); } catch (e) {}
 })();
