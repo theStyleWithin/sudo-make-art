@@ -61,5 +61,9 @@ Build the debug APK with the `android` CI job, or locally with the Android SDK: 
 
 All code is original. No Canva code or assets are used.
 
+## License
+[0BSD](LICENSE): do anything you like with this code, no permission and no credit needed. It comes with no warranty and no support.
+Please don't present your version as made or endorsed by the original author.
+
 ## Third-party
 The desktop app bundles a static FFmpeg build through the `ffmpeg-static` package (used only to convert WebM to MP4). That build is GPL-licensed; see https://github.com/eugeneware/ffmpeg-static for details if you redistribute the app.
