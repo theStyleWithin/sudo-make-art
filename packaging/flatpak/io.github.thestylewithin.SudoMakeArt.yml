@@ -28,7 +28,7 @@ modules:
       - type: git
         url: https://github.com/theStyleWithin/sudo-make-art.git
         tag: v0.1.0
-        # commit: FIXME(packager) pin the commit hash of the tag
+        commit: a8f34a012eca576e0a2546e7f63dfcadf911da90
       - type: script
         dest-filename: sudo-make-art.sh
         commands:

@@ -11,10 +11,10 @@ those packages; whoever submits one becomes its maintainer.
 | `android/README.md` | Android plan (Capacitor) |
 
 ## Before submitting (owner)
-1. Tag a release (`git tag v0.1.0 && git push --tags`). CI then builds the AppImage and Windows installers into a draft GitHub release.
+1. Release: in GitHub → Actions → build → Run workflow, tick *publish*. CI builds the AppImage, Windows installers and Android APK and publishes the release. v0.1.0 is already published.
 
 ## Before submitting (packager)
 - Both drafts are UNTESTED: build and run them first (`flatpak-builder`, `makepkg -si`, `namcap`).
-- Flathub: pin the git `commit`, add a screenshot URL to the metainfo, validate with `appstreamcli validate` and `flatpak-builder-lint`.
-- AUR: run `updpkgsums` after the tag exists.
+- Flathub: add a screenshot URL to the metainfo, validate with `appstreamcli validate` and `flatpak-builder-lint`.
+- AUR: replace the maintainer line; the v0.1.0 checksum is filled in.
 - The app needs no network. Keep it that way: the Flatpak requests no network and no broad filesystem access.
