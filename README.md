@@ -11,7 +11,7 @@ npm run dist:linux   # build an AppImage into dist/
 npm run dist:win     # Windows installer + portable exe (build on Windows; CI does this)
 ```
 
-Pushing a tag like `v0.1.0` makes GitHub Actions build the AppImage and Windows files into a draft release.
+Downloads (AppImage, Windows installer and portable exe, Android APK) are on the [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). To publish a new one: GitHub → Actions → build → Run workflow, tick *publish* (bump `version` in `package.json` first).
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
 ## What works now

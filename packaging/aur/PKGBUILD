@@ -9,7 +9,7 @@ url="https://github.com/theStyleWithin/sudo-make-art"
 license=('0BSD')
 depends=('electron')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')  # FIXME(packager): run updpkgsums once the v0.1.0 tag exists
+sha256sums=('a9fd2c3a49df7f4462d7937ebd6e798d3bfa6d28ebbd51bc9b08cdabaa135933')  # v0.1.0 tarball; re-check with updpkgsums
 
 package() {
   cd "$srcdir/$pkgname-$pkgver"
