@@ -83,6 +83,7 @@
       <div id="ai-fields">
       <label>Mode <select id="ai-mode"><option value="gen">Generate from a prompt</option><option value="edit">Edit the selected image</option><option value="video">Generate a short video (experimental)</option></select></label>
       <label>Prompt <textarea id="ai-prompt" placeholder="Describe what you want"></textarea></label>
+      <label class="ai-cmd">Quick start <input id="ai-cmd" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="13" placeholder="type: sudo make art, then press Enter"><small id="ai-cmd-note">Not a terminal. Only these words are accepted, and they just start the generation, like pressing Generate.</small></label>
       <label>Negative prompt <textarea id="ai-neg" placeholder="What to avoid"></textarea></label>
       <label>Model <span class="row2"><select id="ai-model"></select><button id="ai-folder" title="Put model files (.safetensors, .ckpt, .gguf) in this folder">Models folder</button></span></label>
       <label>Size <select id="ai-size"><option>512x512</option><option>512x768</option><option>768x512</option><option>768x768</option><option>1024x1024</option><option>1024x576</option><option>576x1024</option></select></label>
