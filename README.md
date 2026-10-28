@@ -2,11 +2,11 @@
 
 An always-offline, local-only design tool inspired by Canva. No accounts, no cloud, no subscription, no bundled stock assets: you bring your own files and they never leave your PC.
 
-Run it in a browser by opening `index.html`, or as a desktop app:
+This is a native app (desktop and Android). It does not run in a web browser.
 
 ```
 npm install
-npm start            # run the Electron app
+npm start            # run the desktop app
 npm run dist:linux   # build an AppImage into dist/
 npm run dist:win     # Windows installer + portable exe (build on Windows; CI does this)
 ```
