@@ -19,3 +19,28 @@ main{flex:1;display:flex;min-height:0}
 #props input[type=number]{width:70px}#props input[type=color]{padding:0;width:44px;height:26px}
 #props textarea{width:100%;height:70px}
 #props .row{display:flex;gap:4px;flex-wrap:wrap}
+#sources{width:220px;background:var(--panel);border-right:1px solid var(--line);padding:10px;overflow:auto}
+#sources[hidden]{display:none}
+.shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#srclist{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#srclist .hint{grid-column:1/-1;opacity:.6}
+.src{position:relative;background:#32343f;border:1px solid var(--line);border-radius:6px;padding:4px;cursor:pointer;overflow:hidden}
+.src:hover{border-color:var(--acc)}
+.src img,.src video,.src .ico{width:100%;height:70px;object-fit:cover;display:block;border-radius:4px;background:#14151a}
+.src .ico{display:grid;place-items:center;font-size:26px}
+.src small{display:block;font-size:10px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src .x{position:absolute;top:2px;right:2px;padding:0 6px;display:none}
+.src:hover .x{display:block}
+#newdlg{width:min(900px,92vw);height:min(600px,86vh);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg)}
+#newdlg::backdrop{background:#000a}
+#newdlg[open]{display:flex;flex-direction:column}
+.dhead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dhead h2{margin:0;font-size:20px}
+.dbody{flex:1;display:flex;min-height:0}
+#newcats{width:180px;display:flex;flex-direction:column;gap:4px;padding:10px;border-right:1px solid var(--line)}
+#newcats button{text-align:left;border:0;background:none}
+#newcats button.on{background:#3a3560;color:#fff}
+#newgrid{flex:1;padding:14px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;align-content:start}
+#newgrid .card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px}
+#newgrid .card small{opacity:.6}
+#newgrid label{display:flex;gap:8px;align-items:center}

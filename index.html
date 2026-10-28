@@ -9,7 +9,8 @@
 <body>
 <header id="top">
   <b class="logo">sudo-make-art</b>
-  <select id="size" title="Page size"></select>
+  <button id="new">+ New design</button>
+  <select id="size" title="Resize page"></select>
   <button id="undo" title="Undo (Ctrl+Z)">↶</button>
   <button id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
   <span class="sp"></span>
@@ -25,8 +26,12 @@
     <button data-add="ellipse">◯<small>Ellipse</small></button>
     <button data-add="line">／<small>Line</small></button>
     <button data-add="star">★<small>Star</small></button>
-    <button data-add="image">🖼<small>Image</small></button>
+    <button data-panel="sources">🗂<small>Sources</small></button>
   </nav>
+  <aside id="sources" hidden>
+    <div class="shead"><b>Sources</b><button id="srcadd">+ Add files</button></div>
+    <div id="srclist"></div>
+  </aside>
   <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
   <aside id="props"></aside>
 </main>
@@ -34,6 +39,10 @@
   <span id="status"></span><span class="sp"></span>
   <button id="zoomout">−</button><span id="zoomlbl">100%</span><button id="zoomin">+</button><button id="fit">Fit</button>
 </footer>
+<dialog id="newdlg">
+  <div class="dhead"><h2>Create a design</h2><button id="newclose">✕</button></div>
+  <div class="dbody"><nav id="newcats"></nav><div id="newgrid"></div></div>
+</dialog>
 <input type="file" id="file" hidden>
 <script src="src/app.js"></script>
 </body>
