@@ -28,6 +28,21 @@ const hasMedia = c => c.kind === 'video' || c.kind === 'audio';
 
 const spd = c => c.speed || 1;
 const fadeAt = (c, x) => { let f = 1; if (c.fadeIn > 0) f = Math.min(f, (x - c.start) / c.fadeIn); if (c.fadeOut > 0) f = Math.min(f, (c.start + c.dur - x) / c.fadeOut); return Math.max(0, Math.min(1, f)); };
+const TRANS = [['fade', 'Cross-fade'], ['dip', 'Dip to black'], ['wipe-right', 'Wipe right'], ['wipe-left', 'Wipe left'], ['wipe-down', 'Wipe down'], ['wipe-up', 'Wipe up'],
+  ['slide-left', 'Slide from right'], ['slide-right', 'Slide from left'], ['slide-up', 'Slide from bottom'], ['slide-down', 'Slide from top'], ['zoom', 'Zoom in']];
+const ease = p => p * p * (3 - 2 * p), clamp01 = x => Math.max(0, Math.min(1, x));
+const inTrans = (c, x) => (c.trans && x >= c.start && x < c.start + c.trans.dur) ? (x - c.start) / c.trans.dur : null;       // progress 0..1 while c is coming in
+const outTrans = (c, x) => { // progress of a transition that is replacing c (the clip starting on top of it)
+  for (const b of project.clips) if (b !== c && b.trans && LANE[b.kind] === 'video' && b.start > c.start && b.start < c.start + c.dur + 1e-6 && x >= b.start && x < b.start + b.trans.dur) return { p: (x - b.start) / b.trans.dur, type: b.trans.type };
+  return null;
+};
+const prevOf = b => project.clips.filter(c => c !== b && LANE[c.kind] === 'video' && c.start < b.start && c.start + c.dur >= b.start - 0.06)
+  .sort((a, z) => (z.start + z.dur) - (a.start + a.dur))[0];
+function setTransition(b, type, dur) { // keeps the outgoing clip ending exactly when the transition ends
+  if (!type) { delete b.trans; return; }
+  const d = Math.max(0.1, Math.min(+dur || 1, b.dur)); b.trans = { type, dur: d };
+  const a = prevOf(b); if (a) a.dur = Math.max(0.1, b.start + d - a.start);
+}
 function save() { try { localStorage.setItem('sma-video', JSON.stringify(project)); } catch (e) {} }
 function commit() { undoS.push(JSON.stringify(project)); if (undoS.length > 100) undoS.shift(); redoS = []; document.dispatchEvent(new Event('sma-edit')); }
 function restore(j) { project = JSON.parse(j); if (sel && !find(sel)) sel = null; sizeCanvas(); refreshAll(); }
@@ -67,7 +82,13 @@ function mediaFor(c) {
     m = { el, url }; wire(m); }
   media.set(c.id, m); return m;
 }
-function applyVolume(c) { const m = media.get(c.id); if (m?.gain) m.gain.gain.value = c.mute ? 0 : (c.vol ?? 1) * fadeAt(c, t); }
+function transGain(c) {
+  if (c.kind !== 'video') return 1; let g = 1;
+  const pin = inTrans(c, t); if (pin !== null) g *= ease(pin);
+  const o = outTrans(c, t); if (o) g *= 1 - ease(o.p);
+  return g;
+}
+function applyVolume(c) { const m = media.get(c.id); if (m?.gain) m.gain.gain.value = c.mute ? 0 : (c.vol ?? 1) * fadeAt(c, t) * transGain(c); }
 
 // ---------- rendering ----------
 function sizeCanvas() { canvas.width = project.w; canvas.height = project.h; const st = $('#v-stage'); const s = Math.min((st.clientWidth - 20) / project.w, (st.clientHeight - 20) / project.h, 1); canvas.style.width = project.w * s + 'px'; canvas.style.height = project.h * s + 'px'; }
@@ -75,14 +96,35 @@ function drawFit(el, w, h, fit) {
   if (!w || !h) return; const r = fit === 'cover' ? Math.max(project.w / w, project.h / h) : Math.min(project.w / w, project.h / h);
   ctx.drawImage(el, (project.w - w * r) / 2, (project.h - h * r) / 2, w * r, h * r);
 }
+function drawBody(c) {
+  if (c.kind === 'video') { const m = mediaFor(c); if (m && m.el.readyState >= 2) drawFit(m.el, m.el.videoWidth, m.el.videoHeight, c.fit); }
+  else if (c.kind === 'image') { const m = mediaFor(c); if (m && m.el.complete) drawFit(m.el, m.el.naturalWidth, m.el.naturalHeight, c.fit); }
+}
+function drawIncoming(c, p) { // the clip that is arriving, shaped by its transition
+  const w = project.w, h = project.h, e = ease(p); ctx.save();
+  switch (c.trans.type) {
+    case 'fade': ctx.globalAlpha *= p; break;
+    case 'dip': ctx.globalAlpha *= clamp01((p - 0.5) * 2); break;
+    case 'wipe-right': ctx.beginPath(); ctx.rect(0, 0, w * e, h); ctx.clip(); break;
+    case 'wipe-left': ctx.beginPath(); ctx.rect(w * (1 - e), 0, w * e, h); ctx.clip(); break;
+    case 'wipe-down': ctx.beginPath(); ctx.rect(0, 0, w, h * e); ctx.clip(); break;
+    case 'wipe-up': ctx.beginPath(); ctx.rect(0, h * (1 - e), w, h * e); ctx.clip(); break;
+    case 'slide-left': ctx.translate(w * (1 - e), 0); break;
+    case 'slide-right': ctx.translate(-w * (1 - e), 0); break;
+    case 'slide-up': ctx.translate(0, h * (1 - e)); break;
+    case 'slide-down': ctx.translate(0, -h * (1 - e)); break;
+    case 'zoom': ctx.globalAlpha *= p; ctx.translate(w / 2, h / 2); ctx.scale(1 + 0.4 * (1 - e), 1 + 0.4 * (1 - e)); ctx.translate(-w / 2, -h / 2); break;
+  }
+  drawBody(c); ctx.restore();
+}
 function draw() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, project.w, project.h);
   const active = c => t >= c.start - 1e-6 && t < c.start + c.dur;
-  for (const c of project.clips) {
-    if (!active(c)) continue;
-    ctx.globalAlpha = fadeAt(c, t);
-    if (c.kind === 'video') { const m = mediaFor(c); if (m && m.el.readyState >= 2) drawFit(m.el, m.el.videoWidth, m.el.videoHeight, c.fit); }
-    else if (c.kind === 'image') { const m = mediaFor(c); if (m && m.el.complete) drawFit(m.el, m.el.naturalWidth, m.el.naturalHeight, c.fit); }
+  const vids = project.clips.filter(c => LANE[c.kind] === 'video' && active(c)).sort((a, b) => a.start - b.start); // later cuts sit on top
+  for (const c of vids) {
+    let a = fadeAt(c, t); const out = outTrans(c, t); if (out && out.type === 'dip') a *= 1 - clamp01(out.p * 2); // outgoing half of a dip to black
+    ctx.globalAlpha = a; const p = inTrans(c, t);
+    if (p !== null) drawIncoming(c, p); else drawBody(c);
     ctx.globalAlpha = 1;
   }
   for (const c of project.clips) if (c.kind === 'text' && active(c)) { ctx.globalAlpha = fadeAt(c, t); drawText(c); ctx.globalAlpha = 1; }
@@ -146,7 +188,7 @@ function addText() { commit(); const c = { id: uid(), kind: 'text', start: t, du
 function split() {
   const c = find(sel) || project.clips.find(k => LANE[k.kind] === 'video' && t > k.start && t < k.start + k.dur);
   if (!c || !(t > c.start + 0.05 && t < c.start + c.dur - 0.05)) return;
-  commit(); const n = { ...c, id: uid(), start: t, in: c.in + (t - c.start) * spd(c), dur: c.start + c.dur - t, fadeIn: 0 }; c.fadeOut = 0; c.dur = t - c.start;
+  commit(); const n = { ...c, id: uid(), start: t, in: c.in + (t - c.start) * spd(c), dur: c.start + c.dur - t, fadeIn: 0 }; c.fadeOut = 0; delete n.trans; // a transition belongs to the cut it was set on c.dur = t - c.start;
   project.clips.push(n); sel = n.id; refreshAll(); draw();
 }
 function del() { if (!sel) return; commit(); disposeMedia(sel); project.clips = project.clips.filter(c => c.id !== sel); sel = null; refreshAll(); draw(); }
@@ -178,6 +220,7 @@ function renderTimeline() {
   for (const c of project.clips) {
     const d = document.createElement('div'); d.className = 'clip k-' + c.kind + (c.id === sel ? ' sel' : ''); d.dataset.id = c.id;
     d.style.left = c.start * pps + 'px'; d.style.width = Math.max(6, c.dur * pps) + 'px';
+    if (c.trans) d.append(Object.assign(document.createElement('i'), { className: 'tr', title: 'Transition' })), d.lastChild.style.width = Math.min(c.dur, c.trans.dur) * pps + 'px';
     const label = c.kind === 'text' ? c.text.split('\n')[0] : (src(c.src)?.name || 'missing source') + (c.mute ? ' (audio detached)' : '');
     d.append(Object.assign(document.createElement('span'), { textContent: label }), Object.assign(document.createElement('i'), { className: 'h l' }), Object.assign(document.createElement('i'), { className: 'h r' }));
     document.querySelector(`.lane[data-lane=${LANE[c.kind]}]`).append(d);
@@ -211,6 +254,16 @@ function renderProps() {
   p.append(num('Start', c, 'start', { min: 0, step: 0.1 }), num('Length', c, 'dur', { min: 0.1, step: 0.1 }));
   c.speed ||= 1; c.fadeIn ||= 0; c.fadeOut ||= 0; c._ps = c.speed;
   if (hasMedia(c)) p.append(num('Source in', c, 'in', { min: 0, step: 0.1 }), num('Speed (x)', c, 'speed', { min: 0.25, max: 4, step: 0.25, after: () => { const ns = Math.min(4, Math.max(0.25, +c.speed || 1)); c.dur = Math.max(0.1, c.dur * (c._ps || 1) / ns); c._ps = c.speed = ns; } }));
+  if (c.kind === 'video' || c.kind === 'image') {
+    h('Transition into this clip');
+    const sel2 = document.createElement('select'); sel2.add(new Option('None', '')); TRANS.forEach(([v, n]) => sel2.add(new Option(n, v, false, c.trans?.type === v)));
+    sel2.onchange = () => { commit(); setTransition(c, sel2.value, c.trans?.dur || 1); refreshAll(); draw(); };
+    const l2 = document.createElement('label'); l2.append('Type', sel2); p.append(l2);
+    if (c.trans) { const dl = document.createElement('label'); const di = document.createElement('input'); di.type = 'number'; di.min = 0.1; di.step = 0.1; di.value = c.trans.dur;
+      di.onchange = () => { commit(); setTransition(c, c.trans.type, di.value); refreshAll(); draw(); }; dl.append('Length (s)', di); p.append(dl);
+      p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'The previous clip is extended so the two overlap for this long. If it has no spare footage, its last frame is held.' })); }
+    h('Timing and fades');
+  }
   p.append(num('Fade in (s)', c, 'fadeIn', { min: 0, step: 0.1 }), num('Fade out (s)', c, 'fadeOut', { min: 0, step: 0.1 }));
   if (c.kind === 'video') { btn('Detach audio to its own track', detachAudio); btn('Replace visuals (keep audio)', () => { replacing = c.id; const b = $('#v-banner'); b.textContent = 'Pick a video or image in Media to replace this clip’s visuals. Esc to cancel.'; b.hidden = false; }); }
   btn('Split at playhead (S)', split); btn('Delete', del);
