@@ -65,6 +65,11 @@ Build the debug APK with the `android` CI job, or locally with the Android SDK: 
 
 All code is original. No Canva code or assets are used.
 
+## Problems, questions and safety
+**Please send every complaint, bug report and request to [Issues](https://github.com/theStyleWithin/sudo-make-art/issues).** That is the one place the maintainer reads, and issues are forwarded to the maintainer's AI assistant to be worked on. Say what you did, what you expected, what happened, your system (Linux, Android or Windows) and the version from the Releases page.
+
+**Download at your own risk.** The software is free and comes with no warranty (see the license). Whatever you download, from here or anywhere else, **scan it with [VirusTotal](https://www.virustotal.com/)** before you run it, and only download from this repository's [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). Stay safe.
+
 ## License
 [0BSD](LICENSE): do anything you like with this code, no permission and no credit needed. It comes with no warranty and no support.
 Please don't present your version as made or endorsed by the original author.
