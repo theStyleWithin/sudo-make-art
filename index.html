@@ -80,12 +80,13 @@
   <div class="dhead"><h2>AI image (runs on this computer)</h2><button id="ai-close">✕</button></div>
   <div class="ai-body">
     <div id="ai-form">
-      <label>Mode <select id="ai-mode"><option value="gen">Generate from a prompt</option><option value="edit">Edit the selected image</option></select></label>
+      <label>Mode <select id="ai-mode"><option value="gen">Generate from a prompt</option><option value="edit">Edit the selected image</option><option value="video">Generate a short video (experimental)</option></select></label>
       <label>Prompt <textarea id="ai-prompt" placeholder="Describe what you want"></textarea></label>
       <label>Negative prompt <textarea id="ai-neg" placeholder="What to avoid"></textarea></label>
       <label>Model <span class="row2"><select id="ai-model"></select><button id="ai-folder" title="Put model files (.safetensors, .ckpt, .gguf) in this folder">Models folder</button></span></label>
       <label>Size <select id="ai-size"><option>512x512</option><option>512x768</option><option>768x512</option><option>768x768</option><option>1024x1024</option><option>1024x576</option><option>576x1024</option></select></label>
       <div class="row3"><label>Steps <input id="ai-steps" type="number" value="20" min="1" max="150"></label><label>CFG <input id="ai-cfg" type="number" value="7" step="0.5" min="0" max="30"></label><label>Seed <input id="ai-seed" type="number" value="-1"></label></div>
+      <label id="ai-framewrap" hidden>Frames <input id="ai-frames" type="number" value="17" min="5" max="129"></label>
       <label id="ai-strwrap" hidden>Edit strength <input id="ai-strength" type="range" min="0.1" max="1" step="0.05" value="0.7"></label>
       <details><summary>Engines and advanced</summary><div id="ai-engines"></div><label>Extra engine arguments <input id="ai-extra" placeholder="optional, for example --diffusion-fa"></label></details>
       <div id="ai-plan"></div>
@@ -93,7 +94,7 @@
       <progress id="ai-prog" hidden max="1" value="0"></progress>
       <div id="ai-err"></div>
     </div>
-    <div id="ai-result"><img id="ai-img" alt=""><div class="dact"><button id="ai-add" disabled>Add to design</button><button id="ai-src" disabled>Save to Sources</button></div></div>
+    <div id="ai-result"><img id="ai-img" alt=""><video id="ai-vid" controls loop hidden></video><div class="dact"><button id="ai-add" disabled>Add to design</button><button id="ai-src" disabled>Save to Sources</button></div></div>
   </div>
 </dialog>
 <dialog id="imgdlg">
@@ -104,9 +105,16 @@
       <button data-tool="restore">Restore</button>
       <button data-tool="magic">Magic remove</button>
       <button data-tool="mark">Remove mark</button>
+      <button data-tool="aifill" id="ie-aibtn" hidden>AI fill</button>
       <button id="ie-auto">Auto-remove plain background</button>
       <label id="ie-sizewrap">Brush size <input id="ie-size" type="range" min="4" max="120" value="30"></label>
       <label id="ie-tolwrap" hidden>Tolerance <input id="ie-tol" type="range" min="0" max="100" value="12"></label>
+      <div id="ie-ai" hidden>
+        <label>Replace with <input id="ie-aiprompt" placeholder="e.g. empty grass, clear sky"></label>
+        <label>Model <select id="ie-aimodel"></select></label>
+        <button id="ie-aigo" class="pri">Fill with AI</button><button id="ie-aicancel" hidden>Cancel</button>
+        <progress id="ie-aiprog" hidden max="1" value="0"></progress><div id="ie-aierr" class="err"></div>
+      </div>
       <p id="ie-hint"></p>
     </div>
     <div id="ie-stage"><canvas id="ie-canvas"></canvas></div>

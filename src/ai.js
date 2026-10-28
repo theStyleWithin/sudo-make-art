@@ -4,13 +4,13 @@
 const api = window.sma && window.sma.ai, SMA = window.SMA;
 if (!api || !SMA) return;
 const $ = s => document.querySelector(s);
-const dlg = $('#aidlg'); let jobId = null, lastBlob = null, offProg = null;
+const dlg = $('#aidlg'); let jobId = null, lastBlob = null, lastKind = 'image', offProg = null;
 
 $('#tool-ai').hidden = false;
 $('#tool-ai').onclick = async () => { dlg.showModal(); await refresh(); };
 $('#ai-close').onclick = () => dlg.close();
 $('#ai-folder').onclick = () => api.openModels();
-$('#ai-mode').onchange = () => { $('#ai-strwrap').hidden = $('#ai-mode').value !== 'edit'; };
+$('#ai-mode').onchange = () => { const m = $('#ai-mode').value; $('#ai-strwrap').hidden = m !== 'edit'; $('#ai-framewrap').hidden = m !== 'video'; showPlan(); };
 
 const txt = (n, t) => Object.assign(document.createElement(n), { textContent: t });
 async function refresh() {
@@ -35,7 +35,7 @@ async function showPlan() {
   const box = $('#ai-plan'); const model = $('#ai-model').value;
   if (!model) { box.textContent = 'Add a model file to the models folder to begin. Models and engines are not included; you choose and download your own.'; return; }
   try {
-    const [width, height] = size(), p = await api.plan({ model, width, height });
+    const [width, height] = size(), p = await api.plan({ model, width, height, video: $('#ai-mode').value === 'video', frames: +$('#ai-frames').value });
     const hw = await api.hardware();
     box.textContent = '';
     box.append(txt('div', hw.gpu ? `GPU: ${hw.gpu.name}, ${hw.gpu.vramFree} of ${hw.gpu.vramTotal} MB free · RAM free: ${hw.ramFree} MB` : `No NVIDIA GPU detected · RAM free: ${hw.ramFree} MB`));
@@ -52,7 +52,7 @@ async function initImage(w, h) { // selected image, resized to the generation si
 }
 function setBusy(b) { $('#ai-go').hidden = b; $('#ai-cancel').hidden = !b; $('#ai-prog').hidden = !b; if (b) $('#ai-prog').removeAttribute('value'); }
 $('#ai-go').onclick = async () => {
-  $('#ai-err').textContent = ''; const [width, height] = size(), edit = $('#ai-mode').value === 'edit';
+  $('#ai-err').textContent = ''; const [width, height] = size(), edit = $('#ai-mode').value === 'edit', video = $('#ai-mode').value === 'video';
   if (!$('#ai-prompt').value.trim()) { $('#ai-err').textContent = 'Write a prompt first.'; return; }
   if (!$('#ai-model').value) { $('#ai-err').textContent = 'Choose a model.'; return; }
   setBusy(true); offProg?.();
@@ -61,12 +61,13 @@ $('#ai-go').onclick = async () => {
   try {
     const r = await api.generate({ model: $('#ai-model').value, prompt: $('#ai-prompt').value, negative: $('#ai-neg').value, width, height,
       steps: +$('#ai-steps').value, cfg: +$('#ai-cfg').value, seed: +$('#ai-seed').value, extraArgs: $('#ai-extra').value,
-      init: edit ? await initImage(width, height) : undefined, strength: +$('#ai-strength').value });
-    lastBlob = new Blob([r.image], { type: 'image/png' }); $('#ai-img').src = URL.createObjectURL(lastBlob); $('#ai-add').disabled = $('#ai-src').disabled = false;
+      init: edit ? await initImage(width, height) : undefined, strength: +$('#ai-strength').value, video, frames: +$('#ai-frames').value });
+    const isVid = !!r.video; lastBlob = new Blob([isVid ? r.video : r.image], { type: isVid ? 'video/mp4' : 'image/png' }); lastKind = isVid ? 'video' : 'image';
+    const u = URL.createObjectURL(lastBlob); $('#ai-img').hidden = isVid; $('#ai-vid').hidden = !isVid; (isVid ? $('#ai-vid') : $('#ai-img')).src = u; $('#ai-add').disabled = isVid; $('#ai-src').disabled = false;
   } catch (e) { $('#ai-err').textContent = e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); }
   finally { setBusy(false); offProg?.(); offProg = null; jobId = null; }
 };
 $('#ai-cancel').onclick = () => { if (jobId) api.cancel(jobId); };
 $('#ai-add').onclick = () => { if (lastBlob) { SMA.addImageBlob(lastBlob); dlg.close(); } };
-$('#ai-src').onclick = () => { if (lastBlob) SMA.addFiles([new File([lastBlob], 'ai-' + Date.now() + '.png', { type: 'image/png' })]); };
+$('#ai-src').onclick = () => { if (lastBlob) SMA.addFiles([new File([lastBlob], 'ai-' + Date.now() + (lastKind === 'video' ? '.mp4' : '.png'), { type: lastKind === 'video' ? 'video/mp4' : 'image/png' })]); };
 })();
