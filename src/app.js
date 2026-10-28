@@ -321,7 +321,7 @@ async function addSource(file) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { getSources: () => sources, addFiles: fs => ingest(fs, false), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: fs => ingest(fs, false), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
