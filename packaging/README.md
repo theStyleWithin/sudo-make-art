@@ -11,8 +11,7 @@ those packages; whoever submits one becomes its maintainer.
 | `android/README.md` | Android plan (Capacitor) |
 
 ## Before submitting (owner)
-1. Pick a license, add a `LICENSE` file, and replace every `FIXME` license field (metainfo, PKGBUILD).
-2. Tag a release (`git tag v0.1.0 && git push --tags`). CI then builds the AppImage and Windows installers into a draft GitHub release.
+1. Tag a release (`git tag v0.1.0 && git push --tags`). CI then builds the AppImage and Windows installers into a draft GitHub release.
 
 ## Before submitting (packager)
 - Both drafts are UNTESTED: build and run them first (`flatpak-builder`, `makepkg -si`, `namcap`).
