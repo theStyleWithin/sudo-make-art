@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, session } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -95,12 +95,17 @@ ipcMain.handle('vexport:read-frame', async (e, id, clipKey, k) => {
   return null;
 });
 
+// installed font families, for when the browser's own font list is unavailable (needs fontconfig, so Linux)
+ipcMain.handle('fonts:system', () => new Promise(res => require('child_process').execFile('fc-list', [':', 'family'], { timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, (e, out) => res(e ? [] : [...new Set(String(out).split('\n').map(l => l.split(',')[0].trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))))));
 ai.register();
 projects.register();
 convert.register();
 app.setName('Sudo Make Art');
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
+  // The page may only ask for one thing: the list of installed fonts (for the font picker). Everything else is refused.
+  session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => cb(permission === 'local-fonts'));
+  session.defaultSession.setPermissionCheckHandler((wc, permission) => permission === 'local-fonts');
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

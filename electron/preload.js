@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 // The only native capabilities exposed to the page: fast video export, projects, and the local AI engine bridge.
 const on = (channel, cb) => { const h = (e, d) => cb(d); ipcRenderer.on(channel, h); return () => ipcRenderer.removeListener(channel, h); };
 contextBridge.exposeInMainWorld('sma', {
+  fonts: () => ipcRenderer.invoke('fonts:system'),
   exportVideo: {
     start: p => ipcRenderer.invoke('vexport:start', p),
     frame: (id, jpeg) => ipcRenderer.invoke('vexport:frame', id, jpeg),

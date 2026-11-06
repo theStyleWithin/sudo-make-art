@@ -19,6 +19,7 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 ## What works now
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
 - **Convert** (desktop app): batch-convert images between **JPEG XL, AVIF, WebP, JPEG and PNG**. Add files or whole folders (drag and drop works), pick quality and effort, lossless, **lossless JPEG transcoding** (JPEG → JPEG XL, fully reversible), **downscale** by percent, fit-inside size, shortest side, longest side or megapixels (never enlarges), choose where the files go (folder structure is kept), what to do if a file exists, keep the original date, and optionally move originals to the trash. Several files convert at once, with progress and time left. Metadata is not copied
+- **Fonts**: every font installed on your computer is in the font picker (searchable, each shown in its own typeface), and you can **add your own font files** (.ttf, .otf, .woff, .woff2) by dropping them in or using *Add a font file* in the picker. Added fonts are kept in your Sources library, work in designs and video text, and are embedded into PNG, JPG, PDF and SVG exports so they look the same everywhere
 - **Photo filters** (presets and sliders: brightness, contrast, saturation, hue, blur, grayscale, sepia) and **drop shadows**, applied to images and kept in exports
 - **Multi-page designs** and **PDF export** (all pages, correct physical size for the print presets)
 - **Create a design**: social media, presentation and print size presets, plus custom sizes
