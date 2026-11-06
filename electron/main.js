@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const ai = require('./ai');
 const projects = require('./projects');
+const convert = require('./convert');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
@@ -96,6 +97,7 @@ ipcMain.handle('vexport:read-frame', async (e, id, clipKey, k) => {
 
 ai.register();
 projects.register();
+convert.register();
 app.setName('Sudo Make Art');
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {

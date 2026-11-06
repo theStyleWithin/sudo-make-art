@@ -1,5 +1,5 @@
 'use strict';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // The only native capabilities exposed to the page: fast video export, projects, and the local AI engine bridge.
 const on = (channel, cb) => { const h = (e, d) => cb(d); ipcRenderer.on(channel, h); return () => ipcRenderer.removeListener(channel, h); };
@@ -12,6 +12,20 @@ contextBridge.exposeInMainWorld('sma', {
     srcChunk: (id, key, offset, data) => ipcRenderer.invoke('vexport:src-chunk', id, key, offset, data),
     extract: (id, p) => ipcRenderer.invoke('vexport:extract', id, p),
     readFrame: (id, clipKey, k) => ipcRenderer.invoke('vexport:read-frame', id, clipKey, k),
+  },
+  convert: {
+    tools: () => ipcRenderer.invoke('convert:tools'),
+    setTool: name => ipcRenderer.invoke('convert:set-tool', name),
+    pickFiles: () => ipcRenderer.invoke('convert:pick-files'),
+    pickFolder: () => ipcRenderer.invoke('convert:pick-folder'),
+    expand: paths => ipcRenderer.invoke('convert:expand', paths),
+    pathFor: file => webUtils.getPathForFile(file),
+    pickOutput: () => ipcRenderer.invoke('convert:pick-output'),
+    reveal: p => ipcRenderer.invoke('convert:reveal', p),
+    start: spec => ipcRenderer.invoke('convert:start', spec),
+    cancel: () => ipcRenderer.invoke('convert:cancel'),
+    onProgress: cb => on('convert:progress', cb),
+    onFinished: cb => on('convert:finished', cb),
   },
   projects: {
     list: () => ipcRenderer.invoke('projects:list'),

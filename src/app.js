@@ -555,13 +555,14 @@ document.addEventListener('keydown', ev => {
 
 // ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home');
-  ['home', 'design', 'video'].forEach(k => $('#mode-' + k).classList.toggle('on', k === m));
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert');
+  ['home', 'design', 'video', 'convert'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
   if (m !== 'video') window.SMA_video?.hide();
   if (m === 'video') window.SMA_video?.show(); else if (m === 'design') fit();
   document.dispatchEvent(new CustomEvent('sma-mode', { detail: m }));
 }
 $('#mode-home').onclick = () => setMode('home'); $('#mode-design').onclick = () => setMode('design'); $('#mode-video').onclick = () => setMode('video');
+$('#mode-convert').onclick = () => setMode('convert');
 async function designThumb() {
   const xml = cleanSVG();
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
