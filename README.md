@@ -18,6 +18,7 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 
 ## What works now
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
+- **Convert** (desktop app): batch-convert images between **JPEG XL, AVIF, WebP, JPEG and PNG**. Add files or whole folders (drag and drop works), pick quality and effort, lossless, **lossless JPEG transcoding** (JPEG → JPEG XL, fully reversible), **downscale** by percent, fit-inside size, shortest side, longest side or megapixels (never enlarges), choose where the files go (folder structure is kept), what to do if a file exists, keep the original date, and optionally move originals to the trash. Several files convert at once, with progress and time left. Metadata is not copied
 - **Photo filters** (presets and sliders: brightness, contrast, saturation, hue, blur, grayscale, sepia) and **drop shadows**, applied to images and kept in exports
 - **Multi-page designs** and **PDF export** (all pages, correct physical size for the print presets)
 - **Create a design**: social media, presentation and print size presets, plus custom sizes
@@ -75,4 +76,9 @@ All code is original. No Canva code or assets are used.
 Please don't present your version as made or endorsed by the original author.
 
 ## Third-party
+- **libjxl** (JPEG XL tools `cjxl`, `djxl`, `cjpegli`): BSD-3-Clause, bundled in the release builds from the official libjxl v0.11.1 release (checked against pinned SHA-256 hashes by `scripts/fetch-libjxl.js`). Their licence files ship in the app's `resources/bin` folder. On a source checkout, run `npm run fetch:libjxl`, install libjxl from your distribution, or point the Convert tab at your own `cjxl`.
+- **FFmpeg**: see below.
+- The Convert tab was inspired by [XL Converter](https://codepoems.eu/xl-converter) (GPL-3.0) in what it does. It shares no code with it; this project's converter was written independently.
+
+
 The desktop app bundles a static FFmpeg build through the `ffmpeg-static` package (used only to convert WebM to MP4). That build is GPL-licensed; see https://github.com/eugeneware/ffmpeg-static for details if you redistribute the app.

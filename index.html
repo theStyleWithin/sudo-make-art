@@ -10,7 +10,7 @@
 <body>
 <header id="top">
   <b class="logo">Sudo Make Art</b>
-  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button></span>
+  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button></span>
   <input id="docname" class="nm" placeholder="Untitled" maxlength="120">
   <button class="dz" id="new">+ New design</button>
   <select class="dz" id="size" title="Resize page"></select>
@@ -41,9 +41,37 @@
 </main>
 <section id="home">
   <div class="home-hero"><h1>What will you design today?</h1><input id="h-search" placeholder="Search your projects"></div>
-  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-folder">Open projects folder</button></div>
+  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-folder">Open projects folder</button></div>
   <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option></select></div>
   <div id="h-grid"></div>
+</section>
+<section id="convertview">
+  <div class="cv-main">
+    <div id="cv-drop">
+      <div class="cv-bar"><button id="cv-addfiles" class="pri">+ Add images</button><button id="cv-addfolder">+ Add a folder</button><button id="cv-clear">Clear list</button><span class="sp"></span><span id="cv-count"></span></div>
+      <div id="cv-list"></div>
+    </div>
+    <aside id="cv-opts">
+      <label>Convert to <select id="cv-format"><option value="jxl">JPEG XL (.jxl)</option><option value="avif">AVIF (.avif)</option><option value="webp">WebP (.webp)</option><option value="jpeg">JPEG (.jpg)</option><option value="png">PNG (.png)</option></select></label>
+      <label id="cv-qrow">Quality <span class="cv-val"><input id="cv-quality" type="range" min="1" max="100" value="80"><output id="cv-qout">80</output></span></label>
+      <label id="cv-lossrow" class="cv-chk"><input id="cv-lossless" type="checkbox"> Lossless</label>
+      <label id="cv-trrow" class="cv-chk" title="Recompresses a JPEG into JPEG XL without losing anything; the original JPEG can be rebuilt exactly. Skipped when downscaling."><input id="cv-transcode" type="checkbox" checked> Lossless JPEG transcoding (JPEG → JPEG XL, reversible)</label>
+      <label id="cv-effrow">Effort <span class="cv-val"><input id="cv-effort" type="range" min="1" max="9" value="6"><output id="cv-eout">6</output></span><small>Higher = smaller files, slower</small></label>
+      <h4>Downscale</h4>
+      <label>Mode <select id="cv-ds"><option value="none">Keep original size</option><option value="percent">Percent of original</option><option value="resolution">Fit inside width × height</option><option value="shortest">Shortest side (px)</option><option value="longest">Longest side (px)</option><option value="megapixels">Megapixels</option></select></label>
+      <label id="cv-dsrow" hidden>Value <span class="cv-val"><input id="cv-ds1" type="number" min="0.01" step="any" value="50"><input id="cv-ds2" type="number" min="1" value="1080" hidden></span></label>
+      <small>Images are never enlarged.</small>
+      <h4>Output</h4>
+      <div class="cv-out"><button id="cv-outbtn">Same folder as the original</button><button id="cv-outclear" hidden title="Save next to the originals again">✕</button></div>
+      <label>If a file already exists <select id="cv-conflict"><option value="rename">Keep both (add a number)</option><option value="skip">Skip it</option><option value="overwrite">Overwrite it</option></select></label>
+      <label class="cv-chk"><input id="cv-times" type="checkbox" checked> Keep the original date and time</label>
+      <label class="cv-chk" title="The originals are moved to your recycle bin / trash, not erased."><input id="cv-delete" type="checkbox"> Move originals to the trash when done</label>
+      <label>Files at once <input id="cv-threads" type="number" min="1" max="32" value="2"></label>
+      <p class="hint">Metadata (EXIF, GPS, camera details) is not copied to the new files.</p>
+      <details id="cv-toolsbox"><summary>Tools</summary><div id="cv-tools"></div></details>
+    </aside>
+  </div>
+  <div id="cv-foot"><progress id="cv-prog" max="1" value="0"></progress><span id="cv-stat">Add some images to begin.</span><button id="cv-go" class="pri">Convert</button><button id="cv-cancel" hidden>Cancel</button></div>
 </section>
 <div id="videoview">
   <div class="v-top">
@@ -133,5 +161,6 @@
 <script src="src/video.js"></script>
 <script src="src/ai.js"></script>
 <script src="src/home.js"></script>
+<script src="src/convert.js"></script>
 </body>
 </html>

@@ -9,10 +9,11 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dist:linux": "electron-builder --linux AppImage --publish never",
-    "dist:win": "electron-builder --win nsis portable --publish never",
+    "dist:linux": "node scripts/fetch-libjxl.js && electron-builder --linux AppImage --publish never",
+    "dist:win": "node scripts/fetch-libjxl.js && electron-builder --win nsis portable --publish never",
     "web:build": "node scripts/web-build.js",
-    "android:sync": "node scripts/web-build.js && cap sync android"
+    "android:sync": "node scripts/web-build.js && cap sync android",
+    "fetch:libjxl": "node scripts/fetch-libjxl.js"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.2",
@@ -54,6 +55,12 @@
     },
     "asarUnpack": [
       "node_modules/ffmpeg-static/**"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/libjxl/${os}",
+        "to": "bin"
+      }
     ]
   },
   "dependencies": {

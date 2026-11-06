@@ -37,6 +37,7 @@ const nameBox = $('#docname');
 nameBox.oninput = () => { api(mode()).setName(nameBox.value || 'Untitled'); document.dispatchEvent(new Event('sma-edit')); };
 document.addEventListener('sma-mode', async ev => {
   if (ev.detail === 'home') { if (timer) await saveNow(); await render(); return; }
+  if (ev.detail === 'convert') return;
   nameBox.value = api(ev.detail).getName();
 });
 
