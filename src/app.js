@@ -14,7 +14,9 @@ const PRESETS = {
   'Print': [['A4 (150 dpi)', 1240, 1754, 150], ['A3 Poster (300 dpi)', 3508, 4961, 300], ['Letter (150 dpi)', 1275, 1650, 150], ['Business Card', 1050, 600, 300]],
 };
 const FLAT = Object.values(PRESETS).flat();
-const FONTS = ['Arial', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana', 'Impact', 'Trebuchet MS', 'Comic Sans MS'];
+// a font name as CSS: quoted, except the generic families (sans-serif, serif, monospace, ...) which must stay bare
+const GENERIC = new Set(['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui']);
+const cssFamily = n => (GENERIC.has(n) ? n : `"${String(n).replace(/["\\]/g, '')}", sans-serif`);
 
 const TEMPLATES = {
   'Bold Announcement': () => ({ w: 1080, h: 1080, bg: '#fde68a', els: [
@@ -137,7 +139,7 @@ function shadowPanel(e, p, h) {
 // ---------- text (flat and curved) ----------
 const mctx = document.createElement('canvas').getContext('2d');
 function textWidth(e, s) {
-  mctx.font = `${e.italic ? 'italic ' : ''}${e.bold ? 700 : 400} ${e.fontSize}px "${e.font}"`;
+  mctx.font = `${e.italic ? 'italic ' : ''}${e.bold ? 700 : 400} ${e.fontSize}px ${cssFamily(e.font)}`;
   return mctx.measureText(s || ' ').width;
 }
 // curve -100..100: arc angle up to 324°; positive arches up (rainbow), negative sags (smile)
@@ -150,7 +152,7 @@ function sagOf(e) { // vertical drop from the arc apex to its ends, widest line 
 function layoutText(e) { e.h = e.fontSize * 1.2 * e.text.split('\n').length + sagOf(e); }
 function drawText(e, g) {
   const fs = e.fontSize, lh = fs * 1.2, lines = e.text.split('\n');
-  const attrs = { 'font-family': e.font, 'font-size': fs, 'font-weight': e.bold ? 700 : 400,
+  const attrs = { 'font-family': cssFamily(e.font), 'font-size': fs, 'font-weight': e.bold ? 700 : 400,
     'font-style': e.italic ? 'italic' : 'normal', fill: e.fill, 'xml:space': 'preserve',
     stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }; // outline sits behind the letters, so thick outlines don't eat them
   if (!e.curve) {
@@ -294,8 +296,7 @@ function renderProps() {
     t.oninput = () => { if (!t._c) { commit(); t._c = true; } e.text = t.value; redrawKeepFocus(t); };
     t.onblur = () => { t._c = false; render(); };
     p.append(t);
-    const f = document.createElement('select'); FONTS.forEach(n => f.add(new Option(n, n, false, n === e.font)));
-    f.onchange = () => { commit(); e.font = f.value; render(); };
+    const f = window.SMA_FONTS.pick(e.font, name => { commit(); e.font = name; render(); });
     p.append(row('Font', f), row('Size', field(e, 'fontSize', 'number', { min: 8 })), row('Curve', field(e, 'curve', 'range', { min: -100, max: 100, step: 1 })));
     const r = document.createElement('div'); r.className = 'row';
     [['B', 'bold'], ['I', 'italic']].forEach(([l, k]) => { const b = document.createElement('button'); b.textContent = l; b.style.opacity = e[k] ? 1 : .5; b.onclick = () => { commit(); e[k] = !e[k]; render(); }; r.append(b); });
@@ -375,7 +376,7 @@ function readImage(file) {
   r.readAsDataURL(file);
 }
 // ---------- sources (persistent local library, like OBS sources) ----------
-const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : null;
+const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|woff2?)$/i.test(f.name) ? 'font' : null;
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('sudo-make-art', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('sources', { keyPath: 'id' });
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -391,7 +392,7 @@ async function addSource(file) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: fs => ingest(fs, false), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { cssFamily, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: fs => ingest(fs, false), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
@@ -400,7 +401,8 @@ function renderSources() {
   sources.forEach(sr => {
     const d = document.createElement('div'); d.className = 'src'; d.title = sr.name; d.draggable = true;
     d.ondragstart = ev => ev.dataTransfer.setData('text/sma-source', sr.id);
-    if (sr.kind === 'image' || sr.kind === 'video') {
+    if (sr.kind === 'font') d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: 'Aa', title: 'A font you added. Pick it in the font list of any text.' }));
+    else if (sr.kind === 'image' || sr.kind === 'video') {
       const u = URL.createObjectURL(sr.blob); thumbURLs.push(u);
       const m = document.createElement(sr.kind === 'image' ? 'img' : 'video'); m.src = u + (sr.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; d.append(m);
     } else d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '♪' }));
@@ -411,12 +413,12 @@ function renderSources() {
     box.append(d);
   });
 }
-function useSource(sr) { if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
+function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
 async function ingest(files, place) {
   for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f); if (place && rec && rec.kind === 'image') useSource(rec); }
 }
 document.querySelector('[data-panel=sources]').onclick = () => { const p = $('#sources'); p.hidden = !p.hidden; };
-$('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
+$('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   e.preventDefault();
@@ -481,6 +483,8 @@ function cleanSVG() {
   c.setAttribute('width', doc.w); c.setAttribute('height', doc.h); c.style.background = '';
   const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', doc.w); bg.setAttribute('height', doc.h); bg.setAttribute('fill', doc.bg);
   c.insertBefore(bg, c.firstChild); c.setAttribute('xmlns', NS);
+  const fontCss = window.SMA_FONTS ? window.SMA_FONTS.embedCSS(doc.els.filter(e => e.type === 'text').map(e => e.font)) : ''; // added fonts travel inside the file, so exports look the same
+  if (fontCss) { const st = document.createElementNS(NS, 'style'); st.textContent = fontCss; c.insertBefore(st, c.firstChild); }
   return new XMLSerializer().serializeToString(c);
 }
 $('#export').onchange = ev => {
@@ -574,6 +578,8 @@ window.SMA.design = {
   load: json => { adopt(JSON.parse(json)); sel = null; undoS = []; redoS = []; fit(); },
 };
 window.SMA.setMode = setMode;
+
+document.addEventListener('sma-fonts', () => { if (!document.body.classList.contains('home-mode')) render(); }); // a font finished loading: draw again so text uses it
 
 // ---------- boot ----------
 try { const s = localStorage.getItem('sma-doc'); if (s) adopt(JSON.parse(s)); } catch (e) {}

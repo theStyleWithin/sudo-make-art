@@ -203,3 +203,12 @@ body.home-mode #home{display:flex}
 #cv-foot{display:flex;gap:12px;align-items:center;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
 #cv-foot progress{width:220px}#cv-stat{flex:1;font-size:12px}
 @media (max-width:820px){.cv-main{flex-direction:column}#cv-opts{width:auto;max-height:45%}}
+
+.fp-btn{width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.fp-pop{position:fixed;z-index:200;max-height:360px;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 40px #000c;padding:8px;gap:6px}
+.fp-list{overflow:auto;min-height:60px}
+.fp-head{font:600 10px system-ui,sans-serif;text-transform:uppercase;opacity:.55;margin:8px 4px 2px}
+.fp-item{padding:5px 8px;border-radius:6px;cursor:pointer;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp-item:hover{background:#3a3560}.fp-item.on{outline:1px solid var(--acc)}
+.fp-more{opacity:.55;font:12px system-ui,sans-serif;padding:6px}
+.fp-add{width:100%}

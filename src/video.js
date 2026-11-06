@@ -7,7 +7,6 @@ const SMA = window.SMA;
 if (!SMA) return;
 
 const SIZES = [['Landscape 1920×1080', 1920, 1080], ['YouTube / TikTok / Reels / Shorts 1080×1920', 1080, 1920], ['Square 1080×1080', 1080, 1080], ['Landscape 1280×720', 1280, 720]];
-const FONTS = ['Arial', 'Georgia', 'Impact', 'Verdana', 'Courier New', 'Trebuchet MS'];
 const LANE = { video: 'video', image: 'video', audio: 'audio', text: 'text', overlay: 'overlay' };
 
 let project = { w: 1080, h: 1920, clips: [] };
@@ -167,7 +166,7 @@ function drawOverlay(c) { // an image placed on top of the video: move, resize, 
   c._box = [cx - w / 2, cy - h / 2, w, h];
 }
 function drawText(c) {
-  ctx.save(); ctx.font = `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${c.size}px "${c.font}"`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.save(); ctx.font = `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${c.size}px ${SMA.cssFamily(c.font)}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lines = c.text.split('\n'), lh = c.size * 1.2, cx = c.x * project.w, cy = c.y * project.h, top = cy - (lines.length - 1) * lh / 2;
   let wmax = 0; lines.forEach((l, i) => {
     const y = top + i * lh; wmax = Math.max(wmax, ctx.measureText(l).width);
@@ -245,7 +244,7 @@ function disposeMedia(id) { const m = media.get(id); if (!m) return; try { m.el.
 // ---------- UI: bin, timeline, inspector ----------
 function renderBin() {
   const box = $('#v-binlist'); box.textContent = '';
-  const list = SMA.getSources();
+  const list = SMA.getSources().filter(s => s.kind !== 'font'); // fonts live in the same library but are not video media
   if (!list.length) box.innerHTML = '<p class="hint">Add videos, audio or images. They stay in your library.</p>';
   list.forEach(s => {
     const d = document.createElement('div'); d.className = 'src'; d.title = s.name;
@@ -294,7 +293,7 @@ function renderProps() {
   }
   if (c.kind === 'text') {
     const ta = document.createElement('textarea'); ta.value = c.text; ta.oninput = () => { commit(); c.text = ta.value; renderTimeline(); draw(); }; p.append(ta);
-    const f = document.createElement('select'); FONTS.forEach(n => f.add(new Option(n, n, false, n === c.font))); f.onchange = () => { commit(); c.font = f.value; draw(); };
+    const f = window.SMA_FONTS.pick(c.font, name => { commit(); c.font = name; draw(); refreshAll(); });
     const fl = document.createElement('label'); fl.append('Font', f); p.append(fl);
     p.append(num('Size', c, 'size', { min: 8 }), num('Colour', c, 'color', { type: 'color' }), num('Outline colour', c, 'stroke', { type: 'color' }), num('Outline width', c, 'sw', { min: 0 }),
       num('Bold', c, 'bold', { type: 'checkbox' }), num('X (0–1)', c, 'x', { step: 0.01, min: 0, max: 1 }), num('Y (0–1)', c, 'y', { step: 0.01, min: 0, max: 1 }));
@@ -535,6 +534,7 @@ document.addEventListener('keydown', ev => {
 });
 window.addEventListener('resize', () => { if (document.body.classList.contains('video-mode')) { sizeCanvas(); draw(); } });
 
+document.addEventListener('sma-fonts', () => { if (document.body.classList.contains('video-mode')) draw(); });
 window.SMA_video = {
   serialize: () => JSON.stringify(project), getPid: () => project.pid, setPid: p => { project.pid = p; }, getName: () => project.name || 'Untitled video', setName: n => { project.name = n; },
   load(json) { pause(); media.forEach((m, id) => disposeMedia(id)); project = JSON.parse(json); sel = null; t = 0; undoS = []; redoS = []; },
