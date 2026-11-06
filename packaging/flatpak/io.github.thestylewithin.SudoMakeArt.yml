@@ -19,7 +19,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -d /app/share/sudo-make-art
-      - cp -r index.html package.json src electron build /app/share/sudo-make-art/
+      - cp -r index.html package.json src electron build data /app/share/sudo-make-art/
       - install -Dm755 sudo-make-art.sh /app/bin/sudo-make-art
       - install -Dm644 packaging/sudo-make-art.desktop /app/share/applications/io.github.thestylewithin.SudoMakeArt.desktop
       - install -Dm644 packaging/io.github.thestylewithin.SudoMakeArt.metainfo.xml /app/share/metainfo/io.github.thestylewithin.SudoMakeArt.metainfo.xml

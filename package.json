@@ -2,7 +2,7 @@
   "name": "sudo-make-art",
   "productName": "Sudo Make Art",
   "version": "0.3.0",
-  "description": "Offline, local-only design tool inspired by Canva",
+  "description": "Offline, local-only tool for designs, videos and photos",
   "main": "electron/main.js",
   "homepage": "https://github.com/theStyleWithin/sudo-make-art",
   "author": "Gamehopper",
@@ -61,6 +61,14 @@
       {
         "from": "vendor/libjxl/${os}",
         "to": "bin"
+      },
+      {
+        "from": "licenses",
+        "to": "licenses"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
       }
     ]
   },

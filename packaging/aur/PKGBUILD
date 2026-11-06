@@ -3,21 +3,21 @@
 pkgname=sudo-make-art
 pkgver=0.1.0
 pkgrel=1
-pkgdesc="Offline, local-only design tool inspired by Canva"
+pkgdesc="Offline, local-only tool for designs, videos and photos"
 arch=('any')
 url="https://github.com/theStyleWithin/sudo-make-art"
 license=('0BSD')
-depends=('electron')
+depends=('electron' 'ffmpeg' 'libjxl')  # the system FFmpeg and libjxl are used instead of bundled copies
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('a9fd2c3a49df7f4462d7937ebd6e798d3bfa6d28ebbd51bc9b08cdabaa135933')  # v0.1.0 tarball; re-check with updpkgsums
 
 package() {
   cd "$srcdir/$pkgname-$pkgver"
   install -d "$pkgdir/usr/lib/$pkgname"
-  cp -r index.html package.json src electron build "$pkgdir/usr/lib/$pkgname/"
+  cp -r index.html package.json src electron build data "$pkgdir/usr/lib/$pkgname/"
 
   install -d "$pkgdir/usr/bin"
-  printf '#!/bin/sh\nexec electron /usr/lib/%s "$@"\n' "$pkgname" > "$pkgdir/usr/bin/$pkgname"
+  printf '#!/bin/sh\nSMA_FFMPEG=/usr/bin/ffmpeg exec electron /usr/lib/%s "$@"\n' "$pkgname" > "$pkgdir/usr/bin/$pkgname"
   chmod 755 "$pkgdir/usr/bin/$pkgname"
 
   install -Dm644 packaging/sudo-make-art.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"

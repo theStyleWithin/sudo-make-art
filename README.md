@@ -1,6 +1,6 @@
 # sudo-make-art
 
-An always-offline, local-only design tool inspired by Canva. No accounts, no cloud, no subscription, no bundled stock assets: you bring your own files and they never leave your PC.
+An always-offline, local-only tool for designs, videos and photos. No accounts, no cloud, no subscription, no bundled stock assets: you bring your own files and they never leave your PC.
 
 This is a native app (desktop and Android). It does not run in a web browser.
 
@@ -66,7 +66,7 @@ Build the debug APK with the `android` CI job, or locally with the Android SDK: 
 - AI background cutout for busy backgrounds (local model); the current cutout is colour-based
 - Better watermark inpainting for large marks
 
-All code is original. No Canva code or assets are used.
+All code is original, and no third-party templates, images or fonts are bundled.
 
 ## Problems, questions and safety
 **Please send every complaint, bug report and request to [Issues](https://github.com/theStyleWithin/sudo-make-art/issues).** That is the one place the maintainer reads, and issues are forwarded to the maintainer's AI assistant to be worked on. Say what you did, what you expected, what happened, your system (Linux, Android or Windows) and the version from the Releases page.
@@ -84,4 +84,4 @@ Please don't present your version as made or endorsed by the original author.
 - The Convert tab was inspired by [XL Converter](https://codepoems.eu/xl-converter) (GPL-3.0) in what it does. It shares no code with it; this project's converter was written independently.
 
 
-The desktop app bundles a static FFmpeg build through the `ffmpeg-static` package (used only to convert WebM to MP4). That build is GPL-licensed; see https://github.com/eugeneware/ffmpeg-static for details if you redistribute the app.
+The desktop app bundles FFmpeg (through the `ffmpeg-static` package) and runs it as a separate program for video export, image conversion and format reading. FFmpeg is GPL-3.0 licensed. The full list of bundled third-party software, licences and where to get the source is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and it ships inside the app.

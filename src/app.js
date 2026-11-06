@@ -428,7 +428,7 @@ document.addEventListener('drop', e => {
 });
 document.addEventListener('paste', e => ingest([...(e.clipboardData?.files || [])], true));
 
-// ---------- create a design ----------
+// ---------- new design dialog ----------
 const dlg = $('#newdlg');
 function buildDialog() {
   const nav = $('#newcats'), grid = $('#newgrid');
