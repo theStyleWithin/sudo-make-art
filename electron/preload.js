@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld('sma', {
     extract: (id, p) => ipcRenderer.invoke('vexport:extract', id, p),
     readFrame: (id, clipKey, k) => ipcRenderer.invoke('vexport:read-frame', id, clipKey, k),
   },
+  fontmatch: {
+    index: () => ipcRenderer.invoke('fontmatch:index'),
+    plan: (id, weight, format) => ipcRenderer.invoke('fontmatch:plan', id, weight, format),
+    download: (id, weight, format) => ipcRenderer.invoke('fontmatch:download', id, weight, format),
+    open: url => ipcRenderer.invoke('fontmatch:open', url),
+  },
   convert: {
     tools: () => ipcRenderer.invoke('convert:tools'),
     setTool: name => ipcRenderer.invoke('convert:set-tool', name),

@@ -383,16 +383,16 @@ const idb = () => new Promise((res, rej) => { const r = indexedDB.open('sudo-mak
 async function dbDo(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const q = fn(db.transaction('sources', mode).objectStore('sources')); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
 let sources = [], thumbURLs = [];
 async function loadSources() { try { sources = (await dbDo('readonly', st => st.getAll())).sort((a, b) => a.added - b.added); } catch (e) { sources = []; } renderSources(); }
-async function addSource(file) {
+async function addSource(file, meta) {
   const kind = kindOf(file); if (!kind) return null;
   const dup = sources.find(x => x.name === file.name && x.blob.size === file.size); if (dup) return dup; // already in the library
-  const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now() };
+  const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now(), ...(meta && typeof meta.fontName === 'string' ? { fontName: meta.fontName.slice(0, 80) } : {}) };
   try { await dbDo('readwrite', st => st.put(rec)); } catch (e) { alert('Could not save to the local library: ' + e.message); }
   sources.push(rec); renderSources(); return rec;
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { cssFamily, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: fs => ingest(fs, false), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { cssFamily, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
@@ -414,8 +414,8 @@ function renderSources() {
   });
 }
 function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
-async function ingest(files, place) {
-  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f); if (place && rec && rec.kind === 'image') useSource(rec); }
+async function ingest(files, place, meta) {
+  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta); if (place && rec && rec.kind === 'image') useSource(rec); }
 }
 document.querySelector('[data-panel=sources]').onclick = () => { const p = $('#sources'); p.hidden = !p.hidden; };
 $('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };

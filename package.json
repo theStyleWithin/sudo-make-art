@@ -28,7 +28,8 @@
       "src/**",
       "electron/**",
       "build/icon.png",
-      "package.json"
+      "package.json",
+      "data/**"
     ],
     "directories": {
       "buildResources": "build",
