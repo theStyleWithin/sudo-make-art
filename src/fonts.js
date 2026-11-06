@@ -47,7 +47,7 @@ async function register(rec) {
   if (mine.has(rec.id)) return; mine.set(rec.id, null); // reserve, so it is not registered twice
   try {
     const buf = await rec.blob.arrayBuffer(), names = await readNames(buf), ext = rec.name.split('.').pop().toLowerCase();
-    const stem = rec.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '), family = clean((names && names.family) || stem.replace(/\s*(regular|bold|italic|light|medium|black)\s*$/i, '')) || 'My font';
+    const stem = rec.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '), family = clean(rec.fontName || (names && names.family) || stem.replace(/\s*(regular|bold|italic|light|medium|black)\s*$/i, '')) || 'My font';
     const st = styleOf(names ? names.sub : stem), face = new FontFace(family, buf, { weight: String(st.weight), style: st.style });
     await face.load(); document.fonts.add(face);
     const [mime, fmt] = MIME[ext] || MIME.ttf;
@@ -84,6 +84,7 @@ function pick(current, onChange) {
     if (pop) return close(); const r = btn.getBoundingClientRect();
     pop = el('div', { className: 'fp-pop' }); pop.style.cssText = `left:${Math.max(8, Math.min(r.left, innerWidth - 300))}px;top:${Math.min(r.bottom + 4, innerHeight - 360)}px;width:290px`;
     const search = el('input', { className: 'fp-search', placeholder: 'Search fonts…', spellcheck: false }), add = el('button', { type: 'button', className: 'fp-add' }, '+ Add a font file…'), list = el('div', { className: 'fp-list' });
+    const match = el('button', { type: 'button', className: 'fp-add' }, '🔎 Match a font from a picture…'); match.onclick = () => { close(); window.SMA_FONTMATCH.open(onChange); };
     add.onclick = () => { const f = document.querySelector('#file'); f.accept = '.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { SMA.addFiles([...f.files]); f.multiple = false; close(); }; f.click(); };
     const ownFamilies = [...new Set([...mine.values()].filter(Boolean).map(f => f.family))].sort((a, b) => a.localeCompare(b));
     const render = () => {
@@ -94,7 +95,7 @@ function pick(current, onChange) {
       section('Your fonts', ownFamilies); section('Installed on this computer', system.filter(n => !ownFamilies.includes(n))); section('Basic', BASIC.filter(n => !system.includes(n) && !ownFamilies.includes(n)));
       if (!list.children.length) list.append(el('div', { className: 'fp-more' }, 'No match. You can add a font file above.'));
     };
-    search.oninput = render; render(); pop.append(search, add, list); document.body.append(pop); search.focus();
+    search.oninput = render; render(); pop.append(search, add, ...(window.SMA_FONTMATCH ? [match] : []), list); document.body.append(pop); search.focus();
     setTimeout(() => { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); });
   };
   return btn;

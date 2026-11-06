@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; font-src 'self'; connect-src data:; base-uri 'none'; form-action 'none'">
 <title>Sudo Make Art</title>
 <link rel="stylesheet" href="src/style.css">
 </head>
@@ -104,6 +104,20 @@
   <div class="dhead"><h2>Create a design</h2><button id="newclose">✕</button></div>
   <div class="dbody"><nav id="newcats"></nav><div id="newgrid"></div></div>
 </dialog>
+<dialog id="fmdlg">
+  <div class="dhead"><h2>Match a font from a picture</h2><button id="fm-close">✕</button></div>
+  <div class="fm-body">
+    <div class="fm-left">
+      <div id="fm-drop"><p id="fm-drop-hint">Drop, paste or <button id="fm-pick">choose</button> a picture of some text (a screenshot or a PNG).</p><canvas id="fm-canvas" hidden></canvas><button id="fm-change" hidden>Choose a different picture</button></div>
+      <small>Drag on the picture to select just one line of text, so the match is sharper.</small>
+      <label>What words are in the picture? <input id="fm-text" maxlength="40" placeholder="e.g. Sunset Boulevard" autocomplete="off" spellcheck="false"></label>
+      <p class="hint">Your picture stays on this computer. It is compared with a built-in list of about 3,000 open-licensed fonts and the fonts you have. Nothing is downloaded or sent while matching.</p>
+      <div class="dact"><button id="fm-go" class="pri">Find matches</button><button id="fm-stop" hidden>Stop</button></div>
+      <progress id="fm-prog" max="1" value="0" hidden></progress><div id="fm-status"></div>
+    </div>
+    <div id="fm-results"><p class="hint">Matches appear here, best first. You can decline or rename any of them.</p></div>
+  </div>
+</dialog>
 <dialog id="aidlg">
   <div class="dhead"><h2>AI image (runs on this computer)</h2><button id="ai-close">✕</button></div>
   <div class="ai-body">
@@ -160,6 +174,7 @@
 <script src="src/app.js"></script>
 <script src="src/video.js"></script>
 <script src="src/fonts.js"></script>
+<script src="src/fontmatch.js"></script>
 <script src="src/ai.js"></script>
 <script src="src/home.js"></script>
 <script src="src/convert.js"></script>
