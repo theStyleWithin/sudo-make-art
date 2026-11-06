@@ -10,6 +10,8 @@ $('#tool-ai').hidden = false;
 $('#tool-ai').onclick = async () => { dlg.showModal(); await refresh(); };
 $('#ai-close').onclick = () => dlg.close();
 $('#ai-folder').onclick = () => api.openModels();
+$('#ai-getmodels').onclick = () => window.SMA_MODELHUB && window.SMA_MODELHUB.open();
+document.addEventListener('sma-models', async ev => { await refresh(); if (ev.detail && [...$('#ai-model').options].some(o => o.value === ev.detail)) { $('#ai-model').value = ev.detail; showPlan(); } }); // a model was downloaded: show it and select it
 $('#ai-mode').onchange = () => { const m = $('#ai-mode').value; $('#ai-strwrap').hidden = m !== 'edit'; $('#ai-framewrap').hidden = m !== 'video'; showPlan(); };
 
 const txt = (n, t) => Object.assign(document.createElement(n), { textContent: t });

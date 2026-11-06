@@ -118,6 +118,19 @@
     <div id="fm-results"><p class="hint">Matches appear here, best first. You can decline or rename any of them.</p></div>
   </div>
 </dialog>
+<dialog id="mhdlg">
+  <div class="dhead"><h2>Get a model</h2><button id="mh-close">✕</button></div>
+  <div class="mh-body">
+    <div class="mh-left">
+      <div class="mh-tabs"><button class="on" data-kind="image">Images</button><button data-kind="video">Video</button></div>
+      <div class="mh-search"><input id="mh-q" placeholder="Search GGUF models, for example flux" autocomplete="off" spellcheck="false"><button id="mh-go">Search</button></div>
+      <div id="mh-chips" class="mh-chips"></div>
+      <p class="hint">Searching contacts huggingface.co, which only receives the words you type. Nothing else about you or your files is sent.</p>
+      <div id="mh-list"></div>
+    </div>
+    <div id="mh-detail" class="mh-right"><p class="hint">Pick a model on the left to see its files.</p></div>
+  </div>
+</dialog>
 <dialog id="aidlg">
   <div class="dhead"><h2>AI image (runs on this computer)</h2><button id="ai-close">✕</button></div>
   <div class="ai-body">
@@ -127,7 +140,7 @@
       <label>Prompt <textarea id="ai-prompt" placeholder="Describe what you want"></textarea></label>
       <label class="ai-cmd">Quick start <input id="ai-cmd" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="13" placeholder="type: sudo make art, then press Enter"><small id="ai-cmd-note">Not a terminal. Only these words are accepted, and they just start the generation, like pressing Generate.</small></label>
       <label>Negative prompt <textarea id="ai-neg" placeholder="What to avoid"></textarea></label>
-      <label>Model <span class="row2"><select id="ai-model"></select><button id="ai-folder" title="Put model files (.safetensors, .ckpt, .gguf) in this folder">Models folder</button></span></label>
+      <label>Model <span class="row2"><select id="ai-model"></select><button id="ai-folder" title="Put model files (.safetensors, .ckpt, .gguf) in this folder">Models folder</button><button id="ai-getmodels" title="Search and download GGUF models, with safety checks">Get models…</button></span></label>
       <label>Size <select id="ai-size"><option>512x512</option><option>512x768</option><option>768x512</option><option>768x768</option><option>1024x1024</option><option>1024x576</option><option>576x1024</option></select></label>
       <div class="row3"><label>Steps <input id="ai-steps" type="number" value="20" min="1" max="150"></label><label>CFG <input id="ai-cfg" type="number" value="7" step="0.5" min="0" max="30"></label><label>Seed <input id="ai-seed" type="number" value="-1"></label></div>
       <label id="ai-framewrap" hidden>Frames <input id="ai-frames" type="number" value="17" min="5" max="129"></label>
@@ -176,6 +189,7 @@
 <script src="src/fonts.js"></script>
 <script src="src/fontmatch.js"></script>
 <script src="src/ai.js"></script>
+<script src="src/modelhub.js"></script>
 <script src="src/home.js"></script>
 <script src="src/convert.js"></script>
 </body>

@@ -7,6 +7,7 @@ const ai = require('./ai');
 const projects = require('./projects');
 const convert = require('./convert');
 const fontmatch = require('./fontmatch');
+const modelhub = require('./modelhub');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
@@ -102,6 +103,7 @@ ai.register();
 projects.register();
 convert.register();
 fontmatch.register();
+modelhub.register();
 app.setName('Sudo Make Art');
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
