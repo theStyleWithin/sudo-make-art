@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { planRun } = require('./plan');
+const { hardware } = require('./hardware');
 
 const MODEL_EXT = ['.safetensors', '.ckpt', '.gguf'];
 const settingsFile = () => path.join(app.getPath('userData'), 'ai-settings.json');
@@ -17,13 +18,6 @@ function loadSettings() {
 }
 const saveSettings = s => fs.writeFileSync(settingsFile(), JSON.stringify(s, null, 2));
 
-const run = (cmd, args) => new Promise(res => execFile(cmd, args, { timeout: 5000 }, (e, out) => res(e ? null : String(out))));
-async function hardware() {
-  let gpu = null;
-  const out = await run('nvidia-smi', ['--query-gpu=name,memory.total,memory.free', '--format=csv,noheader,nounits']);
-  if (out) { const [name, total, free] = out.trim().split('\n')[0].split(',').map(s => s.trim()); if (name && +total) gpu = { vendor: 'nvidia', name, vramTotal: +total, vramFree: +free }; }
-  return { gpu, ramTotal: Math.floor(os.totalmem() / 1048576), ramFree: Math.floor(os.freemem() / 1048576), cores: os.cpus().length };
-}
 function listModels() {
   const dir = modelsDir();
   return fs.readdirSync(dir).filter(f => MODEL_EXT.includes(path.extname(f).toLowerCase()))

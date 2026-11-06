@@ -33,7 +33,7 @@ function planRun(hw, { modelBytes, width, height, engines, frames }) {
   // pick an engine build that can actually do this
   const e = engines || {};
   let engine = null;
-  if (mode === 'gpu' || mode === 'gpu-offload') engine = e.cuda || e.vulkan || null;
+  if (mode === 'gpu' || mode === 'gpu-offload') engine = (gpu && gpu.vendor === 'nvidia' ? e.cuda || e.vulkan : e.vulkan) || null;
   if (!engine && mode !== 'cpu' && e.cpu) { engine = e.cpu; mode = 'cpu'; notes.push('No GPU engine set, using the CPU engine.'); }
   if (!engine && mode === 'cpu') engine = e.cpu || null;
   if (!engine) notes.push(mode === 'cpu' ? 'Set a CPU engine (Settings → Engines) to run without a GPU.' : 'Set a CUDA or Vulkan engine (Settings → Engines).');
@@ -41,4 +41,23 @@ function planRun(hw, { modelBytes, width, height, engines, frames }) {
   return { mode, engine, flags, threads: Math.max(1, hw.cores - 1), needMB: Math.round(needMB), notes };
 }
 
-module.exports = { planRun };
+// How well does a model file of this size suit this PC? Used by the model library to recommend a file.
+//   comfortable: fits in free video memory; slow: GPU does the maths but weights sit in RAM; cpu: no usable GPU, runs from RAM; heavy: will struggle.
+function fitFor(hw, sizeBytes, kind) {
+  const fileGB = sizeBytes / 1073741824, need = fileGB * 1.12 + (kind === 'video' ? 3 : 1.5);
+  const vram = hw.gpu ? hw.gpu.vramFree / 1024 : 0, ram = (hw.ramFree || 0) / 1024, ramOk = fileGB * 1.15 + 2 <= ram;
+  if (hw.gpu && need <= vram * 0.9) return 'comfortable';
+  if (hw.gpu && vram >= 2.5 && ramOk) return 'slow';
+  if (!hw.gpu && ramOk) return 'cpu';
+  return 'heavy';
+}
+function recommend(hw, files, kind) { // files: [{name,size}] -> { fits: {name: level}, best: name|null }
+  const fits = {}; files.forEach(f => { fits[f.name] = fitFor(hw, f.size, kind); });
+  const by = lv => files.filter(f => fits[f.name] === lv).sort((a, b) => b.size - a.size);
+  const cap = (kind === 'video' ? 6 : 4) * 1073741824;
+  let best = by('comfortable')[0];
+  if (!best) { const r = [...by('slow'), ...by('cpu')].sort((a, b) => b.size - a.size); best = r.find(f => f.size <= cap) || r[r.length - 1]; }
+  return { fits, best: best ? best.name : null };
+}
+
+module.exports = { planRun, fitFor, recommend };

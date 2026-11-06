@@ -14,6 +14,16 @@ contextBridge.exposeInMainWorld('sma', {
     extract: (id, p) => ipcRenderer.invoke('vexport:extract', id, p),
     readFrame: (id, clipKey, k) => ipcRenderer.invoke('vexport:read-frame', id, clipKey, k),
   },
+  modelhub: {
+    search: (q, kind) => ipcRenderer.invoke('modelhub:search', q, kind),
+    files: (repo, kind) => ipcRenderer.invoke('modelhub:files', repo, kind),
+    plan: (repo, file) => ipcRenderer.invoke('modelhub:plan', repo, file),
+    download: (repo, file) => ipcRenderer.invoke('modelhub:download', repo, file),
+    cancel: () => ipcRenderer.invoke('modelhub:cancel'),
+    clam: () => ipcRenderer.invoke('modelhub:clam'),
+    open: url => ipcRenderer.invoke('modelhub:open', url),
+    onProgress: cb => on('modelhub:progress', cb),
+  },
   fontmatch: {
     index: () => ipcRenderer.invoke('fontmatch:index'),
     plan: (id, weight, format) => ipcRenderer.invoke('fontmatch:plan', id, weight, format),
