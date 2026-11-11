@@ -41,14 +41,14 @@ function assemble(source, opts = {}) {
     function or() { let v = xor(); for (;;) { ws(); if (s[i] === '|') { i++; v |= xor(); } else return v; } }
     const v = or(); ws(); if (i < s.length) err(ln, 'junk after expression: ' + s.slice(i)); return v;
   }
-  let scope = '';
+  let scope = '', changed = false; const longJr = new Set();
   const splitArgs = t => { const a = []; let d = 0, cur = '', q = false; for (const ch of t) { if (ch === "'") q = !q; if (!q) { if (ch === '(' || ch === '[') d++; if (ch === ')' || ch === ']') d--; if (ch === ',' && d === 0) { a.push(cur.trim()); cur = ''; continue; } } cur += ch; } if (cur.trim()) a.push(cur.trim()); return a; };
   const isMem = a => /^\[.*\]$/.test(a);
   const memInner = a => a.slice(1, -1).trim();
 
   // one pass over the program; in pass 0 unknown symbols read as 0 so sizes can be found, in pass 1 everything is final
   function pass(final) {
-    let pc = 0; scope = ''; maxEnd = 0;
+    let pc = 0; scope = ''; maxEnd = 0; if (!final) syms.__labels = new Set();
     const emit = (b, ln) => { for (const x of b) { if (final) { if (pc < 0 || pc >= out.length) err(ln, 'address out of the ROM: ' + pc.toString(16)); out[pc] = x & 255; } pc++; } if (pc > maxEnd) maxEnd = pc; };
     lines.forEach((raw, idx) => {
       const ln = idx + 1; let line = raw; let q = false, cut = -1; for (let k = 0; k < line.length; k++) { if (line[k] === "'") q = !q; if (!q && line[k] === ';') { cut = k; break; } } if (cut >= 0) line = line.slice(0, cut); line = line.trim(); if (!line) return;
@@ -72,7 +72,12 @@ function assemble(source, opts = {}) {
         case 'ret': if (args.length) { if (!(lc[0] in CC)) err(ln, 'bad condition'); return emit([0xc0 | (CC[lc[0]] << 3)], ln); } return emit([0xc9], ln);
         case 'rst': return emit([0xc7 | (E(args[0]) & 0x38)], ln);
         case 'jp': if (lc[0] === '[hl]' || lc[0] === 'hl') return emit([0xe9], ln); if (args.length === 2) { if (!(lc[0] in CC)) err(ln, 'bad condition'); const v = word(args[1]); return emit([0xc2 | (CC[lc[0]] << 3), v & 255, v >> 8], ln); } { const v = word(args[0]); return emit([0xc3, v & 255, v >> 8], ln); }
-        case 'jr': if (args.length === 2) { if (!(lc[0] in CC)) err(ln, 'bad condition'); return emit([0x20 | (CC[lc[0]] << 3), rel(args[1])], ln); } return emit([0x18, rel(args[0])], ln);
+        case 'jr': {
+          const cc = args.length === 2 ? lc[0] : null, tgt = args.length === 2 ? args[1] : args[0]; if (cc && !(cc in CC)) err(ln, 'bad condition');
+          if (!longJr.has(ln)) { const d = E(tgt) - (pc + 2); if (d < -128 || d > 127) { if (!final) { longJr.add(ln); changed = true; } else err(ln, 'jump too far (' + d + ') to ' + tgt); } }
+          if (longJr.has(ln)) { const v = word(tgt); return emit([cc ? 0xc2 | (CC[cc] << 3) : 0xc3, v & 255, v >> 8], ln); }
+          return emit(cc ? [0x20 | (CC[cc] << 3), rel(tgt)] : [0x18, rel(tgt)], ln);
+        }
         case 'call': if (args.length === 2) { if (!(lc[0] in CC)) err(ln, 'bad condition'); const v = word(args[1]); return emit([0xc4 | (CC[lc[0]] << 3), v & 255, v >> 8], ln); } { const v = word(args[0]); return emit([0xcd, v & 255, v >> 8], ln); }
         case 'push': return emit([0xc5 | (R16S[lc[0]] << 4)], ln); case 'pop': return emit([0xc1 | (R16S[lc[0]] << 4)], ln);
         case 'inc': case 'dec': { const dec = op === 'dec'; if (lc[0] in R16) return emit([(dec ? 0x0b : 0x03) | (R16[lc[0]] << 4)], ln); if (lc[0] in R8) return emit([(dec ? 0x05 : 0x04) | (R8[lc[0]] << 3)], ln); err(ln, 'bad operand for ' + op); }
@@ -82,7 +87,7 @@ function assemble(source, opts = {}) {
           let src; if (args.length === 2) { if (lc[0] !== 'a') err(ln, op + ' needs a as its first operand'); src = args[1]; } else src = args[0]; const sl = src.toLowerCase();
           if (sl in R8) return emit([0x80 | (ALU[op] << 3) | R8[sl]], ln); return emit([0xc6 | (ALU[op] << 3), byte(src)], ln);
         }
-        case 'ldh': { const [d, s2] = args; if (isMem(d) && s2.toLowerCase() === 'a') { const inner = memInner(d); if (inner.toLowerCase() === 'c') return emit([0xe2], ln); return emit([0xe0, byte(inner) & 255], ln); } if (d.toLowerCase() === 'a' && isMem(s2)) { const inner = memInner(s2); if (inner.toLowerCase() === 'c') return emit([0xf2], ln); return emit([0xf0, E(inner) & 255], ln); } err(ln, 'bad ldh'); }
+        case 'ldh': { const hi = e => { const v = E(e); if (final && !((v >= 0xff00 && v <= 0xffff) || (v >= 0 && v <= 255))) err(ln, 'ldh needs an address in FF00-FFFF: ' + e); return v & 255; }; const [d, s2] = args; if (isMem(d) && s2.toLowerCase() === 'a') { const inner = memInner(d); if (inner.toLowerCase() === 'c') return emit([0xe2], ln); return emit([0xe0, hi(inner)], ln); } if (d.toLowerCase() === 'a' && isMem(s2)) { const inner = memInner(s2); if (inner.toLowerCase() === 'c') return emit([0xf2], ln); return emit([0xf0, hi(inner)], ln); } err(ln, 'bad ldh'); }
         case 'ld': {
           const [d, s2] = args, dl = lc[0], sl = lc[1];
           if (dl === 'sp' && sl === 'hl') return emit([0xf9], ln);
@@ -101,7 +106,8 @@ function assemble(source, opts = {}) {
       }
     });
   }
-  pass(false); pass(true);
+  for (let i = 0; i < 12; i++) { changed = false; pass(false); if (!changed) break; }
+  pass(true);
   const labels = {}; for (const [k, v] of syms) if (typeof v === 'number' && !k.includes('.')) labels[k] = v;
   return { bytes: out, end: maxEnd, symbols: labels };
 }

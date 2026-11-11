@@ -215,7 +215,12 @@ async function exportDesktop(platform) {
   cancel.onclick = () => pack.cancel(); status.textContent = 'Working…'; bar.hidden = false; cancel.hidden = false;
   try { const r = await pack.build(platform, name, buildHtml()); status.textContent = r.cancelled ? 'Cancelled.' : `Saved ${(r.bytes / 1048576).toFixed(0)} MB: ${r.path}`; } catch (err) { status.textContent = 'Export failed: ' + String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); } finally { off && off(); bar.hidden = true; cancel.hidden = true; }
 }
-$('#gm-export').onchange = e => { const v = e.target.value; e.target.value = ''; try { if (v === 'html') download(new Blob([buildHtml()], { type: 'text/html' }), safeName() + '.html'); else if (v === 'linux' || v === 'win') exportDesktop(v); } catch (err) { status.textContent = 'Export failed: ' + err.message; } };
+function exportRom() {
+  const probs = problems(); if (probs.length && !confirm('Before you export:\n\n' + probs.join('\n') + '\n\nExport anyway?')) return;
+  const r = window.SMA_gbrom.buildRom(JSON.parse(serialize()), { title: name }); download(new Blob([r.rom], { type: 'application/octet-stream' }), safeName() + '.gb');
+  status.textContent = `Game Boy cartridge saved: ${(r.report.bytes / 1024).toFixed(1)} of 32 KB used, ${r.report.tiles} of 256 picture tiles used.` + (r.report.hasMusic ? '' : game.song ? ' (The music could not be added.)' : '');
+}
+$('#gm-export').onchange = e => { const v = e.target.value; e.target.value = ''; try { if (v === 'html') download(new Blob([buildHtml()], { type: 'text/html' }), safeName() + '.html'); else if (v === 'gb') exportRom(); else if (v === 'linux' || v === 'win') exportDesktop(v); } catch (err) { status.textContent = 'Export failed: ' + err.message; } };
 
 // ----- new / open / hooks -----
 $('#gm-new').onclick = () => $('#gm-newdlg').showModal(); $('#gm-newcancel').onclick = e => { e.preventDefault(); $('#gm-newdlg').close(); };
@@ -224,7 +229,7 @@ $('#gm-open').onclick = () => pick('game', 'Open a game', r => { api.load(r.data
 function load(json) { const o = validate(JSON.parse(json)); stopPlay(); game = E.decode(o); name = String(o.name || 'Untitled game').slice(0, 120); li = 0; tileSel = Math.min(1, game.tiles.length - 1); entSel = null; undoS.length = redoS.length = 0; refreshAll(); }
 function thumb() { const l = game.levels[0], c = document.createElement('canvas'), w = Math.min(l.w, 20) * 8, h = Math.min(l.h, 18) * 8; c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = game.palette[0]; x.fillRect(0, 0, w, h); x.imageSmoothingEnabled = false; for (let ty = 0; ty < Math.min(l.h, 18); ty++) for (let tx = 0; tx < Math.min(l.w, 20); tx++) { const t = l.cells[ty * l.w + tx]; if (t >= 0) x.drawImage(assets.tiles[t], tx * 8, ty * 8); } return Promise.resolve(c.toDataURL('image/png')); }
 const api = { serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, getName: () => name, setName: n => { name = n; game.name = n; $('#gm-name').value = n; }, load, show() { requestAnimationFrame(renderLevel); }, hide() { stopPlay(); },
-  reset() { pid = null; game = E.decode(E.newGame()); name = game.name; li = 0; refreshAll(); }, play, stopPlay, engine: () => eng, buildHtml, exportDesktop, problems, game: () => game, info: () => ({ levels: game.levels.length, level: li, tiles: game.tiles.length, sprites: game.sprites.length, song: !!game.song, undo: undoS.length, ents: lvl().ents.length }), cell: (x, y) => lvl().cells[y * lvl().w + x], ents: () => lvl().ents.map(e => ({ ...e })) };
+  reset() { pid = null; game = E.decode(E.newGame()); name = game.name; li = 0; refreshAll(); }, play, stopPlay, engine: () => eng, buildHtml, exportRom, exportDesktop, problems, game: () => game, info: () => ({ levels: game.levels.length, level: li, tiles: game.tiles.length, sprites: game.sprites.length, song: !!game.song, undo: undoS.length, ents: lvl().ents.length }), cell: (x, y) => lvl().cells[y * lvl().w + x], ents: () => lvl().ents.map(e => ({ ...e })) };
 window.SMA_games = api;
 refreshAll();
 })();
