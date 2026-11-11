@@ -9,7 +9,7 @@ const APPS = [
   { id: 'tcg', name: 'Sudo Make TCG', tag: 'Trading cards and whole decks', plan: ['Card templates and frames', 'Art box, name, stats and rules text', 'Print sheets for a whole deck'] },
   { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages', plan: ['Panel layouts you can drag and split', 'Speech bubbles and sound effects', 'Screentones and page export'] },
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts', plan: ['Distraction-free writing', 'Chapters and an outline', 'Export to common formats'] },
-  { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets and seamless textures', plan: ['Tile editor with a live seamless preview', 'Automatic edge and corner tiles', 'Export a tileset sheet'] },
+  { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
   { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune and retro music', plan: ['Pattern-based chiptune tracker', 'Handheld-style sound channels', 'Export audio and loops'] },
   { id: 'games', name: 'Sudo Make Games', tag: 'Small games', plan: ['To be decided together'] },

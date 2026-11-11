@@ -559,10 +559,11 @@ document.addEventListener('keydown', ev => {
 
 // ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('pixels-mode', m === 'pixels');
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles');
   ['home', 'design', 'video', 'convert', 'vconvert'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
   if (m !== 'video') window.SMA_video?.hide();
   if (m !== 'pixels') window.SMA_pixels?.hide(); else window.SMA_pixels?.show();
+  if (m === 'tiles') window.SMA_tiles?.show();
   if (m === 'video') window.SMA_video?.show(); else if (m === 'design') fit();
   document.dispatchEvent(new CustomEvent('sma-mode', { detail: m }));
 }
