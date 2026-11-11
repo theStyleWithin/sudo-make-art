@@ -205,7 +205,17 @@ if(matchMedia('(pointer: fine)').matches&&innerWidth>700)document.getElementById
 }
 const E_SRC = () => window.SMAGameEngine.toString();
 function download(blob, fname) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
-$('#gm-export').onchange = e => { const v = e.target.value; e.target.value = ''; try { if (v === 'html') download(new Blob([buildHtml()], { type: 'text/html' }), safeName() + '.html'); } catch (err) { status.textContent = 'Export failed: ' + err.message; } };
+const pack = window.sma && window.sma.gamepack;
+if (pack) { for (const [v, t] of [['linux', 'Linux program (one file)'], ['win', 'Windows program (zip)']]) $('#gm-export').append(el('option', { value: v }, t)); }
+async function exportDesktop(platform) {
+  const probs = problems(); if (probs.length && !confirm('Before you export:\n\n' + probs.join('\n') + '\n\nExport anyway?')) return;
+  const st = await pack.status(), label = platform === 'linux' ? 'Linux' : 'Windows';
+  if (!st[platform] && !confirm(`To make a ${label} program, Sudo Make Games needs Electron's official ${label} runtime (about 100 MB, version ${st.version}) from github.com/electron/electron.\n\nIt is downloaded once, checked against the SHA-256 checksum Electron publishes, and kept for next time. Your game is never uploaded.\n\nDownload it now?`)) return;
+  const bar = $('#gm-prog'), cancel = $('#gm-cancelpack'), off = pack.onProgress(d => { bar.hidden = false; cancel.hidden = false; if (d.phase === 'download') { bar.max = d.total || 1; bar.value = d.got; status.textContent = `Downloading the ${label} runtime… ${(d.got / 1048576).toFixed(0)} of ${(d.total / 1048576).toFixed(0)} MB`; } else if (d.phase === 'hash') status.textContent = 'Getting the checksum from Electron…'; else if (d.phase === 'read') status.textContent = 'Reading the runtime…'; else if (d.phase === 'pack') { bar.max = d.total; bar.value = d.got; status.textContent = 'Packing the game…'; } });
+  cancel.onclick = () => pack.cancel(); status.textContent = 'Working…'; bar.hidden = false; cancel.hidden = false;
+  try { const r = await pack.build(platform, name, buildHtml()); status.textContent = r.cancelled ? 'Cancelled.' : `Saved ${(r.bytes / 1048576).toFixed(0)} MB: ${r.path}`; } catch (err) { status.textContent = 'Export failed: ' + String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); } finally { off && off(); bar.hidden = true; cancel.hidden = true; }
+}
+$('#gm-export').onchange = e => { const v = e.target.value; e.target.value = ''; try { if (v === 'html') download(new Blob([buildHtml()], { type: 'text/html' }), safeName() + '.html'); else if (v === 'linux' || v === 'win') exportDesktop(v); } catch (err) { status.textContent = 'Export failed: ' + err.message; } };
 
 // ----- new / open / hooks -----
 $('#gm-new').onclick = () => $('#gm-newdlg').showModal(); $('#gm-newcancel').onclick = e => { e.preventDefault(); $('#gm-newdlg').close(); };
@@ -214,7 +224,7 @@ $('#gm-open').onclick = () => pick('game', 'Open a game', r => { api.load(r.data
 function load(json) { const o = validate(JSON.parse(json)); stopPlay(); game = E.decode(o); name = String(o.name || 'Untitled game').slice(0, 120); li = 0; tileSel = Math.min(1, game.tiles.length - 1); entSel = null; undoS.length = redoS.length = 0; refreshAll(); }
 function thumb() { const l = game.levels[0], c = document.createElement('canvas'), w = Math.min(l.w, 20) * 8, h = Math.min(l.h, 18) * 8; c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = game.palette[0]; x.fillRect(0, 0, w, h); x.imageSmoothingEnabled = false; for (let ty = 0; ty < Math.min(l.h, 18); ty++) for (let tx = 0; tx < Math.min(l.w, 20); tx++) { const t = l.cells[ty * l.w + tx]; if (t >= 0) x.drawImage(assets.tiles[t], tx * 8, ty * 8); } return Promise.resolve(c.toDataURL('image/png')); }
 const api = { serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, getName: () => name, setName: n => { name = n; game.name = n; $('#gm-name').value = n; }, load, show() { requestAnimationFrame(renderLevel); }, hide() { stopPlay(); },
-  reset() { pid = null; game = E.decode(E.newGame()); name = game.name; li = 0; refreshAll(); }, play, stopPlay, engine: () => eng, buildHtml, problems, game: () => game, info: () => ({ levels: game.levels.length, level: li, tiles: game.tiles.length, sprites: game.sprites.length, song: !!game.song, undo: undoS.length, ents: lvl().ents.length }), cell: (x, y) => lvl().cells[y * lvl().w + x], ents: () => lvl().ents.map(e => ({ ...e })) };
+  reset() { pid = null; game = E.decode(E.newGame()); name = game.name; li = 0; refreshAll(); }, play, stopPlay, engine: () => eng, buildHtml, exportDesktop, problems, game: () => game, info: () => ({ levels: game.levels.length, level: li, tiles: game.tiles.length, sprites: game.sprites.length, song: !!game.song, undo: undoS.length, ents: lvl().ents.length }), cell: (x, y) => lvl().cells[y * lvl().w + x], ents: () => lvl().ents.map(e => ({ ...e })) };
 window.SMA_games = api;
 refreshAll();
 })();
