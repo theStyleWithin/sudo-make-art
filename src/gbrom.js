@@ -63,9 +63,9 @@ function buildRom(saved, opts = {}) {
   });
   const textAsm = texts.map((pages, i) => `Text${i}:\n db ${pages.length}\n${lines16(pages.flat(), 18)}`);
   const flags = new Array(256).fill(0); g.flags.forEach((f, i) => { flags[i] = f; });
-  const audio = opts.music === false ? null : (g.song ? AUD().build(g.song, { F0 }) : null);
-  const A = AUD();
-  const audioSrc = audio ? audio.code + '\n' + audio.data : A.stubs;
+  const C = isNode ? require('./chip.js') : window.SMA_chip;
+  let songObj = null; if (g.song && opts.music !== false) { try { songObj = C.parseSong(g.song); } catch (e) { problems.push('The music could not be read: ' + e.message); } }
+  const audio = AUD().build(songObj), audioSrc = audio.code + '\n' + audio.data;
 
   let src = RT.runtimeAsm().replace('${AUDIO}', audioSrc) + `
 GameType: db ${g.type === 'topdown' ? 1 : 0}
@@ -92,7 +92,7 @@ TileBlock:
 ${lines16(tileBytes)}
 RomEnd:
 `;
-  const defines = { T_BLANK: F0, T_DIGIT0: F0 + 1, T_HEART: charTile('*'), TILEBLOCK_LEN: tileBytes.length, ...(audio ? audio.defines : {}) };
+  const defines = { T_BLANK: F0, T_DIGIT0: F0 + 1, T_HEART: charTile('*'), TILEBLOCK_LEN: tileBytes.length, ...audio.defines };
   const r = ASM.assemble(src, { size: 0x20000, fill: 0xff, defines });
   if (r.end > MAX_ROM) throw new Error(`This game is ${r.end - MAX_ROM} bytes too big for a plain 32 KB Game Boy cartridge (it needs ${r.end} bytes). Try fewer levels, smaller levels, fewer pictures or a shorter song.`);
   const rom = r.bytes.slice(0, MAX_ROM);
@@ -101,7 +101,7 @@ RomEnd:
   rom[0x143] = 0; rom[0x144] = 0; rom[0x145] = 0; rom[0x146] = 0; rom[0x147] = 0; rom[0x148] = 0; rom[0x149] = 0; rom[0x14a] = 1; rom[0x14b] = 0; rom[0x14c] = 0;
   let x = 0; for (let i = 0x134; i <= 0x14c; i++) x = (x - rom[i] - 1) & 255; rom[0x14d] = x;
   let sum = 0; for (let i = 0; i < rom.length; i++) if (i !== 0x14e && i !== 0x14f) sum = (sum + rom[i]) & 0xffff; rom[0x14e] = sum >> 8; rom[0x14f] = sum & 255;
-  return { rom, symbols: r.symbols, report: { bytes: r.end, free: MAX_ROM - r.end, tiles: F0 + FONT_TILES, levels: g.levels.length, sprites: sprList.length, title, hasMusic: !!audio, F0 } };
+  return { rom, symbols: r.symbols, report: { bytes: r.end, free: MAX_ROM - r.end, tiles: F0 + FONT_TILES, levels: g.levels.length, sprites: sprList.length, title, hasMusic: !!songObj, F0 } };
 }
 const api = { buildRom };
 if (isNode) module.exports = api; else window.SMA_gbrom = api;

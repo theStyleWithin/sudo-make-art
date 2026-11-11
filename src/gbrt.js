@@ -5,7 +5,7 @@
 (() => {
 'use strict';
 const VARS = [['v_vbl', 1], ['v_state', 1], ['v_level', 1], ['v_lives', 1], ['v_score', 2], ['v_time', 2], ['v_pad', 1], ['v_edge', 1], ['v_lw', 1], ['v_lh', 1], ['v_nent', 1], ['v_camx', 1], ['v_camy', 1], ['v_wy', 1], ['v_ev', 1], ['v_dpage', 1], ['v_dpages', 1], ['v_dptr', 2], ['v_dirty', 1], ['v_spawn', 4], ['v_i', 1], ['v_inv', 1], ['v_hurtq', 1],
-  ['v_rx', 2], ['v_ry', 2], ['v_rw', 1], ['v_rh', 1], ['v_want', 1], ['v_t0', 1], ['v_t1', 1], ['v_t2', 1], ['v_t3', 1], ['v_ep', 2], ['v_oam', 1], ['v_op', 2], ['v_sx', 2], ['v_sy', 2], ['v_ex', 2], ['v_ey', 2], ['s0', 1], ['s1', 1], ['s2', 1], ['s3', 1], ['s4', 1], ['s5', 1], ['s6', 1], ['s7', 1], ['s8', 1], ['s9', 1], ['s10', 1], ['s11', 1], ['v_aud', 64]];
+  ['v_rx', 2], ['v_ry', 2], ['v_rw', 1], ['v_rh', 1], ['v_want', 1], ['v_t0', 1], ['v_t1', 1], ['v_t2', 1], ['v_t3', 1], ['v_ep', 2], ['v_oam', 1], ['v_op', 2], ['v_sx', 2], ['v_sy', 2], ['v_ex', 2], ['v_ey', 2], ['s0', 1], ['s1', 1], ['s2', 1], ['s3', 1], ['s4', 1], ['s5', 1], ['s6', 1], ['s7', 1], ['s8', 1], ['s9', 1], ['s10', 1], ['s11', 1], ['v_aud', 72]];
 function equates() { let a = 0xc0a0; const out = []; for (const [n, sz] of VARS) { out.push(`${n} equ $${a.toString(16)}`); a += sz; } if (a > 0xc400) throw new Error('too many variables'); return out.join('\n'); }
 
 // score digits: unrolled so each divisor is a constant
