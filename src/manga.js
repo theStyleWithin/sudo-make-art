@@ -291,7 +291,7 @@ function placeModel(id, x, y) { const p = x === undefined ? null : panelAt(x, y)
 // the library of characters in this manga
 function renderLibrary() {
   const box = $('#mg-lib'); if (!box) return; box.textContent = ''; const row = el('div', { className: 'px-row' }), nb = el('button', { type: 'button' }, '+ New character…'), ib = el('button', { type: 'button', title: 'Use a VRM model (made in VRoid Studio or downloaded)' }, 'Import VRM…'); nb.onclick = () => newCharacter(); ib.onclick = () => $('#mg-vrmfile').click(); row.append(nb, ib); box.append(row);
-  const ids = Object.keys(doc.models); if (!ids.length) box.append(el('div', { className: 'hint' }, 'Make a character, or import a VRM model, then drag it onto a panel. Characters are still figures you can pose and turn.'));
+  const ids = Object.keys(doc.models); if (!ids.length) box.append(el('div', { className: 'hint' }, 'Beta: the built-in characters are simple stylised figures. For the best looking pages, import a VRM model (for example one made in VRoid Studio) or drop in your own pictures. Drag a character onto a panel, then pose and turn it.'));
   for (const id of ids) { const m = doc.models[id], e = modelEntry(id), r = el('div', { className: 'mgl' }), c = el('canvas'); c.width = 92; c.height = 124; c.draggable = true; c.title = 'Drag onto a panel'; c.ondragstart = ev => { ev.dataTransfer.setData('text/sma-model', id); ev.dataTransfer.effectAllowed = 'copy'; };
     const g = c.getContext('2d'); if (e && e.state === 'ready') { try { g.drawImage(thumbOf(id, e), 0, 0); } catch (err) {} } else { g.fillStyle = '#ddd'; g.fillRect(0, 0, 92, 124); g.fillStyle = '#556'; g.font = '11px sans-serif'; g.fillText(e && e.state === 'error' ? 'error' : '…', 30, 64); }
     const nm = el('div', { className: 'nm' }, m.name || 'Character'); if (m.kind === 'vrm' && m.meta) nm.append(el('small', {}, [m.meta.author, m.meta.licenseName].filter(Boolean).join(' · ') || 'VRM model')); else nm.append(el('small', {}, m.params.gender === 'male' ? 'Made here (male)' : 'Made here (female)'));
@@ -469,6 +469,15 @@ const api = { serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, ge
   show() { requestAnimationFrame(() => { if (!api._shown && $('#mg-stage').getBoundingClientRect().width) { api._shown = true; fit(); } else render(); }); }, hide() {},
   reset() { pid = null; loadDoc(blank('b5'), 'Untitled manga'); },
   renderPageFrom, renderPanelFrom, listPanels,
+  // for Sudo Make Visual Novel: the characters inside a saved manga, drawn as still pictures with a see-through background
+  pageCount(json) { return projectDoc(json).pages.length; },
+  listModels(json) { return Object.entries(projectDoc(json).models).map(([id, m]) => ({ id, name: m.name, kind: m.kind, maker: m.kind === 'maker' })); },
+  async renderModelSprite(json, modelId, o = {}) {
+    const d = projectDoc(json), m = d.models[modelId]; if (!m) throw new Error('No such character'); let model, own = true;
+    if (m.kind === 'maker') model = CH.buildCharacter(Object.assign({}, m.params, { expr: o.expr || m.params.expr || 'smile' }));
+    else { const bin = atob(m.data), u = new Uint8Array(bin.length); for (let i = 0; i < u.length; i++) u[i] = bin.charCodeAt(i); model = await S3.loadVRM(u.buffer); }
+    try { return S3.render(model, { pose: o.pose || CH.PRESETS['Stand (relaxed)'](), yaw: o.yaw || 0, pitch: 0, zoom: o.zoom || 1, fov: 22, ox: 0, oy: 0, style: o.style || 'color', outline: o.outline === undefined ? 1 : o.outline }, o.w || 600, o.h || 1000); } finally { S3.disposeModel(model); }
+  },
   info: () => ({ pages: doc.pages.length, page: pg, objs: page().objs.length, types: page().objs.map(o => o.t), undo: undoS.length, w: doc.pageW, h: doc.pageH }), objs: () => page().objs.map(o => JSON.parse(JSON.stringify(o, (k, v) => (k[0] === '_' ? undefined : v)))), selected: () => sel && JSON.parse(JSON.stringify(sel, (k, v) => (k[0] === '_' ? undefined : v))), zoom: () => zoom, tool: () => tool, models: () => doc.models };
 window.SMA_manga = api;
 LAYOUTS.length; setTool('select'); refreshAll();

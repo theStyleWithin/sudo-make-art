@@ -14,7 +14,7 @@ function register() {
     .filter(Boolean).sort((a, b) => b.updated - a.updated));
   ipcMain.handle('projects:get', (e, id) => { const meta = JSON.parse(fs.readFileSync(file(id, '.meta.json'), 'utf8')); return { ...meta, data: fs.readFileSync(file(id, '.json'), 'utf8') }; });
   ipcMain.handle('projects:put', (e, r) => {
-    if (!r || !['design', 'video', 'pixel', 'tiles', 'music', 'game', 'manga'].includes(r.type) || typeof r.data !== 'string' || r.data.length > 2 ** 30) throw new Error('Invalid project');
+    if (!r || !['design', 'video', 'pixel', 'tiles', 'music', 'game', 'manga', 'vn'].includes(r.type) || typeof r.data !== 'string' || r.data.length > 2 ** 30) throw new Error('Invalid project');
     const meta = { id: r.id, type: r.type, name: String(r.name || 'Untitled').slice(0, 120), updated: Date.now(), thumb: typeof r.thumb === 'string' && r.thumb.length < 400000 ? r.thumb : null };
     fs.writeFileSync(file(r.id, '.json') + '.tmp', r.data); fs.renameSync(file(r.id, '.json') + '.tmp', file(r.id, '.json')); // never leave a half-written project
     fs.writeFileSync(file(r.id, '.meta.json'), JSON.stringify(meta)); return meta;

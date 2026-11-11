@@ -218,6 +218,27 @@
   <dialog id="gm-newdlg"><form method="dialog"><h3>New game?</h3><p class="hint">This starts a small ready-to-play game. The current one stays saved.</p><div class="px-row"><button id="gm-newok" class="pri">New game</button><button id="gm-newcancel">Cancel</button></div></form></dialog>
   <dialog id="gm-opendlg"><form method="dialog"><h3 id="gm-picktitle">Open</h3><div id="gm-openlist"></div><label class="cv-chk" id="gm-pickopt" hidden><input id="gm-pickchk" type="checkbox" checked> <span id="gm-picktxt"></span></label><div class="px-row"><button id="gm-opencancel">Close</button></div></form></dialog>
 </section>
+<section id="vnview">
+  <div id="vn-bar">
+    <input id="vn-name" maxlength="120" placeholder="Untitled visual novel" aria-label="Visual novel name">
+    <button id="vn-new">New…</button><button id="vn-open">Open…</button>
+    <button id="vn-undo" title="Undo (Ctrl+Z)">↶</button><button id="vn-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <button id="vn-play" class="pri" title="Play the whole story from the title screen">▶ Play</button>
+    <select id="vn-export"><option value="">Export as a program…</option></select>
+    <progress id="vn-prog" hidden></progress><button id="vn-cancelpack" hidden>Cancel</button>
+    <span id="vn-status" class="hint"></span>
+  </div>
+  <div id="vn-main">
+    <aside id="vn-left"><div class="mg3-tabs" id="vn-tabs"><button data-t="scenes" class="on">Scenes</button><button data-t="chars">Characters</button><button data-t="pics">Pictures</button><button data-t="sounds">Sounds</button><button data-t="story">Story</button></div><div id="vn-lbody"></div></aside>
+    <div id="vn-center"><div id="vn-sh"></div><div id="vn-steps"></div><div id="vn-add"></div></div>
+    <aside id="vn-right"><div id="vn-prevwrap"><div id="vn-prev"></div></div><div class="px-row"><button id="vn-prevfrom" title="Play from the selected step">▶ From this step</button><button id="vn-prevscene" title="Play this scene from its start">▶ This scene</button></div><div class="hint">The picture above shows what the player sees at the selected step. Drop pictures, GIFs, videos or sounds anywhere in this editor to add them.</div></aside>
+  </div>
+  <input id="vn-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" multiple hidden>
+  <input id="vn-sfile" type="file" accept="audio/*,.wav,.ogg,.mp3,.m4a,.flac" multiple hidden>
+  <dialog id="vn-newdlg"><form method="dialog"><h3>New visual novel?</h3><p class="hint">This starts a small sample story you can change. The current one stays saved.</p><div class="px-row"><button id="vn-newok" class="pri">New visual novel</button><button id="vn-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="vn-opendlg"><form method="dialog"><h3 id="vn-opentitle">Open</h3><div id="vn-openlist" class="oplist"></div><div class="px-row"><button id="vn-opencancel">Close</button></div></form></dialog>
+  <dialog id="vn-mgdlg"><form method="dialog"><h3>From a manga</h3><div id="vn-mgbody" class="oplist"></div><div class="px-row"><button id="vn-mgclose">Close</button></div></form></dialog>
+</section>
 <section id="mangaview">
   <div id="mg-bar">
     <input id="mg-name" maxlength="120" placeholder="Untitled manga" aria-label="Manga name">
@@ -261,7 +282,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option><option value="vn">Visual novels</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -453,6 +474,8 @@
 <script src="src/sma3d.js"></script>
 <script src="src/smachar.js"></script>
 <script src="src/manga.js"></script>
+<script src="src/vnplayer.js"></script>
+<script src="src/vn.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>
