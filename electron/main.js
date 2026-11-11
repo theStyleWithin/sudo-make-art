@@ -6,6 +6,7 @@ const os = require('os');
 const ai = require('./ai');
 const projects = require('./projects');
 const convert = require('./convert');
+const vconvert = require('./vconvert');
 const fontmatch = require('./fontmatch');
 const modelhub = require('./modelhub');
 const path = require('path');
@@ -102,6 +103,7 @@ ipcMain.handle('fonts:system', () => new Promise(res => require('child_process')
 ai.register();
 projects.register();
 convert.register();
+vconvert.register();
 fontmatch.register();
 modelhub.register();
 app.setName('Sudo Make Art');

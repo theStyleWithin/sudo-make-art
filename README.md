@@ -28,6 +28,8 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - **Shapes**: rectangle, ellipse, line, star; move, resize, rotate, layer order, duplicate
 - **Images**: **crop** with live sliders, drag-and-drop and paste
 - **Edit image**: auto-remove a plain background, magic remove by colour, erase/restore brushes, and remove watermarks/blemishes by painting over them (all local, no AI model)
+- **Convert videos** (desktop): drop videos or whole folders in. Every video inside is found, converted (MP4 H.264/H.265, MKV, WebM VP9/AV1, repackage without re-encoding, or audio-only MP3) and written to an output folder you pick, with the **same folder layout** as the source: the dropped folder comes along, empty sub-folders too, and subtitles, posters and other files can be copied across. Videos already in the target format are copied instead of re-encoded, the original is only trashed (if you ask) when the result looks complete, and Cancel really stops.
+- **App switcher**: click the name at the top-left to switch between Sudo Make Art, Video and the flavours being built (TCG, Manga, Write, Tiles, Pixels, Games, Visual Novel).
 - **Sources**: a persistent local library (images, video, audio) that is still there next time you open the app
 - Undo/redo, zoom, autosave, save/open project files, export PNG/JPG/SVG
 
