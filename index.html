@@ -218,6 +218,30 @@
   <dialog id="gm-newdlg"><form method="dialog"><h3>New game?</h3><p class="hint">This starts a small ready-to-play game. The current one stays saved.</p><div class="px-row"><button id="gm-newok" class="pri">New game</button><button id="gm-newcancel">Cancel</button></div></form></dialog>
   <dialog id="gm-opendlg"><form method="dialog"><h3 id="gm-picktitle">Open</h3><div id="gm-openlist"></div><label class="cv-chk" id="gm-pickopt" hidden><input id="gm-pickchk" type="checkbox" checked> <span id="gm-picktxt"></span></label><div class="px-row"><button id="gm-opencancel">Close</button></div></form></dialog>
 </section>
+<section id="mangaview">
+  <div id="mg-bar">
+    <input id="mg-name" maxlength="120" placeholder="Untitled manga" aria-label="Manga name">
+    <button id="mg-new">New…</button><button id="mg-open">Open…</button>
+    <button id="mg-undo" title="Undo (Ctrl+Z)">↶</button><button id="mg-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <label class="px-inl">Page <select id="mg-size"></select></label>
+    <label class="px-inl">Layout <select id="mg-layout"><option value="">Panel layout…</option></select></label>
+    <span class="sp"></span>
+    <select id="mg-export"><option value="">Export…</option><option value="png">This page (PNG)</option><option value="png2">This page, double size (PNG)</option><option value="pdf">All pages (PDF)</option></select>
+  </div>
+  <div id="mg-main">
+    <aside id="mg-pages"><h4>Pages</h4><div id="mg-plist"></div><div class="px-row"><button id="mg-padd" title="New page">+</button><button id="mg-pdup" title="Duplicate page">⧉</button><button id="mg-pleft" title="Move earlier">◀</button><button id="mg-pright" title="Move later">▶</button><button id="mg-pdel" title="Delete page">🗑</button></div></aside>
+    <div id="mg-center">
+      <div id="mg-tools" class="px-row"></div>
+      <div id="mg-penopts" class="px-row" hidden><label class="px-inl">Pen size <input id="mg-pensize" type="range" min="1" max="30" value="4"></label><label class="px-inl">Colour <input id="mg-pencolor" type="color" value="#000000"></label></div>
+      <div id="mg-stage"><canvas id="mg-cv"></canvas></div>
+      <div id="mg-foot"><span id="mg-status"></span><span class="sp"></span><span id="mg-info"></span><button id="mg-zout">−</button><span id="mg-zoom">40%</span><button id="mg-zin">+</button><button id="mg-fit">Fit</button></div>
+    </div>
+    <aside id="mg-side"><h4>Selected</h4><div id="mg-props" class="hint">Click something on the page with the Select tool. Draw panels with the layouts or the Split tool, then add speech bubbles, tones and sound effects.</div></aside>
+  </div>
+  <input id="mg-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+  <dialog id="mg-newdlg"><form method="dialog"><h3>New manga?</h3><p class="hint">This starts an empty manga. The current one stays saved.</p><div class="px-row"><button id="mg-newok" class="pri">New manga</button><button id="mg-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="mg-opendlg"><form method="dialog"><h3>Open a manga</h3><div id="mg-openlist"></div><div class="px-row"><button id="mg-opencancel">Close</button></div></form></dialog>
+</section>
 <section id="soonview">
   <h1 id="soon-name"></h1><p id="soon-tag"></p><ul id="soon-plan"></ul>
   <p class="hint">This one is still being built. Tell me what it should do and it gets built next.</p>
@@ -226,7 +250,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -415,6 +439,7 @@
 <script src="src/gbaudio.js"></script>
 <script src="src/gbrom.js"></script>
 <script src="src/games.js"></script>
+<script src="src/manga.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>
