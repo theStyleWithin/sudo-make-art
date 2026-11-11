@@ -93,6 +93,54 @@
     <div class="px-row"><button id="px-newok" class="pri">Create</button><button id="px-newcancel">Cancel</button></div></form></dialog>
   <dialog id="px-opendlg"><form method="dialog"><h3>Open a sprite</h3><div id="px-openlist"></div><div class="px-row"><button id="px-opencancel">Close</button></div></form></dialog>
 </section>
+<section id="tilesview">
+  <div id="tl-bar">
+    <input id="tl-name" maxlength="120" placeholder="Untitled tileset" aria-label="Tileset name">
+    <button id="tl-new">New…</button><button id="tl-open">Open…</button><button id="tl-import" title="Cut a Sudo Make Pixels sprite into tiles">Import from Pixels…</button>
+    <button id="tl-undo" title="Undo (Ctrl+Z)">↶</button><button id="tl-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <span class="tl-tabs"><button id="tl-tab-tile" class="on" title="Edit one tile (Tab switches)">Tile</button><button id="tl-tab-map" title="Paint a map with your tiles (Tab switches)">Map</button></span>
+    <span class="sp"></span>
+    <label class="px-inl">Export size <select id="tl-scale"><option>1</option><option>2</option><option>4</option><option selected>8</option><option>16</option></select>×</label>
+    <label class="px-inl" title="Tiles per row in the tileset sheet">Sheet columns <input id="tl-cols" type="number" min="1" max="64" placeholder="16"></label>
+    <select id="tl-export"><option value="">Export…</option><option value="sheet">Tileset sheet (PNG)</option><option value="map">Map picture (PNG)</option><option value="gb">Game Boy source (.c)</option></select>
+  </div>
+  <div id="tl-main">
+    <aside id="tl-set">
+      <h4>Tiles <small id="tl-count"></small></h4>
+      <div id="tl-grid"></div>
+      <div class="px-row"><button id="tl-add" title="New empty tile after this one">+</button><button id="tl-dup" title="Duplicate">⧉</button><button id="tl-left" title="Move earlier">◀</button><button id="tl-right" title="Move later">▶</button><button id="tl-del" title="Delete">🗑</button></div>
+    </aside>
+    <div id="tl-center">
+      <div id="tl-tileview">
+        <div id="tl-edwrap"><canvas id="tl-ed"></canvas><canvas id="tl-edgrid"></canvas></div>
+        <div id="tl-prev"><h4>Seamless preview</h4><canvas id="tl-seam"></canvas><small>The tile repeated 3×3. Check that the edges line up.</small></div>
+      </div>
+      <div id="tl-mapview" hidden><div id="tl-mapscroll"><div id="tl-mapboard"><canvas id="tl-map"></canvas><canvas id="tl-mapgrid"></canvas></div></div></div>
+      <div id="tl-foot"><span id="tl-status"></span><span class="sp"></span><span id="tl-info"></span><span id="tl-zoomctl"><button id="tl-mzout">−</button><span id="tl-mzoom">3×</span><button id="tl-mzin">+</button></span></div>
+    </div>
+    <aside id="tl-side">
+      <div id="tl-tools-tile" class="px-row"><button data-t="pencil" class="on" title="Pencil (B)">✏ Pencil</button><button data-t="eraser" title="Eraser (E)">⌫ Eraser</button><button data-t="fill" title="Fill (G)">▤ Fill</button><button data-t="picker" title="Pick a colour (I)">◉ Pick</button></div>
+      <div id="tl-tools-map" class="px-row" hidden><button data-t="paint" class="on" title="Paint with the selected tile (B)">▦ Paint</button><button data-t="erase" title="Erase (E)">⌫ Erase</button><button data-t="fill" title="Fill (G)">▤ Fill</button><button data-t="pick" title="Pick a tile from the map (I)">◉ Pick</button><button data-t="auto" title="Paint terrain that picks edge tiles by itself (A)">✦ Auto</button></div>
+      <label class="cv-chk"><input id="tl-gridon" type="checkbox" checked> Grid</label>
+      <h4>Colours</h4>
+      <div id="tl-pal"></div>
+      <div class="px-cols"><input id="tl-color" type="color" title="Change the selected colour everywhere it is used"><button id="tl-addcolor">+ Add colour</button></div>
+      <select id="tl-palsel"></select>
+      <div id="tl-tileopts"><h4>This tile</h4><div class="px-row"><button id="tl-fliph">Flip ↔</button><button id="tl-flipv">Flip ↕</button><button id="tl-rot">Rotate ⟳</button></div><div class="px-row"><button id="tl-shl">←</button><button id="tl-shr">→</button><button id="tl-shu">↑</button><button id="tl-shd">↓</button><button id="tl-clear">Clear</button></div><small>Arrows slide the picture around the edges, handy for making tiles seamless.</small></div>
+      <div id="tl-mapopts" hidden>
+        <h4>Map size</h4><div class="px-row"><label class="px-inl">W <input id="tl-mw" type="number" min="1" max="256"></label><label class="px-inl">H <input id="tl-mh" type="number" min="1" max="256"></label><button id="tl-mapresize">Resize</button><button id="tl-mapclear">Clear map</button></div>
+        <h4>Auto-tile</h4><button id="tl-gen" title="Makes 16 tiles from the selected tile, with an edge in the selected colour wherever the terrain ends">Make a 16-piece set from this tile</button><div class="px-row"><select id="tl-group"></select><button id="tl-delgroup" title="Forget this set (its tiles stay)">Remove set</button></div><small>Pick a base tile and an edge colour, make the set, then paint with ✦ Auto: edges and corners are chosen for you.</small>
+      </div>
+    </aside>
+  </div>
+  <dialog id="tl-newdlg"><form method="dialog"><h3>New tileset</h3><label class="cv-chk"><input id="tl-newgb" type="checkbox" checked> Game Boy (4 shades, 8×8 tiles, 20×18 screen)</label>
+    <div class="px-row"><label class="px-inl">Tile size <input id="tl-nsz" type="number" min="4" max="64" value="8"></label><label class="px-inl">Map W <input id="tl-nmw" type="number" min="1" max="256" value="20"></label><label class="px-inl">Map H <input id="tl-nmh" type="number" min="1" max="256" value="18"></label></div>
+    <div class="px-row"><button id="tl-newok" class="pri">Create</button><button id="tl-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="tl-opendlg"><form method="dialog"><h3>Open a tileset</h3><div id="tl-openlist"></div><div class="px-row"><button id="tl-opencancel">Close</button></div></form></dialog>
+  <dialog id="tl-impdlg"><form method="dialog"><h3>Import from Sudo Make Pixels</h3><div id="tl-implist"></div><p id="tl-impname" class="hint">Pick a sprite. Its first frame is cut into tiles.</p>
+    <label class="cv-chk"><input id="tl-impdedupe" type="checkbox" checked> Skip tiles that repeat (saves tile space)</label><label class="cv-chk"><input id="tl-impmap" type="checkbox" checked> Lay the tiles out on the map</label>
+    <div class="px-row"><button id="tl-impgo" class="pri" disabled>Import</button><button id="tl-impcancel">Cancel</button></div></form></dialog>
+</section>
 <section id="soonview">
   <h1 id="soon-name"></h1><p id="soon-tag"></p><ul id="soon-plan"></ul>
   <p class="hint">This one is still being built. Tell me what it should do and it gets built next.</p>
@@ -101,7 +149,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -281,6 +329,7 @@
 <script src="src/convert.js"></script>
 <script src="src/vconvert.js"></script>
 <script src="src/pixels.js"></script>
+<script src="src/tiles.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>
