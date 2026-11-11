@@ -218,6 +218,31 @@
   <dialog id="gm-newdlg"><form method="dialog"><h3>New game?</h3><p class="hint">This starts a small ready-to-play game. The current one stays saved.</p><div class="px-row"><button id="gm-newok" class="pri">New game</button><button id="gm-newcancel">Cancel</button></div></form></dialog>
   <dialog id="gm-opendlg"><form method="dialog"><h3 id="gm-picktitle">Open</h3><div id="gm-openlist"></div><label class="cv-chk" id="gm-pickopt" hidden><input id="gm-pickchk" type="checkbox" checked> <span id="gm-picktxt"></span></label><div class="px-row"><button id="gm-opencancel">Close</button></div></form></dialog>
 </section>
+<section id="writeview" data-theme="paper">
+  <div id="wr-bar">
+    <input id="wr-name" maxlength="120" placeholder="Untitled document" aria-label="Document name">
+    <button id="wr-new">New…</button><button id="wr-open">Open…</button><button id="wr-import" title="Open a Word, LibreOffice, text, Markdown or web page file">Import…</button>
+    <select id="wr-export"><option value="">Export…</option>
+      <option value="pdf">PDF (.pdf)</option><option value="docx">Word (.docx)</option><option value="odt">LibreOffice Writer (.odt)</option><option value="rtf">Rich Text (.rtf)</option>
+      <option value="txt">Plain text (.txt)</option><option value="md">Markdown (.md)</option><option value="html">Web page (.html)</option>
+    </select>
+    <button id="wr-set" title="Page size, margins, spacing, fonts">Page &amp; text…</button>
+    <select id="wr-theme" title="Look of the writing area"><option value="paper">Paper</option><option value="sepia">Sepia</option><option value="dark">Dark</option><option value="night">Night</option></select>
+    <select id="wr-zoom" title="Zoom"><option value="fit">Fit width</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select>
+    <button id="wr-outlinebtn" title="Show or hide the outline">Outline</button><button id="wr-focus" title="Hide everything except the page (Esc to leave)">Focus</button>
+    <span id="wr-msg" class="hint"></span>
+  </div>
+  <div id="wr-tools"></div>
+  <div id="wr-main"><aside id="wr-outline"><h4>Outline</h4><div id="wr-outlinelist"></div></aside><div id="wr-scroll"><div id="wr-sheet"><div id="wr-paper" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="Document"></div></div></div></div>
+  <div id="wr-status"><span id="wr-stats"></span><span class="grow"></span><label class="px-inl">Goal <input id="wr-goal" type="number" min="0" step="100" style="width:80px"> words</label><progress id="wr-goalbar" max="1" value="0" style="width:120px"></progress></div>
+  <input id="wr-imgfile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+  <input id="wr-importfile" type="file" accept=".docx,.odt,.txt,.md,.markdown,.html,.htm,text/plain,text/markdown,text/html" hidden>
+  <dialog id="wr-newdlg"><form method="dialog"><h3>New document</h3><p class="hint">Pick a starting point. The current document stays saved.</p><div id="wr-templates" class="oplist"></div><div class="px-row"><button id="wr-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="wr-opendlg"><form method="dialog"><h3>Open a document</h3><div id="wr-openlist" class="oplist"></div><div class="px-row"><button id="wr-opencancel">Close</button></div></form></dialog>
+  <dialog id="wr-setdlg"><form method="dialog"><h3>Page &amp; text</h3><div id="wr-setbody"></div><div class="px-row"><button id="wr-setok" class="pri">Done</button></div></form></dialog>
+  <dialog id="wr-linkdlg"><form method="dialog"><h3>Link</h3><label>Web address<input id="wr-linkurl" type="text" placeholder="https://" style="width:100%"></label><div class="px-row"><button id="wr-linkok" class="pri">Set link</button><button id="wr-linkrm">Remove link</button><button id="wr-linkcancel">Cancel</button></div></form></dialog>
+  <dialog id="wr-finddlg"><form method="dialog"><h3>Find and replace</h3><label>Find<input id="wr-find" type="text" style="width:100%"></label><label>Replace with<input id="wr-repl" type="text" style="width:100%"></label><label class="cv-chk" style="flex-direction:row"><input id="wr-case" type="checkbox"> Match case</label><div class="px-row"><button id="wr-findnext">Find next</button><button id="wr-replone">Replace</button><button id="wr-replall">Replace all</button><button id="wr-findclose">Close</button></div><div id="wr-findmsg" class="hint"></div></form></dialog>
+</section>
 <section id="tcgview">
   <div id="tg-bar">
     <input id="tg-name" maxlength="120" placeholder="Untitled card deck" aria-label="Deck name">
@@ -306,7 +331,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option><option value="vn">Visual novels</option><option value="tcg">Card decks</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option><option value="vn">Visual novels</option><option value="tcg">Card decks</option><option value="write">Documents</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -501,6 +526,10 @@
 <script src="src/vnplayer.js"></script>
 <script src="src/vn.js"></script>
 <script src="src/tcg.js"></script>
+<script src="src/writeformat.js"></script>
+<script src="src/writedocs.js"></script>
+<script src="src/writeimport.js"></script>
+<script src="src/write.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>
