@@ -141,6 +141,42 @@
     <label class="cv-chk"><input id="tl-impdedupe" type="checkbox" checked> Skip tiles that repeat (saves tile space)</label><label class="cv-chk"><input id="tl-impmap" type="checkbox" checked> Lay the tiles out on the map</label>
     <div class="px-row"><button id="tl-impgo" class="pri" disabled>Import</button><button id="tl-impcancel">Cancel</button></div></form></dialog>
 </section>
+<section id="musicview">
+  <div id="mu-bar">
+    <input id="mu-name" maxlength="120" placeholder="Untitled song" aria-label="Song name">
+    <button id="mu-new">New…</button><button id="mu-open">Open…</button><button id="mu-example" title="Load a short example song to play with">Example</button>
+    <button id="mu-undo" title="Undo (Ctrl+Z)">↶</button><button id="mu-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <button id="mu-play" class="pri" title="Play the whole song (Space)">▶ Song</button><button id="mu-playpat" title="Play only this pattern, looping">▶ Pattern</button><button id="mu-stop">■ Stop</button>
+    <label class="px-inl"><input id="mu-loop" type="checkbox" checked> Loop</label>
+    <label class="px-inl" title="Ticks per row (60 ticks a second). Lower is faster.">Speed <input id="mu-speed" type="number" min="1" max="31" value="6"></label><span id="mu-bpm" class="px-inl"></span>
+    <label class="px-inl">Octave <select id="mu-oct"></select></label>
+    <label class="px-inl" title="Rows to move down after typing a note">Step <select id="mu-step"></select></label>
+    <span class="sp"></span>
+    <select id="mu-engine" title="Sound engine"><option value="gameboy">Game Boy (4 channels)</option><option disabled>More genres coming later</option></select>
+    <select id="mu-export"><option value="">Export…</option><option value="wav">WAV audio (whole song)</option><option value="wav2">WAV audio (song played twice)</option></select>
+  </div>
+  <div id="mu-main">
+    <aside id="mu-order-box">
+      <h4>Song order</h4>
+      <div id="mu-order"></div>
+      <div class="px-row"><button id="mu-onew" title="Insert a new empty pattern after this one">+ New</button><button id="mu-oclone" title="Insert a copy of this pattern">+ Copy</button></div>
+      <div class="px-row"><button id="mu-oup" title="Move earlier">▲</button><button id="mu-odown" title="Move later">▼</button><button id="mu-opm" title="Use the previous pattern here">−</button><button id="mu-opp" title="Use the next pattern here">+</button><button id="mu-odel" title="Remove from the order">✕</button></div>
+      <button id="mu-oloop" title="The song loops back to here">↻ Loop from here</button>
+      <label>Rows in this pattern <select id="mu-rows"><option>16</option><option>32</option><option>48</option><option>64</option></select></label>
+      <h4>This channel</h4><div class="px-row"><button id="mu-up1" title="Transpose this channel in this pattern up one semitone">♯ +1</button><button id="mu-dn1">♭ −1</button><button id="mu-upo">+ octave</button><button id="mu-dno">− octave</button><button id="mu-clrch">Clear</button></div>
+    </aside>
+    <div id="mu-center"><div id="mu-trk" tabindex="0"></div><div id="mu-help">Arrows move · Z S X D C V G B H N J M play notes, Q 2 W 3 E R… the octave above · ` stops a note · digits fill instrument, volume and effect · Delete clears · Space plays</div></div>
+    <aside id="mu-side">
+      <h4>Channels</h4><div id="mu-chs"></div>
+      <h4>Instrument <small id="mu-insttype"></small></h4>
+      <div class="px-row"><select id="mu-slot"></select><input id="mu-iname" maxlength="24" placeholder="Name"><button id="mu-try" title="Hear this instrument">▶ Try</button></div>
+      <div id="mu-inst"></div>
+    </aside>
+  </div>
+  <div id="mu-kb" aria-label="On-screen keyboard"></div>
+  <dialog id="mu-newdlg"><form method="dialog"><h3>New song?</h3><p class="hint">This starts an empty song. The current one stays saved.</p><div class="px-row"><button id="mu-newok" class="pri">New song</button><button id="mu-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="mu-opendlg"><form method="dialog"><h3>Open a song</h3><div id="mu-openlist"></div><div class="px-row"><button id="mu-opencancel">Close</button></div></form></dialog>
+</section>
 <section id="soonview">
   <h1 id="soon-name"></h1><p id="soon-tag"></p><ul id="soon-plan"></ul>
   <p class="hint">This one is still being built. Tell me what it should do and it gets built next.</p>
@@ -149,7 +185,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -330,6 +366,8 @@
 <script src="src/vconvert.js"></script>
 <script src="src/pixels.js"></script>
 <script src="src/tiles.js"></script>
+<script src="src/chip.js"></script>
+<script src="src/music.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>

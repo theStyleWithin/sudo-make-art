@@ -11,7 +11,7 @@ const APPS = [
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts', plan: ['Distraction-free writing', 'Chapters and an outline', 'Export to common formats'] },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
-  { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune and retro music', plan: ['Pattern-based chiptune tracker', 'Handheld-style sound channels', 'Export audio and loops'] },
+  { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune tracker for retro handheld-style music', ready: true, mode: 'music' },
   { id: 'games', name: 'Sudo Make Games', tag: 'Small games', plan: ['To be decided together'] },
   { id: 'vn', name: 'Sudo Make Visual Novel', tag: 'Visual novels', plan: ['Scenes, characters and dialogue', 'Branching choices', 'Export a playable story'] },
 ];
