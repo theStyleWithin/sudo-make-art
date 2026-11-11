@@ -9,8 +9,8 @@
 </head>
 <body>
 <header id="top">
-  <b class="logo">Sudo Make Art</b>
-  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button></span>
+  <span class="appsw-wrap"><button id="appsw" class="logo" aria-haspopup="menu" aria-expanded="false" title="Switch app"><span id="appname">Sudo Make Art</span> <i>▾</i></button><div id="appmenu" role="menu" hidden></div></span>
+  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button><button id="mode-vconvert" hidden>Convert videos</button></span>
   <input id="docname" class="nm" placeholder="Untitled" maxlength="120">
   <button class="dz" id="new">+ New design</button>
   <select class="dz" id="size" title="Resize page"></select>
@@ -39,11 +39,44 @@
   <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
   <aside id="props"></aside>
 </main>
+<section id="soonview">
+  <h1 id="soon-name"></h1><p id="soon-tag"></p><ul id="soon-plan"></ul>
+  <p class="hint">This one is still being built. Tell me what it should do and it gets built next.</p>
+  <button id="soon-back" class="pri">Back to Sudo Make Art</button>
+</section>
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
-  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-folder">Open projects folder</button></div>
+  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
   <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option></select></div>
   <div id="h-grid"></div>
+</section>
+<section id="vconvertview">
+  <div class="cv-main">
+    <div id="vc-drop">
+      <div class="cv-bar"><button id="vc-addfiles" class="pri">+ Add videos</button><button id="vc-addfolder">+ Add a folder</button><button id="vc-clear">Clear list</button><span class="sp"></span><span id="vc-count"></span></div>
+      <div id="vc-list"></div>
+    </div>
+    <aside id="vc-opts">
+      <label>Convert to <select id="vc-preset"><option value="mp4-h264">MP4 · H.264 (plays everywhere)</option><option value="mp4-h265">MP4 · H.265 / HEVC (smaller)</option><option value="mkv-h265">MKV · H.265 / HEVC (keeps all subtitles)</option><option value="webm-vp9">WebM · VP9</option><option value="webm-av1">WebM · AV1 (smallest, slow)</option><option value="mkv-remux">MKV · no re-encode (just repackage)</option><option value="mp4-remux">MP4 · no re-encode (just repackage)</option><option value="audio-mp3">Audio only · MP3</option></select></label>
+      <label id="vc-qrow">Quality <span class="cv-val"><input id="vc-crf" type="range" min="14" max="35" value="23"><output id="vc-qout">23</output></span><small>Lower number = better picture, bigger file</small></label>
+      <label id="vc-erow">Speed <select id="vc-effort"><option value="0">Fast (bigger files)</option><option value="1" selected>Balanced</option><option value="2">Slow (smallest files)</option></select></label>
+      <label id="vc-hwrow" class="cv-chk" hidden title="Uses your graphics card's video encoder. Much faster, slightly bigger files."><input id="vc-hw" type="checkbox"> Use my graphics card to encode (NVENC)</label>
+      <label id="vc-hrow">Biggest picture height <select id="vc-height"><option value="0">Keep the original</option><option value="2160">2160 (4K)</option><option value="1440">1440</option><option value="1080">1080</option><option value="720">720</option><option value="480">480</option></select><small>Videos are never enlarged.</small></label>
+      <label id="vc-arow">Audio <select id="vc-audio"><option value="aac">Re-encode (AAC / Opus)</option><option value="copy">Keep as it is</option></select></label>
+      <label class="cv-chk" title="If a video is already in the format you picked (and not taller than the limit), it is copied unchanged instead of being re-encoded."><input id="vc-smart" type="checkbox" checked> Don’t re-encode what already matches</label>
+      <h4>Output</h4>
+      <div class="cv-out"><button id="vc-outbtn">Ask me when I start</button><button id="vc-outclear" hidden title="Ask me again">✕</button></div>
+      <label class="cv-chk" title="Instead of asking for a folder, save each converted video next to its original."><input id="vc-inplace" type="checkbox"> Save next to the originals</label>
+      <label class="cv-chk" title="Recreate the folders you dropped inside the output folder, empty ones too, and copy their other files (subtitles, posters, .nfo) across."><input id="vc-others" type="checkbox" checked> Copy subtitles, posters and other files too</label>
+      <small>Dropped folders keep their name and layout inside the output folder.</small>
+      <label>If a file already exists <select id="vc-conflict"><option value="rename">Keep both (add a number)</option><option value="skip">Skip it</option><option value="overwrite">Overwrite it</option></select></label>
+      <label class="cv-chk"><input id="vc-times" type="checkbox" checked> Keep the original date and time</label>
+      <label class="cv-chk" title="Only after the new file looks complete. The originals go to your trash, not erased."><input id="vc-delete" type="checkbox"> Move originals to the trash when done</label>
+      <label>Videos at once <input id="vc-threads" type="number" min="1" max="8" value="1"></label>
+      <p class="hint" id="vc-hint"></p>
+    </aside>
+  </div>
+  <div id="cv-foot"><progress id="vc-prog" max="1" value="0"></progress><span id="vc-stat">Add some videos or a folder to begin.</span><button id="vc-go" class="pri">Convert</button><button id="vc-cancel" hidden>Cancel</button></div>
 </section>
 <section id="convertview">
   <div class="cv-main">
@@ -192,5 +225,7 @@
 <script src="src/modelhub.js"></script>
 <script src="src/home.js"></script>
 <script src="src/convert.js"></script>
+<script src="src/vconvert.js"></script>
+<script src="src/apps.js"></script>
 </body>
 </html>
