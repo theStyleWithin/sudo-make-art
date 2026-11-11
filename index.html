@@ -39,6 +39,60 @@
   <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
   <aside id="props"></aside>
 </main>
+<section id="pixview">
+  <div id="px-bar">
+    <input id="px-name" maxlength="120" placeholder="Untitled sprite" aria-label="Sprite name">
+    <button id="px-new">New…</button><button id="px-open">Open…</button>
+    <button id="px-undo" title="Undo (Ctrl+Z)">↶</button><button id="px-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <span class="sp"></span>
+    <label class="px-inl">Export size <select id="px-scale"><option>1</option><option>2</option><option>4</option><option selected>8</option><option>16</option><option>32</option></select>×</label>
+    <label class="px-inl" title="Sprite sheet columns (empty = one row)">Sheet columns <input id="px-cols" type="number" min="1" max="64" placeholder="auto"></label>
+    <select id="px-export"><option value="">Export…</option><option value="png">PNG (this frame)</option><option value="sheet">Sprite sheet (PNG)</option><option value="gif">Animated GIF</option></select>
+  </div>
+  <div id="px-main">
+    <nav id="px-tools">
+      <button data-tool="pencil" title="Pencil (B)">✏<small>Pencil</small></button>
+      <button data-tool="eraser" title="Eraser (E)">⌫<small>Eraser</small></button>
+      <button data-tool="fill" title="Fill (G)">▤<small>Fill</small></button>
+      <button data-tool="line" title="Line (L)">／<small>Line</small></button>
+      <button data-tool="rect" title="Rectangle (R)">▭<small>Rect</small></button>
+      <button data-tool="ellipse" title="Ellipse (O)">◯<small>Ellipse</small></button>
+      <button data-tool="picker" title="Pick a colour (I)">◉<small>Pick</small></button>
+      <button data-tool="move" title="Move the layer (M)">✥<small>Move</small></button>
+      <button data-tool="hand" title="Pan (H, or hold Space)">✋<small>Pan</small></button>
+    </nav>
+    <div id="px-center">
+      <div id="px-stage"><div id="px-board"><canvas id="px-cv"></canvas><canvas id="px-ov"></canvas><canvas id="px-grid"></canvas></div></div>
+      <div id="px-foot"><span id="px-status"></span><span class="sp"></span><span id="px-info"></span><button id="px-zout">−</button><span id="px-zoom">12×</span><button id="px-zin">+</button><button id="px-fit">Fit</button></div>
+    </div>
+    <aside id="px-side">
+      <h4>Tool</h4>
+      <label>Brush size <span class="cv-val"><input id="px-size" type="range" min="1" max="16" value="1"><output id="px-sizeout">1</output></span></label>
+      <label class="cv-chk"><input id="px-fill" type="checkbox"> Filled shapes</label>
+      <label class="cv-chk"><input id="px-mx" type="checkbox"> Mirror left–right</label>
+      <label class="cv-chk"><input id="px-my" type="checkbox"> Mirror up–down</label>
+      <label class="cv-chk"><input id="px-grid-on" type="checkbox" checked> Pixel grid</label>
+      <label class="cv-chk"><input id="px-onion" type="checkbox"> Show previous frame (onion skin)</label>
+      <div class="px-row"><button id="px-fliph" title="Flip this layer left–right">Flip ↔</button><button id="px-flipv" title="Flip this layer up–down">Flip ↕</button></div>
+      <h4>Colours</h4>
+      <div class="px-cols"><button id="px-fg" class="px-big" title="Main colour (left click)"></button><button id="px-bg" class="px-big" title="Second colour (right click)"></button><button id="px-swap" title="Swap (X)">⇄</button><input id="px-color" type="color" title="Pick any colour"><button id="px-addcolor" title="Add this colour to the palette">+ Add</button></div>
+      <div id="px-pal"></div>
+      <select id="px-palsel"><option value="">Load a palette…</option><option value="starter">Starter (32)</option><option value="gray16">Greys (16)</option><option value="handheld4">Handheld green (4)</option><option value="pastel16">Pastel (16)</option></select>
+      <h4>Layers</h4>
+      <div id="px-layers"></div>
+      <label>Opacity <span class="cv-val"><input id="px-opacity" type="range" min="0" max="100" value="100"><output id="px-opout">100</output></span></label>
+      <div class="px-row"><button id="px-ladd" title="New layer">+</button><button id="px-ldup" title="Duplicate">⧉</button><button id="px-lup" title="Move up">↑</button><button id="px-ldown" title="Move down">↓</button><button id="px-lmerge" title="Merge down">Merge ↓</button><button id="px-ldel" title="Delete layer">🗑</button></div>
+    </aside>
+  </div>
+  <div id="px-frames">
+    <div class="px-row"><button id="px-play" class="pri">▶ Play</button><label class="px-inl">FPS <input id="px-fps" type="number" min="1" max="60" value="8"></label><button id="px-fadd" title="New empty frame">+ Frame</button><button id="px-fdup" title="Duplicate frame">Duplicate</button><button id="px-fleft" title="Move frame left">◀</button><button id="px-fright" title="Move frame right">▶</button><button id="px-fdel" title="Delete frame">🗑</button></div>
+    <div id="px-strip"></div>
+  </div>
+  <dialog id="px-newdlg"><form method="dialog"><h3>New sprite</h3><div class="px-row"><button type="button" data-size="8">8</button><button type="button" data-size="16">16</button><button type="button" data-size="32">32</button><button type="button" data-size="64">64</button><button type="button" data-size="128">128</button></div>
+    <div class="px-row"><label class="px-inl">Width <input id="px-nw" type="number" min="1" max="512" value="32"></label><label class="px-inl">Height <input id="px-nh" type="number" min="1" max="512" value="32"></label></div>
+    <div class="px-row"><button id="px-newok" class="pri">Create</button><button id="px-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="px-opendlg"><form method="dialog"><h3>Open a sprite</h3><div id="px-openlist"></div><div class="px-row"><button id="px-opencancel">Close</button></div></form></dialog>
+</section>
 <section id="soonview">
   <h1 id="soon-name"></h1><p id="soon-tag"></p><ul id="soon-plan"></ul>
   <p class="hint">This one is still being built. Tell me what it should do and it gets built next.</p>
@@ -47,7 +101,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -226,6 +280,7 @@
 <script src="src/home.js"></script>
 <script src="src/convert.js"></script>
 <script src="src/vconvert.js"></script>
+<script src="src/pixels.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>

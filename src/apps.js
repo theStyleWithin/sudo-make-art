@@ -10,7 +10,8 @@ const APPS = [
   { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages', plan: ['Panel layouts you can drag and split', 'Speech bubbles and sound effects', 'Screentones and page export'] },
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts', plan: ['Distraction-free writing', 'Chapters and an outline', 'Export to common formats'] },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets and seamless textures', plan: ['Tile editor with a live seamless preview', 'Automatic edge and corner tiles', 'Export a tileset sheet'] },
-  { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art and sprites', plan: ['Pixel canvas with palettes', 'Animation frames and onion skin', 'Sprite sheet and GIF export'] },
+  { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
+  { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune and retro music', plan: ['Pattern-based chiptune tracker', 'Handheld-style sound channels', 'Export audio and loops'] },
   { id: 'games', name: 'Sudo Make Games', tag: 'Small games', plan: ['To be decided together'] },
   { id: 'vn', name: 'Sudo Make Visual Novel', tag: 'Visual novels', plan: ['Scenes, characters and dialogue', 'Branching choices', 'Export a playable story'] },
 ];
@@ -47,6 +48,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const it = [...menu.querySelectorAll('.app-item')], i = it.indexOf(document.activeElement); it[(i + (e.key === 'ArrowDown' ? 1 : -1) + it.length) % it.length].focus(); }
 });
 $('#soon-back').onclick = () => choose('art');
+window.SMA_apps = { choose };
 let saved = 'art'; try { saved = localStorage.getItem(KEY) || 'art'; } catch (e) {}
 if (saved !== 'art') setTimeout(() => choose(saved, true), 50); // after the editor has picked its first mode
 })();
