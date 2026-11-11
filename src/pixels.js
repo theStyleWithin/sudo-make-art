@@ -5,7 +5,7 @@
 const $ = s => document.querySelector(s), SMA = window.SMA;
 if (!SMA || !$('#pixview')) return;
 const el = (tag, attrs = {}, text) => Object.assign(document.createElement(tag), attrs, text !== undefined ? { textContent: text } : {});
-const clampi = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v)) || lo));
+const clampi = (v, lo, hi) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.max(lo, Math.min(hi, x)) : lo; };
 const hex2c = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255, 255]; };
 const c2hex = c => '#' + [c[0], c[1], c[2]].map(v => v.toString(16).padStart(2, '0')).join('');
 
