@@ -236,9 +236,20 @@
       <div id="mg-stage"><canvas id="mg-cv"></canvas></div>
       <div id="mg-foot"><span id="mg-status"></span><span class="sp"></span><span id="mg-info"></span><button id="mg-zout">−</button><span id="mg-zoom">40%</span><button id="mg-zin">+</button><button id="mg-fit">Fit</button></div>
     </div>
-    <aside id="mg-side"><h4>Selected</h4><div id="mg-props" class="hint">Click something on the page with the Select tool. Draw panels with the layouts or the Split tool, then add speech bubbles, tones and sound effects.</div></aside>
+    <aside id="mg-side"><h4>Selected</h4><div id="mg-props" class="hint">Click something on the page with the Select tool. Draw panels with the layouts or the Split tool, then add speech bubbles, tones and sound effects.</div><h4>3D characters</h4><div id="mg-lib"></div></aside>
   </div>
   <input id="mg-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+  <input id="mg-vrmfile" type="file" accept=".vrm,.glb" hidden>
+  <dialog id="mg-3d">
+    <div id="mg3-wrap">
+      <div id="mg3-view"><canvas id="mg3-cv" width="440" height="600"></canvas><small id="mg3-hint">Drag to turn the character. Mouse wheel to zoom.</small></div>
+      <div id="mg3-side">
+        <div class="mg3-tabs"><button id="mg3-t-char" type="button">Character</button><button id="mg3-t-pose" type="button" class="on">Pose</button><button id="mg3-t-look" type="button">Look</button></div>
+        <div id="mg3-body"></div>
+        <div class="px-row"><button id="mg3-ok" class="pri" type="button">Done</button><button id="mg3-cancel" type="button">Cancel</button></div>
+      </div>
+    </div>
+  </dialog>
   <dialog id="mg-newdlg"><form method="dialog"><h3>New manga?</h3><p class="hint">This starts an empty manga. The current one stays saved.</p><div class="px-row"><button id="mg-newok" class="pri">New manga</button><button id="mg-newcancel">Cancel</button></div></form></dialog>
   <dialog id="mg-opendlg"><form method="dialog"><h3>Open a manga</h3><div id="mg-openlist"></div><div class="px-row"><button id="mg-opencancel">Close</button></div></form></dialog>
 </section>
@@ -439,6 +450,8 @@
 <script src="src/gbaudio.js"></script>
 <script src="src/gbrom.js"></script>
 <script src="src/games.js"></script>
+<script src="src/sma3d.js"></script>
+<script src="src/smachar.js"></script>
 <script src="src/manga.js"></script>
 <script src="src/apps.js"></script>
 </body>

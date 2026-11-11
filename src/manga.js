@@ -17,7 +17,7 @@ let nextId = 1; const newId = () => 'o' + (nextId++).toString(36) + Math.random(
 // ---------- the document ----------
 // doc = { pageW, pageH, rtl, pages: [{ objs: [...] }], images: { id: dataURL } }
 let doc = blank('b5'), pg = 0, sel = null, tool = 'select', zoom = 0.4, pid = null, name = 'Untitled manga';
-function blank(size) { const [w, h] = SIZES[size]; return { pageW: w, pageH: h, rtl: true, pages: [{ objs: [] }], images: {} }; }
+function blank(size) { const [w, h] = SIZES[size]; return { pageW: w, pageH: h, rtl: true, pages: [{ objs: [] }], images: {}, models: {} }; }
 const page = () => doc.pages[pg];
 const imgCache = new Map(); // id -> HTMLImageElement
 function getImage(id) { if (imgCache.has(id)) return imgCache.get(id); const src = doc.images[id]; if (!src) return null; const im = new Image(); im.onload = () => { imgCache.set(id, im); render(); }; im.src = src; imgCache.set(id, im); return im; }
@@ -121,6 +121,7 @@ function drawObj(c, o, pageObj) {
     case 'sfx': { c.save(); c.translate(o.x, o.y); c.rotate(o.rot * Math.PI / 180); c.font = `bold ${o.size}px ${cssFamily(o.font)}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round'; const w = c.measureText(o.text).width; o._bb = [o.x - w / 2, o.y - o.size * 0.6, w, o.size * 1.2]; if (o.sw > 0) { c.lineWidth = o.sw; c.strokeStyle = o.stroke; c.strokeText(o.text, 0, 0); } c.fillStyle = o.fill; c.fillText(o.text, 0, 0); c.restore(); break; }
     case 'tone': drawTone(c, o, pageObj); break;
     case 'speed': drawSpeed(c, o, pageObj); break;
+    case 'char': drawChar(c, o, pageObj); break;
     case 'image': { const im = getImage(o.img); if (ready(im)) c.drawImage(im, o.x, o.y, o.w, o.h); break; }
     case 'ink': { c.strokeStyle = o.color; c.lineWidth = o.size; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(o.pts[0], o.pts[1]); if (o.pts.length === 2) c.lineTo(o.pts[0] + 0.01, o.pts[1]); for (let i = 2; i < o.pts.length; i += 2) c.lineTo(o.pts[i], o.pts[i + 1]); c.stroke(); break; }
   }
@@ -138,7 +139,7 @@ function drawPreview(c) { c.save(); c.lineWidth = 2 / zoom; c.strokeStyle = '#ff
 function handlesOf(o) {
   if (o.t === 'panel') return o.pts.map((p, i) => ({ x: p[0], y: p[1], k: 'pt', i }));
   if (o.t === 'bubble') { const h = [{ x: o.x, y: o.y, k: 'tl' }, { x: o.x + o.w, y: o.y, k: 'tr' }, { x: o.x + o.w, y: o.y + o.h, k: 'br' }, { x: o.x, y: o.y + o.h, k: 'bl' }]; if (o.tail) h.push({ x: o.tail[0], y: o.tail[1], k: 'tail' }); return h; }
-  if (o.t === 'tone' || o.t === 'speed' || o.t === 'image') return [{ x: o.x + o.w, y: o.y + o.h, k: 'br' }];
+  if (o.t === 'tone' || o.t === 'speed' || o.t === 'image' || o.t === 'char') return [{ x: o.x + o.w, y: o.y + o.h, k: 'br' }];
   return [];
 }
 function drawSelection(c) {
@@ -221,8 +222,8 @@ function readImageFile(file) {
 }
 function addImage(src) { const id = newId(); doc.images[id] = src; return id; }
 $('#mg-file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const src = await readImageFile(f), id = addImage(src); edit(() => { if (sel && sel.t === 'panel') { sel.img = id; sel.scale = 1; sel.ox = 0; sel.oy = 0; } else { const im = new Image(); const o = { t: 'image', id: newId(), x: 100, y: 100, w: 400, h: 400, img: id }; page().objs.push(o); sel = o; } }); status.textContent = 'Picture added.'; } catch (err) { status.textContent = String(err.message); } };
-cv.addEventListener('dragover', e => e.preventDefault());
-cv.addEventListener('drop', async e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (!f) return; const [x, y] = pt(e); try { const id = addImage(await readImageFile(f)); const p = panelAt(x, y); edit(() => { if (p) { p.img = id; p.scale = 1; p.ox = 0; p.oy = 0; sel = p; } else { const o = { t: 'image', id: newId(), x: x - 200, y: y - 200, w: 400, h: 400, img: id }; page().objs.push(o); sel = o; } }); } catch (err) { status.textContent = String(err.message); } });
+cv.addEventListener('dragover', e => { e.preventDefault(); });
+cv.addEventListener('drop', async e => { e.preventDefault(); const mid = e.dataTransfer.getData('text/sma-model'); if (mid && doc.models[mid]) { const [px, py] = pt(e); placeModel(mid, px, py); return; } const f = e.dataTransfer.files[0]; if (!f) return; const [x, y] = pt(e); try { const id = addImage(await readImageFile(f)); const p = panelAt(x, y); edit(() => { if (p) { p.img = id; p.scale = 1; p.ox = 0; p.oy = 0; sel = p; } else { const o = { t: 'image', id: newId(), x: x - 200, y: y - 200, w: 400, h: 400, img: id }; page().objs.push(o); sel = o; } }); } catch (err) { status.textContent = String(err.message); } });
 
 // ---------- the side panel for what is selected ----------
 function field(label, ctl) { const l = el('label', {}, label); l.append(ctl); return l; }
@@ -232,7 +233,7 @@ function colorField(label, o, key) { const c = el('input', { type: 'color', valu
 function checkField(label, o, key, onchange) { const c = el('input', { type: 'checkbox', checked: !!o[key] }); c.onchange = () => edit(() => { o[key] = c.checked; onchange && onchange(); }); const l = el('label', { className: 'cv-chk' }); l.style.flexDirection = 'row'; l.append(c, ' ' + label); return l; }
 function showProps() {
   const box = $('#mg-props'); box.textContent = ''; const o = sel; if (!o || !page().objs.includes(o)) { box.className = 'hint'; box.textContent = 'Click something on the page with the Select tool. Draw panels with the layouts or the Split tool, then add speech bubbles, tones and sound effects.'; return; } box.className = '';
-  const NAMES = { panel: 'Panel', bubble: 'Speech bubble', sfx: 'Sound effect', tone: 'Screentone', speed: 'Speed lines', image: 'Picture', ink: 'Ink stroke' }; box.append(el('b', {}, NAMES[o.t]));
+  const NAMES = { char: 'Character (3D)', panel: 'Panel', bubble: 'Speech bubble', sfx: 'Sound effect', tone: 'Screentone', speed: 'Speed lines', image: 'Picture', ink: 'Ink stroke' }; box.append(el('b', {}, NAMES[o.t]));
   if (o.t === 'panel') {
     box.append(sliderField('Border width', o, 'bw', 0, 20), colorField('Border colour', o, 'bc'), colorField('Fill colour', o, 'bg'));
     const row = el('div', { className: 'px-row' }), set = el('button', { type: 'button' }, o.img ? 'Change picture…' : 'Set picture…'); set.onclick = () => $('#mg-file').click(); row.append(set); if (o.img) { const rm = el('button', { type: 'button' }, 'Remove picture'); rm.onclick = () => edit(() => { o.img = null; }); row.append(rm); } box.append(row);
@@ -251,11 +252,115 @@ function showProps() {
     box.append(selectField('Kind', o, 'kind', [['focus', 'Focus (around a point)'], ['parallel', 'Parallel (motion)']]), sliderField('Number of lines', o, 'lines', 10, 300), sliderField('Thickness', o, 'thick', 1, 20));
     if (o.kind === 'focus') box.append(sliderField('Empty centre', o, 'inner', 0, 90, 1, v => v + '%')); else box.append(sliderField('Direction', o, 'angle', 0, 180));
     box.append(checkField('Stay inside its panel', { get clip() { return !!o.clip; }, set clip(v) { const p = panelAt(o.x + o.w / 2, o.y + o.h / 2); o.clip = v && p ? p.id : ''; } }, 'clip'));
+  } else if (o.t === 'char') {
+    const mm = doc.models[o.model]; box.append(el('div', { className: 'hint' }, mm ? mm.name : 'Missing character'));
+    const pb = el('button', { type: 'button', className: 'pri' }, 'Pose and look…'); pb.onclick = () => openStudio({ modelId: o.model, obj: o }); box.append(pb);
+    box.append(sliderField('Turn around', o, 'yaw', -180, 180), sliderField('Look from above / below', o, 'pitch', -60, 60), sliderField('Zoom', o, 'zoom', 0.4, 4, 0.05), selectField('Drawing style', o, 'style', [['ink', 'Ink and tones'], ['gray', 'Grey'], ['color', 'Colour']]), sliderField('Outline', o, 'outline', 0, 2.5, 0.05), checkField('Mirror left / right', o, 'flip'));
+    box.append(checkField('Stay inside its panel', { get clip() { return !!o.clip; }, set clip(v) { const p = panelAt(o.x + o.w / 2, o.y + o.h / 2); o.clip = v && p ? p.id : ''; } }, 'clip'));
   } else if (o.t === 'ink') { box.append(sliderField('Thickness', o, 'size', 1, 40), colorField('Colour', o, 'color')); }
   const row = el('div', { className: 'px-row' }); const mk = (t, f, title) => { const b = el('button', { type: 'button', title }, t); b.onclick = f; row.append(b); };
   mk('Bring to front', () => edit(() => { const a = page().objs; a.push(a.splice(a.indexOf(o), 1)[0]); })); mk('Send to back', () => edit(() => { const a = page().objs; a.unshift(a.splice(a.indexOf(o), 1)[0]); }));
   mk('Duplicate', () => edit(() => { const c = JSON.parse(JSON.stringify(o, (k, v) => (k[0] === '_' ? undefined : v))); c.id = newId(); translate(c, 30, 30); if (c.clip) c.clip = o.clip; page().objs.push(c); sel = c; })); mk('Delete', () => edit(() => { page().objs = page().objs.filter(q => q !== o); sel = null; })); box.append(row);
 }
+
+// ---------- 3D characters: made here or imported as VRM; always still, drawn with ink outlines ----------
+const S3 = window.SMA3D, CH = window.SMA_char;
+const cacheOf = d => d._mc || (d._mc = new Map()), bmCache = new Map();
+function modelEntry(id, d = doc) {
+  const m = d.models && d.models[id]; if (!m || !S3 || !CH) return null; const mc = cacheOf(d), sig = m.kind === 'maker' ? JSON.stringify(m.params) : 'vrm'; let e = mc.get(id); if (e && e.sig === sig) return e;
+  if (e && e.model) S3.disposeModel(e.model); e = { sig, state: 'loading', model: null, rev: (e ? e.rev + 1 : 1), err: '' }; mc.set(id, e);
+  if (m.kind === 'maker') { try { e.model = CH.buildCharacter(m.params); e.state = 'ready'; } catch (err) { e.state = 'error'; e.err = err.message; } }
+  else { try { const bin = atob(m.data), u = new Uint8Array(bin.length); for (let i = 0; i < u.length; i++) u[i] = bin.charCodeAt(i); e.promise = S3.loadVRM(u.buffer).then(mod => { e.model = mod; e.state = 'ready'; }).catch(err => { e.state = 'error'; e.err = String(err.message || err); }).then(() => { render(); renderLibrary(); }); } catch (err) { e.state = 'error'; e.err = 'This model could not be read.'; } }
+  return e;
+}
+function charBitmap(o) {
+  const e = modelEntry(o.model); if (!e || e.state !== 'ready') return null; const w = Math.max(8, Math.round(o.w)), h = Math.max(8, Math.round(o.h)), key = [o.model, e.rev, JSON.stringify(o.pose), o.yaw, o.pitch, o.zoom, o.fov, o.ox, o.oy, o.style, o.outline, w, h].join('|'); let c = bmCache.get(key);
+  if (!c) { try { c = S3.render(e.model, { pose: o.pose, yaw: o.yaw, pitch: o.pitch, zoom: o.zoom, fov: o.fov, ox: o.ox, oy: o.oy, style: o.style, outline: o.outline }, w, h); } catch (err) { e.state = 'error'; e.err = err.message; return null; } bmCache.set(key, c); if (bmCache.size > 60) bmCache.delete(bmCache.keys().next().value); } return c;
+}
+function drawChar(c, o, pageObj) {
+  c.save(); const p = o.clip && pageObj.objs.find(q => q.id === o.clip && q.t === 'panel'); if (p) { quadPath(c, p.pts); c.clip(); } const bm = charBitmap(o);
+  if (bm) { if (o.flip) { c.translate(o.x + o.w, o.y); c.scale(-1, 1); c.drawImage(bm, 0, 0, o.w, o.h); } else c.drawImage(bm, o.x, o.y, o.w, o.h); }
+  else { const e = modelEntry(o.model); c.fillStyle = 'rgba(130,130,170,.22)'; c.fillRect(o.x, o.y, o.w, o.h); c.fillStyle = '#556'; c.font = '28px sans-serif'; c.textAlign = 'center'; c.fillText(!e ? 'Missing character' : e.state === 'error' ? 'Cannot draw: ' + e.err : 'Loading…', o.x + o.w / 2, o.y + o.h / 2); }
+  c.restore();
+}
+const mkChar = (model, x, y, clip) => ({ t: 'char', id: newId(), model, x, y, w: 300, h: 450, pose: CH.PRESETS['Stand (relaxed)'](), yaw: 0, pitch: 0, zoom: 1, fov: 22, ox: 0, oy: 0, style: 'ink', outline: 1, flip: false, clip: clip || '' });
+const newModelId = () => 'm' + Math.random().toString(36).slice(2, 8);
+function placeModel(id, x, y) { const p = x === undefined ? null : panelAt(x, y), o = mkChar(id, x === undefined ? 100 : x - 150, y === undefined ? 100 : y - 225, p && p.id); edit(() => { page().objs.push(o); sel = o; }); setTool('select'); }
+
+// the library of characters in this manga
+function renderLibrary() {
+  const box = $('#mg-lib'); if (!box) return; box.textContent = ''; const row = el('div', { className: 'px-row' }), nb = el('button', { type: 'button' }, '+ New character…'), ib = el('button', { type: 'button', title: 'Use a VRM model (made in VRoid Studio or downloaded)' }, 'Import VRM…'); nb.onclick = () => newCharacter(); ib.onclick = () => $('#mg-vrmfile').click(); row.append(nb, ib); box.append(row);
+  const ids = Object.keys(doc.models); if (!ids.length) box.append(el('div', { className: 'hint' }, 'Make a character, or import a VRM model, then drag it onto a panel. Characters are still figures you can pose and turn.'));
+  for (const id of ids) { const m = doc.models[id], e = modelEntry(id), r = el('div', { className: 'mgl' }), c = el('canvas'); c.width = 92; c.height = 124; c.draggable = true; c.title = 'Drag onto a panel'; c.ondragstart = ev => { ev.dataTransfer.setData('text/sma-model', id); ev.dataTransfer.effectAllowed = 'copy'; };
+    const g = c.getContext('2d'); if (e && e.state === 'ready') { try { g.drawImage(thumbOf(id, e), 0, 0); } catch (err) {} } else { g.fillStyle = '#ddd'; g.fillRect(0, 0, 92, 124); g.fillStyle = '#556'; g.font = '11px sans-serif'; g.fillText(e && e.state === 'error' ? 'error' : '…', 30, 64); }
+    const nm = el('div', { className: 'nm' }, m.name || 'Character'); if (m.kind === 'vrm' && m.meta) nm.append(el('small', {}, [m.meta.author, m.meta.licenseName].filter(Boolean).join(' · ') || 'VRM model')); else nm.append(el('small', {}, m.params.gender === 'male' ? 'Made here (male)' : 'Made here (female)'));
+    const add = el('button', { type: 'button', title: 'Put this character on the page' }, 'Add'), edit2 = el('button', { type: 'button', title: m.kind === 'maker' ? 'Change how the character looks' : 'See the model' }, m.kind === 'maker' ? 'Edit' : 'View'), del = el('button', { type: 'button', title: 'Remove from this manga' }, '✕');
+    add.onclick = () => placeModel(id); edit2.onclick = () => openStudio({ modelId: id }); del.onclick = () => { if (!Object.values(doc.pages).some(p => p.objs.some(o => o.model === id)) || confirm('This character is used on a page. Remove it and everything that uses it?')) edit(() => { doc.pages.forEach(p => { p.objs = p.objs.filter(o => o.model !== id); }); const mc = cacheOf(doc), en = mc.get(id); if (en && en.model) S3.disposeModel(en.model); mc.delete(id); delete doc.models[id]; sel = null; }); };
+    r.append(c, nm, el('div', { className: 'px-row' }, ''), add, edit2, del); r.lastChild.remove(); box.append(r); }
+}
+const thumbs = new Map(); function thumbOf(id, e) { const k = id + '|' + e.rev; if (!thumbs.has(k)) thumbs.set(k, S3.render(e.model, { pose: CH.PRESETS['Stand (relaxed)'](), yaw: 0, pitch: 0, zoom: 1, fov: 22, style: 'color', outline: 1 }, 92, 124)); return thumbs.get(k); }
+$('#mg-vrmfile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return; try {
+    if (f.size > 90e6) throw new Error('That model file is too big (over 90 MB).'); const buf = await f.arrayBuffer(), model = await S3.loadVRM(buf), meta = model.meta || {}; S3.disposeModel(model);
+    const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); const id = newModelId();
+    doc.models[id] = { kind: 'vrm', name: String(meta.title || meta.name || f.name.replace(/\.(vrm|glb)$/i, '')).slice(0, 60), data: btoa(s), meta: { title: str(meta.title || meta.name, 80), author: str(meta.author, 80), licenseName: str(meta.licenseName || meta.license, 80), otherLicenseUrl: str(meta.otherLicenseUrl || meta.licenseUrl, 300) } };
+    document.dispatchEvent(new Event('sma-edit')); renderLibrary(); const mt = doc.models[id].meta; status.textContent = `Imported "${doc.models[id].name}"${mt.author ? ' by ' + mt.author : ''}. Models carry their own licence${mt.licenseName ? ' (' + mt.licenseName + ')' : ''}: check the terms before you publish pages that use it.`;
+  } catch (err) { status.textContent = String(err.message || err); }
+};
+function newCharacter() { const id = newModelId(); doc.models[id] = { kind: 'maker', name: 'Character ' + (Object.keys(doc.models).length + 1), params: CH.cleanParams({}) }; openStudio({ modelId: id, isNew: true }); }
+
+// ----- the character and pose studio (a window with a 3D view) -----
+const studio = { open: false };
+const BONE_LABEL = b => b.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+function openStudio({ modelId, obj }) {
+  const m = doc.models[modelId], e = modelEntry(modelId); if (!m) return; const isNew = arguments[0].isNew;
+  Object.assign(studio, { open: true, modelId, obj: obj || null, isNew, params: m.kind === 'maker' ? JSON.parse(JSON.stringify(m.params)) : null, st: obj ? { pose: JSON.parse(JSON.stringify(obj.pose)), yaw: obj.yaw, pitch: obj.pitch, zoom: obj.zoom, fov: obj.fov, ox: obj.ox, oy: obj.oy, style: obj.style, outline: obj.outline } : { pose: CH.PRESETS['Stand (relaxed)'](), yaw: 0, pitch: 0, zoom: 1, fov: 22, ox: 0, oy: 0, style: 'color', outline: 1 }, bone: 'head', tab: m.kind === 'maker' && isNew ? 'char' : 'pose', model: e && e.model });
+  $('#mg3-t-char').hidden = m.kind !== 'maker'; $('#mg-3d').showModal(); studioTab(studio.tab); studioRender();
+}
+function studioModel() { if (studio.params) { if (!studio.pm || studio.pmSig !== JSON.stringify(studio.params)) { if (studio.pm) S3.disposeModel(studio.pm); studio.pm = CH.buildCharacter(studio.params); studio.pmSig = JSON.stringify(studio.params); } return studio.pm; } const e = modelEntry(studio.modelId); return e && e.state === 'ready' ? e.model : null; }
+let studioTimer = 0, studioBusy = false;
+function studioRender() { if (studioBusy) { clearTimeout(studioTimer); studioTimer = setTimeout(studioRender, 60); return; } studioBusy = true; requestAnimationFrame(() => { try { const m = studioModel(), cv3 = $('#mg3-cv'), x = cv3.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv3.width, cv3.height); if (m) x.drawImage(S3.render(m, studio.st, cv3.width, cv3.height), 0, 0); else { x.fillStyle = '#667'; x.font = '18px sans-serif'; x.textAlign = 'center'; const e = modelEntry(studio.modelId); x.fillText(e && e.state === 'error' ? 'Cannot draw this model: ' + e.err : 'Loading the model…', cv3.width / 2, cv3.height / 2); if (e && e.promise) e.promise.then(() => studioRender()); } } catch (err) { $('#mg3-hint').textContent = 'Could not draw: ' + err.message; } studioBusy = false; }); }
+function studioTab(t) { studio.tab = t; for (const k of ['char', 'pose', 'look']) $('#mg3-t-' + k).classList.toggle('on', k === t); const b = $('#mg3-body'); b.textContent = ''; ({ char: studioChar, pose: studioPose, look: studioLook })[t](b); }
+$('#mg3-t-char').onclick = () => studioTab('char'); $('#mg3-t-pose').onclick = () => studioTab('pose'); $('#mg3-t-look').onclick = () => studioTab('look');
+function sl(box, label, get, set, lo, hi, step = 1) { const out = el('output', {}, String(+get().toFixed(2))), r = el('input', { type: 'range', min: lo, max: hi, step, value: get() }); r.oninput = () => { set(+r.value); out.textContent = String(+(+r.value).toFixed(2)); studioRender(); }; const l = el('label', {}, label + ' '); l.append(r, out); box.append(l); return r; }
+function sel3(box, label, get, set, opts) { const s = el('select'); opts.forEach(([v, t]) => s.append(el('option', { value: v }, t))); s.value = get(); s.onchange = () => { set(s.value); studioRender(); }; const l = el('label', {}, label); l.append(s); box.append(l); }
+function colr(box, label, key) { const c = el('input', { type: 'color', value: studio.params[key] }); c.oninput = () => { studio.params[key] = c.value; studioRender(); }; const l = el('label', {}, label); l.append(c); box.append(l); }
+function studioChar(b) {
+  const P = studio.params, set = (k) => v => { P[k] = v; };
+  sel3(b, 'Body', () => P.gender, v => { P.gender = v; studioTab('char'); }, [['female', 'Female'], ['male', 'Male']]);
+  [['Height', 'height'], ['Build (slim to sturdy)', 'build'], ['Shoulder width', 'shoulders'], ['Hip width', 'hips'], ['Head size (chibi at the top)', 'head'], ['Leg length', 'legs']].forEach(([t, k]) => sl(b, t, () => P[k], set(k), 0, 1, 0.01)); if (P.gender === 'female') sl(b, 'Bust', () => P.bust, set('bust'), 0, 1, 0.01);
+  b.append(el('h5', {}, 'Face and hair')); colr(b, 'Skin', 'skin'); sel3(b, 'Eyes', () => String(P.eyeStyle), v => { P.eyeStyle = +v; }, [['0', 'Big round'], ['1', 'Sharp'], ['2', 'Sleepy'], ['3', 'Cute dots']]); colr(b, 'Eye colour', 'eyes');
+  sel3(b, 'Hair', () => P.hairStyle, set('hairStyle'), CH.HAIR.map(h => [h, h[0].toUpperCase() + h.slice(1)])); colr(b, 'Hair colour', 'hair');
+  b.append(el('h5', {}, 'Clothes')); sel3(b, 'Outfit', () => P.outfit, set('outfit'), [['uniform', 'School uniform'], ['casual', 'T-shirt'], ['dress', 'Dress'], ['sport', 'Sports']]); colr(b, 'Top', 'top'); colr(b, 'Skirt / trousers', 'bottom'); colr(b, 'Shoes', 'shoes'); colr(b, 'Accent (ribbons, trim)', 'accent'); sel3(b, 'Accessory', () => P.accessory, set('accessory'), CH.ACC.map(a => [a, a[0].toUpperCase() + a.slice(1)]));
+  const rnd = el('button', { type: 'button' }, 'Surprise me'); rnd.onclick = () => { const pk = a => a[Math.floor(Math.random() * a.length)], rc = () => '#' + [0, 0, 0].map(() => Math.floor(40 + Math.random() * 200).toString(16).padStart(2, '0')).join(''); Object.assign(P, { gender: pk(['female', 'male']), height: Math.random(), build: Math.random(), shoulders: Math.random(), hips: Math.random(), bust: Math.random(), head: 0.3 + Math.random() * 0.5, legs: Math.random(), hairStyle: pk(CH.HAIR.filter(h => h !== 'none')), hair: pk(['#2a1f2d', '#6a3a1a', '#e0709a', '#d0902a', '#222222', '#c0c0d8', '#3a2a7a']), eyes: rc(), eyeStyle: Math.floor(Math.random() * 4), outfit: pk(CH.OUTFIT), top: rc(), bottom: rc(), accent: rc(), accessory: pk(CH.ACC) }); studioTab('char'); studioRender(); }; b.append(rnd);
+}
+function studioPose(b) {
+  const m = studioModel() || {}, human = m.human || {}, bones = S3.HUMAN_BONES.filter(x => human[x] !== undefined), st = studio.st;
+  const ps = el('select'); ps.append(el('option', { value: '' }, 'Pick a pose…')); Object.keys(CH.PRESETS).forEach(k => ps.append(el('option', { value: k }, k))); ps.onchange = () => { if (!ps.value) return; const p = CH.PRESETS[ps.value](); st.pose = {}; for (const k of Object.keys(p)) if (human[k] !== undefined) st.pose[k] = p[k]; ps.value = ''; studioTab('pose'); studioRender(); }; const pl = el('label', {}, 'Ready-made poses'); pl.append(ps); b.append(pl);
+  b.append(el('h5', {}, 'Move one part'));
+  if (!bones.includes(studio.bone)) studio.bone = bones.includes('head') ? 'head' : bones[0]; const bs = el('select'); bones.forEach(k => bs.append(el('option', { value: k }, BONE_LABEL(k)))); bs.value = studio.bone; bs.onchange = () => { studio.bone = bs.value; studioTab('pose'); }; const bl = el('label', {}, 'Body part'); bl.append(bs); b.append(bl);
+  const cur = () => st.pose[studio.bone] || (st.pose[studio.bone] = [0, 0, 0]);
+  [['Tilt forward / back', 0], ['Turn', 1], ['Lean sideways', 2]].forEach(([t, i]) => sl(b, t, () => cur()[i], v => { cur()[i] = v; }, -180, 180, 1));
+  const row = el('div', { className: 'px-row' }); const mk = (t, f, title) => { const x = el('button', { type: 'button', title }, t); x.onclick = f; row.append(x); };
+  mk('Copy to other side', () => { const bn = studio.bone, other = bn.startsWith('left') ? 'right' + bn.slice(4) : bn.startsWith('right') ? 'left' + bn.slice(5) : null; if (other && human[other] !== undefined) { st.pose[other] = CH.mirror(cur()); studioRender(); } }, 'Gives the matching part on the other side the mirrored pose');
+  mk('Reset this part', () => { delete st.pose[studio.bone]; studioTab('pose'); studioRender(); }); mk('Reset everything', () => { st.pose = {}; studioTab('pose'); studioRender(); });
+  mk('Swap left and right', () => { const np = {}; for (const [k, v] of Object.entries(st.pose)) { const o = k.startsWith('left') ? 'right' + k.slice(4) : k.startsWith('right') ? 'left' + k.slice(5) : null; if (o) np[o] = CH.mirror(v); else np[k] = [v[0], -v[1], -v[2]]; } st.pose = np; studioRender(); }); b.append(row);
+  b.append(el('div', { className: 'hint' }, 'Tip: start from a ready-made pose, then adjust. Arms and legs bend from the part you pick, and everything below follows.'));
+}
+function studioLook(b) {
+  const st = studio.st; sel3(b, 'Drawing style', () => st.style, v => { st.style = v; }, [['ink', 'Ink and tones (manga)'], ['gray', 'Grey'], ['color', 'Colour']]); sl(b, 'Outline thickness', () => st.outline, v => { st.outline = v; }, 0, 2.5, 0.05);
+  b.append(el('h5', {}, 'Camera')); sl(b, 'Turn around', () => st.yaw, v => { st.yaw = v; }, -180, 180, 1); sl(b, 'Look from above / below', () => st.pitch, v => { st.pitch = v; }, -60, 60, 1); sl(b, 'Zoom', () => st.zoom, v => { st.zoom = v; }, 0.4, 4, 0.05); sl(b, 'Lens (low = flat, high = dramatic)', () => st.fov, v => { st.fov = v; }, 8, 60, 1); sl(b, 'Move up / down', () => st.oy, v => { st.oy = v; }, -0.8, 0.8, 0.01); sl(b, 'Move left / right', () => st.ox, v => { st.ox = v; }, -0.8, 0.8, 0.01);
+  const m = doc.models[studio.modelId]; if (m && m.kind === 'vrm' && m.meta) { const mt = m.meta; b.append(el('h5', {}, 'About this model'), el('div', { className: 'hint' }, [mt.title, mt.author && 'by ' + mt.author, mt.licenseName && 'Licence: ' + mt.licenseName].filter(Boolean).join(' · ') || 'No licence details in the file.'), el('div', { className: 'hint' }, 'Check what the licence allows (credit, commercial use, violent or adult content) before you publish.')); }
+}
+(function () { const cv3 = $('#mg3-cv'); let d = null; cv3.addEventListener('pointerdown', e => { d = { x: e.clientX, y: e.clientY, yaw: studio.st.yaw, pitch: studio.st.pitch }; try { cv3.setPointerCapture(e.pointerId); } catch (err) {} cv3.style.cursor = 'grabbing'; }); cv3.addEventListener('pointermove', e => { if (!d) return; studio.st.yaw = Math.max(-180, Math.min(180, d.yaw - (e.clientX - d.x) * 0.5)); studio.st.pitch = Math.max(-60, Math.min(60, d.pitch + (e.clientY - d.y) * 0.3)); studioRender(); }); const up = () => { d = null; cv3.style.cursor = 'grab'; if (studio.tab === 'look') studioTab('look'); }; cv3.addEventListener('pointerup', up); cv3.addEventListener('pointercancel', up); cv3.addEventListener('wheel', e => { e.preventDefault(); studio.st.zoom = Math.max(0.4, Math.min(4, studio.st.zoom * (e.deltaY < 0 ? 1.1 : 0.9))); studioRender(); if (studio.tab === 'look') studioTab('look'); }, { passive: false }); })();
+function closeStudio() { studio.open = false; if (studio.pm) { S3.disposeModel(studio.pm); studio.pm = null; } $('#mg-3d').close(); }
+$('#mg3-ok').onclick = () => {
+  const m = doc.models[studio.modelId]; if (studio.params && JSON.stringify(studio.params) !== JSON.stringify(m.params)) { m.params = CH.cleanParams(studio.params); thumbs.clear(); }
+  if (studio.obj) edit(() => Object.assign(studio.obj, JSON.parse(JSON.stringify(studio.st)))); else { document.dispatchEvent(new Event('sma-edit')); }
+  const wasNew = studio.isNew; closeStudio(); refreshAll(); if (wasNew) status.textContent = 'Character saved. Drag it from the list onto a panel, or press Add.';
+};
+$('#mg3-cancel').onclick = () => { if (studio.isNew) { const mc = cacheOf(doc), en = mc.get(studio.modelId); if (en && en.model) S3.disposeModel(en.model); mc.delete(studio.modelId); delete doc.models[studio.modelId]; } closeStudio(); refreshAll(); };
+$('#mg-3d').addEventListener('cancel', e => { e.preventDefault(); $('#mg3-cancel').click(); });
 
 // ---------- pages ----------
 function renderPages() {
@@ -274,9 +379,9 @@ $('#mg-layout').onchange = e => { const k = e.target.value; e.target.value = '';
 $('#mg-name').oninput = e => { name = e.target.value || 'Untitled manga'; document.dispatchEvent(new Event('sma-edit')); };
 
 // ---------- new / open ----------
-function refreshAll() { renderPages(); showProps(); render(); const k = Object.keys(SIZES).find(k => SIZES[k][0] === doc.pageW && SIZES[k][1] === doc.pageH); $('#mg-size').value = k || 'b5'; $('#mg-name').value = name; setToolHint(); }
+function refreshAll() { renderPages(); showProps(); renderLibrary(); render(); const k = Object.keys(SIZES).find(k => SIZES[k][0] === doc.pageW && SIZES[k][1] === doc.pageH); $('#mg-size').value = k || 'b5'; $('#mg-name').value = name; setToolHint(); }
 const setToolHint = () => {};
-function loadDoc(d, nm) { doc = d; name = nm || 'Untitled manga'; pg = 0; sel = null; imgCache.clear(); undoS.length = redoS.length = 0; refreshAll(); fit(); }
+function loadDoc(d, nm) { if (doc && doc._mc) for (const e of doc._mc.values()) if (e.model) S3.disposeModel(e.model); thumbs.clear(); bmCache.clear(); doc = d; name = nm || 'Untitled manga'; pg = 0; sel = null; imgCache.clear(); undoS.length = redoS.length = 0; refreshAll(); fit(); }
 $('#mg-new').onclick = () => $('#mg-newdlg').showModal(); $('#mg-newcancel').onclick = e => { e.preventDefault(); $('#mg-newdlg').close(); };
 $('#mg-newok').onclick = e => { e.preventDefault(); pid = null; loadDoc(blank('b5'), 'Untitled manga'); $('#mg-newdlg').close(); };
 $('#mg-open').onclick = async () => { const dlg = $('#mg-opendlg'), box = $('#mg-openlist'); dlg.showModal(); box.textContent = 'Loading…'; let items = []; try { items = (await SMA.store.list()).filter(i => i.type === 'manga'); } catch (e) {} box.textContent = ''; if (!items.length) box.append(el('p', { className: 'hint' }, 'No saved manga yet. Everything you make is saved automatically.'));
@@ -285,8 +390,8 @@ $('#mg-opencancel').onclick = e => { e.preventDefault(); $('#mg-opendlg').close(
 
 // ---------- saving: a plain versioned format, with every field checked when it is read back ----------
 function serialize() {
-  const used = new Set(); doc.pages.forEach(p => p.objs.forEach(o => { if (o.img) used.add(o.img); })); const images = {}; for (const id of used) if (doc.images[id]) images[id] = doc.images[id];
-  return JSON.stringify({ app: 'sudo-make-manga', kind: 'manga', v: 1, name, pageW: doc.pageW, pageH: doc.pageH, rtl: doc.rtl, pages: doc.pages, images }, (k, v) => (k[0] === '_' ? undefined : v));
+  const used = new Set(); doc.pages.forEach(p => p.objs.forEach(o => { if (o.img) used.add(o.img); })); const images = {}; for (const id of used) if (doc.images[id]) images[id] = doc.images[id]; const models = {}; for (const [id, m] of Object.entries(doc.models)) models[id] = m;
+  return JSON.stringify({ app: 'sudo-make-manga', kind: 'manga', v: 1, name, pageW: doc.pageW, pageH: doc.pageH, rtl: doc.rtl, pages: doc.pages, images, models }, (k, v) => (k[0] === '_' ? undefined : v));
 }
 function cleanObj(o, imgs) {
   const id = str(o.id, 20) || newId(), p = (v, lo = -20000, hi = 20000, d = 0) => num(v, lo, hi, d);
@@ -297,6 +402,7 @@ function cleanObj(o, imgs) {
     case 'tone': return { t: 'tone', id, x: p(o.x), y: p(o.y), w: p(o.w, -20000, 20000, 100), h: p(o.h, -20000, 20000, 100), kind: ['dots', 'gradient', 'lines', 'hatch'].includes(o.kind) ? o.kind : 'dots', level: p(o.level, 0, 100, 35), angle: p(o.angle, 0, 180, 45), size: p(o.size, 3, 60, 9), shape: o.shape === 'ellipse' ? 'ellipse' : 'rect', clip: str(o.clip, 20) };
     case 'speed': return { t: 'speed', id, x: p(o.x), y: p(o.y), w: p(o.w, -20000, 20000, 100), h: p(o.h, -20000, 20000, 100), kind: o.kind === 'parallel' ? 'parallel' : 'focus', lines: p(o.lines, 1, 400, 90), thick: p(o.thick, 0.5, 40, 5), inner: p(o.inner, 0, 95, 30), angle: p(o.angle, 0, 180), seed: p(o.seed, 0, 1e9, 1), clip: str(o.clip, 20) };
     case 'image': if (!imgs[o.img]) throw new Error('Damaged manga file'); return { t: 'image', id, x: p(o.x), y: p(o.y), w: p(o.w, 1, 20000, 400), h: p(o.h, 1, 20000, 400), img: String(o.img) };
+    case 'char': { const pose = {}; if (o.pose && typeof o.pose === 'object') for (const [k, v] of Object.entries(o.pose)) { if (/^[a-zA-Z]{3,24}$/.test(k) && Array.isArray(v) && v.length === 3) pose[k] = v.map(q => p(q, -360, 360)); } return { t: 'char', id, model: str(o.model, 20), x: p(o.x), y: p(o.y), w: p(o.w, 20, 8000, 300), h: p(o.h, 20, 8000, 450), pose, yaw: p(o.yaw, -360, 360), pitch: p(o.pitch, -89, 89), zoom: p(o.zoom, 0.2, 8, 1), fov: p(o.fov, 5, 70, 22), ox: p(o.ox, -2, 2), oy: p(o.oy, -2, 2), style: ['ink', 'gray', 'color'].includes(o.style) ? o.style : 'ink', outline: p(o.outline, 0, 4, 1), flip: !!o.flip, clip: str(o.clip, 20) }; }
     case 'ink': { if (!Array.isArray(o.pts) || o.pts.length < 2 || o.pts.length > 20000) throw new Error('Damaged manga file'); return { t: 'ink', id, pts: o.pts.map(v => p(v)), size: p(o.size, 0.5, 80, 4), color: col(o.color, '#000000') }; }
     default: throw new Error('Damaged manga file');
   }
@@ -305,8 +411,12 @@ function parse(json) {
   const o = JSON.parse(json); if (!o || o.app !== 'sudo-make-manga' || o.v !== 1) throw new Error('Not a Sudo Make Manga file');
   if (!Array.isArray(o.pages) || !o.pages.length || o.pages.length > 300) throw new Error('Damaged manga file');
   const images = {}; for (const [k, v] of Object.entries(o.images || {})) { if (typeof v !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v) || v.length > 40e6) throw new Error('Damaged manga file'); images[str(k, 20)] = v; }
+  const models = {}; for (const [k, m] of Object.entries(o.models || {})) { if (!m || typeof m !== 'object') throw new Error('Damaged manga file'); const mid = str(k, 20);
+    if (m.kind === 'maker') models[mid] = { kind: 'maker', name: str(m.name || 'Character', 60), params: CH.cleanParams(m.params) };
+    else if (m.kind === 'vrm') { if (typeof m.data !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(m.data) || m.data.length > 130e6) throw new Error('Damaged manga file'); const mt = m.meta || {}; models[mid] = { kind: 'vrm', name: str(m.name || 'Model', 60), data: m.data, meta: { title: str(mt.title, 80), author: str(mt.author, 80), licenseName: str(mt.licenseName, 80), otherLicenseUrl: str(mt.otherLicenseUrl, 300) } }; }
+    else throw new Error('Damaged manga file'); }
   const pages = o.pages.map(pgo => { if (!pgo || !Array.isArray(pgo.objs) || pgo.objs.length > 3000) throw new Error('Damaged manga file'); return { objs: pgo.objs.map(q => cleanObj(q, images)) }; });
-  return { name: str(o.name || 'Untitled manga', 120), doc: { pageW: num(o.pageW, 200, 6000, 1050), pageH: num(o.pageH, 200, 12000, 1500), rtl: o.rtl !== false, pages, images } };
+  return { name: str(o.name || 'Untitled manga', 120), doc: { pageW: num(o.pageW, 200, 6000, 1050), pageH: num(o.pageH, 200, 12000, 1500), rtl: o.rtl !== false, pages, images, models } };
 }
 function load(json) { const r = parse(json); loadDoc(r.doc, r.name); }
 function thumb() { const c = document.createElement('canvas'), k = 160 / doc.pageW; c.width = 160; c.height = Math.round(doc.pageH * k); const x = c.getContext('2d'); x.scale(k, k); renderPageOf(doc, doc.pages[0], x); return Promise.resolve(c.toDataURL('image/png')); }
@@ -334,7 +444,7 @@ const api = { serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, ge
   show() { requestAnimationFrame(() => { if (!api._shown && $('#mg-stage').getBoundingClientRect().width) { api._shown = true; fit(); } else render(); }); }, hide() {},
   reset() { pid = null; loadDoc(blank('b5'), 'Untitled manga'); },
   renderPageFrom, renderPanelFrom, listPanels,
-  info: () => ({ pages: doc.pages.length, page: pg, objs: page().objs.length, types: page().objs.map(o => o.t), undo: undoS.length, w: doc.pageW, h: doc.pageH }), objs: () => page().objs.map(o => JSON.parse(JSON.stringify(o, (k, v) => (k[0] === '_' ? undefined : v)))), selected: () => sel && JSON.parse(JSON.stringify(sel, (k, v) => (k[0] === '_' ? undefined : v))), zoom: () => zoom, tool: () => tool };
+  info: () => ({ pages: doc.pages.length, page: pg, objs: page().objs.length, types: page().objs.map(o => o.t), undo: undoS.length, w: doc.pageW, h: doc.pageH }), objs: () => page().objs.map(o => JSON.parse(JSON.stringify(o, (k, v) => (k[0] === '_' ? undefined : v)))), selected: () => sel && JSON.parse(JSON.stringify(sel, (k, v) => (k[0] === '_' ? undefined : v))), zoom: () => zoom, tool: () => tool, models: () => doc.models };
 window.SMA_manga = api;
 LAYOUTS.length; setTool('select'); refreshAll();
 })();
