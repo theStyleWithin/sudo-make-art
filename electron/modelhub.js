@@ -66,17 +66,17 @@ function clam(file) { // ClamAV, if the user has it. Exit code 0 = clean, 1 = so
 }
 
 // Request with redirects followed one at a time: each hop's host is checked BEFORE any request is sent to it.
-function fetchChecked(url, signal, hops) {
+function fetchChecked(url, signal, hops, ok = hostOk) {
   return new Promise((resolve, reject) => {
     const bad = h => new Error('The download was redirected to an unexpected host (' + h + '), so it was stopped.');
     let u; try { u = new URL(url); } catch (e) { return reject(e); }
-    if (!hostOk(u.host) || (u.protocol !== 'https:' && !TEST)) return reject(bad(u.host));
+    if (!ok(u.host) || (u.protocol !== 'https:' && !TEST)) return reject(bad(u.host));
     hops.push(u.host);
     const req = net.request({ url, redirect: 'manual' });
     signal.addEventListener('abort', () => { req.abort(); reject(new Error('Cancelled')); }, { once: true });
     req.on('redirect', (status, method, loc) => {
       let n; try { n = new URL(loc, url); } catch (e) { req.abort(); return reject(new Error('Bad redirect')); }
-      if (hops.length > 6 || !hostOk(n.host) || (n.protocol !== 'https:' && !TEST)) { req.abort(); return reject(bad(n.host)); }
+      if (hops.length > 6 || !ok(n.host) || (n.protocol !== 'https:' && !TEST)) { req.abort(); return reject(bad(n.host)); }
       hops.push(n.host); req.followRedirect();
     });
     req.on('response', res => resolve(res)); req.on('error', reject); req.end();
@@ -119,4 +119,4 @@ function register() {
   ipcMain.handle('modelhub:clam', () => !!onPath('clamscan'));
   ipcMain.handle('modelhub:open', (e, url) => { let u; try { u = new URL(url); } catch (err) { return false; } if (u.protocol !== 'https:' || !OPEN_HOSTS.has(u.host)) return false; shell.openExternal(u.href); return true; });
 }
-module.exports = { register, inspectGguf };
+module.exports = { register, inspectGguf, fetchChecked };

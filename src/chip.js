@@ -131,6 +131,22 @@ function toWav(r) {
   return new Uint8Array(buf);
 }
 
-const api = { ENGINES, FIELDS, NOTE_CUT, EFFECTS, WAVES, TICK_HZ, newSong, newPattern, defaultInstruments, cellIndex, noteName, parseNote, render, toWav, pulseHz, waveHz, noteHz };
+const clampi2 = (v, lo, hi) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.max(lo, Math.min(hi, x)) : lo; };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+function parseSong(json) { // checks a song file and returns the song (used by the editor, by games and by the ROM builder)
+  const o = JSON.parse(json); if (o.app !== 'sudo-make-music' || o.v !== 1) throw new Error('Not a Sudo Make Music file');
+  const eng = ENGINES[o.engine]; if (!eng) throw new Error('This song needs a sound engine this version does not have'); const nch = eng.channels.length, bad = () => { throw new Error('Damaged song file'); };
+  const patterns = o.patterns.map(p => { const rows = clampi2(p.rows, 1, 128), data = unb64(p.data); if (data.length !== rows * nch * FIELDS) bad(); for (let i = 0; i < data.length; i += FIELDS) { if (data[i] > 96 && data[i] !== 255 || data[i + 1] > 16 || data[i + 2] > 16 || (data[i + 3] && !EFFECTS.includes(String.fromCharCode(data[i + 3])))) bad(); } return { rows, data }; });
+  if (!patterns.length || !o.order.length || o.order.some(p => !Number.isInteger(p) || p < 0 || p >= patterns.length)) bad();
+  const def = defaultInstruments(), inst = { pulse: def.pulse, wave: def.wave, noise: def.noise }, take = (kind, fn) => { (o.instruments && o.instruments[kind] || []).slice(0, 16).forEach((x, i) => { inst[kind][i] = fn(x, def[kind][i]); }); };
+  const n = (v, lo, hi, d) => (Number.isFinite(+v) ? clampi2(v, lo, hi) : d), nm = (x, d) => String(x && x.name || d.name).slice(0, 24);
+  take('pulse', (x, d) => ({ name: nm(x, d), duty: n(x.duty, 0, 3, 2), vol: n(x.vol, 0, 15, 15), dir: n(x.dir, -1, 1, 0), period: n(x.period, 0, 7, 0) }));
+  take('noise', (x, d) => ({ name: nm(x, d), width7: !!x.width7, vol: n(x.vol, 0, 15, 12), dir: n(x.dir, -1, 1, 0), period: n(x.period, 0, 7, 0) }));
+  take('wave', (x, d) => ({ name: nm(x, d), wave: Array.isArray(x.wave) && x.wave.length === 32 ? x.wave.map(v => n(v, 0, 15, 0)) : d.wave, vol: n(x.vol, 0, 3, 1) }));
+  const ch = eng.channels.map((_, i) => { const c = (o.channels || [])[i] || {}; return { mute: !!c.mute, solo: !!c.solo, pan: ['L', 'C', 'R'].includes(c.pan) ? c.pan : 'C', vol: n(c.vol, 0, 100, 100) }; });
+  return { engine: o.engine, name: String(o.name || 'Untitled song').slice(0, 120), speed: n(o.speed, 1, 31, 6), loopStart: n(o.loopStart, 0, o.order.length - 1, 0), order: o.order.slice(), patterns, inst, ch };
+}
+
+const api = { parseSong, ENGINES, FIELDS, NOTE_CUT, EFFECTS, WAVES, TICK_HZ, newSong, newPattern, defaultInstruments, cellIndex, noteName, parseNote, render, toWav, pulseHz, waveHz, noteHz };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.SMA_chip = api;
 })();

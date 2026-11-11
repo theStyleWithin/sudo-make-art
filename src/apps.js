@@ -12,7 +12,7 @@ const APPS = [
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
   { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune tracker for retro handheld-style music', ready: true, mode: 'music' },
-  { id: 'games', name: 'Sudo Make Games', tag: 'Small games', plan: ['To be decided together'] },
+  { id: 'games', name: 'Sudo Make Games', tag: 'Game Boy-style games from your tiles, sprites and music', ready: true, mode: 'games' },
   { id: 'vn', name: 'Sudo Make Visual Novel', tag: 'Visual novels', plan: ['Scenes, characters and dialogue', 'Branching choices', 'Export a playable story'] },
 ];
 const KEY = 'sma-app';
