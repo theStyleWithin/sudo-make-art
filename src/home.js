@@ -16,8 +16,8 @@ const Store = ipc ? { list: () => ipc.list(), get: id => ipc.get(id), put: r => 
   folder: null,
 };
 
-const mode = () => document.body.classList.contains('music-mode') ? 'music' : document.body.classList.contains('tiles-mode') ? 'tiles' : document.body.classList.contains('pixels-mode') ? 'pixel' : document.body.classList.contains('video-mode') ? 'video' : 'design';
-const api = t => (t === 'video' ? window.SMA_video : t === 'pixel' ? window.SMA_pixels : t === 'tiles' ? window.SMA_tiles : t === 'music' ? window.SMA_music : SMA.design);
+const mode = () => document.body.classList.contains('games-mode') ? 'game' : document.body.classList.contains('music-mode') ? 'music' : document.body.classList.contains('tiles-mode') ? 'tiles' : document.body.classList.contains('pixels-mode') ? 'pixel' : document.body.classList.contains('video-mode') ? 'video' : 'design';
+const api = t => (t === 'video' ? window.SMA_video : t === 'pixel' ? window.SMA_pixels : t === 'tiles' ? window.SMA_tiles : t === 'music' ? window.SMA_music : t === 'game' ? window.SMA_games : SMA.design);
 SMA.store = Store;
 const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
@@ -38,7 +38,7 @@ const nameBox = $('#docname');
 nameBox.oninput = () => { api(mode()).setName(nameBox.value || 'Untitled'); document.dispatchEvent(new Event('sma-edit')); };
 document.addEventListener('sma-mode', async ev => {
   if (ev.detail === 'home') { if (timer) await saveNow(); await render(); return; }
-  if (ev.detail === 'convert' || ev.detail === 'vconvert' || ev.detail === 'pixels' || ev.detail === 'tiles' || ev.detail === 'music') return;
+  if (ev.detail === 'convert' || ev.detail === 'vconvert' || ev.detail === 'pixels' || ev.detail === 'tiles' || ev.detail === 'music' || ev.detail === 'games') return;
   nameBox.value = api(ev.detail).getName();
 });
 
@@ -53,9 +53,9 @@ async function render() {
   if (!list.length) grid.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: items.length ? 'No projects match.' : 'Nothing here yet. Start a new design or video and it will appear here.' }));
   list.forEach(i => {
     const c = document.createElement('div'); c.className = 'card2';
-    const t = document.createElement('div'); t.className = 'thumb'; if (i.thumb) { const im = document.createElement('img'); im.src = i.thumb; im.alt = ''; t.append(im); } else t.textContent = i.type === 'video' ? '🎞' : i.type === 'pixel' ? '👾' : i.type === 'tiles' ? '🧱' : i.type === 'music' ? '🎵' : '🖼';
+    const t = document.createElement('div'); t.className = 'thumb'; if (i.thumb) { const im = document.createElement('img'); im.src = i.thumb; im.alt = ''; t.append(im); } else t.textContent = i.type === 'video' ? '🎞' : i.type === 'pixel' ? '👾' : i.type === 'tiles' ? '🧱' : i.type === 'music' ? '🎵' : i.type === 'game' ? '🎮' : '🖼';
     const n = Object.assign(document.createElement('b'), { textContent: i.name || 'Untitled' });
-    const m = Object.assign(document.createElement('small'), { textContent: (i.type === 'video' ? 'Video' : i.type === 'pixel' ? 'Pixel art' : i.type === 'tiles' ? 'Tileset' : i.type === 'music' ? 'Song' : 'Design') + ' · ' + ago(i.updated) });
+    const m = Object.assign(document.createElement('small'), { textContent: (i.type === 'video' ? 'Video' : i.type === 'pixel' ? 'Pixel art' : i.type === 'tiles' ? 'Tileset' : i.type === 'music' ? 'Song' : i.type === 'game' ? 'Game' : 'Design') + ' · ' + ago(i.updated) });
     const x = Object.assign(document.createElement('button'), { className: 'x', textContent: '🗑', title: 'Delete' });
     x.onclick = async ev => { ev.stopPropagation(); if (confirm(`Delete "${i.name || 'Untitled'}"? This cannot be undone.`)) { await Store.del(i.id); render(); } };
     c.onclick = () => open(i.id); c.append(t, n, m, x); grid.append(c);
@@ -63,7 +63,7 @@ async function render() {
 }
 async function open(id) {
   const r = await Store.get(id); if (!r) return;
-  api(r.type).load(r.data); api(r.type).setPid(r.id); if (r.type === 'pixel') window.SMA_apps.choose('pixels'); else if (r.type === 'tiles') window.SMA_apps.choose('tiles'); else if (r.type === 'music') window.SMA_apps.choose('music'); else SMA.setMode(r.type);
+  api(r.type).load(r.data); api(r.type).setPid(r.id); if (r.type === 'pixel') window.SMA_apps.choose('pixels'); else if (r.type === 'tiles') window.SMA_apps.choose('tiles'); else if (r.type === 'music') window.SMA_apps.choose('music'); else if (r.type === 'game') window.SMA_apps.choose('games'); else SMA.setMode(r.type);
 }
 $('#h-search').oninput = $('#h-type').onchange = render;
 $('#h-new').onclick = () => $('#new').click();

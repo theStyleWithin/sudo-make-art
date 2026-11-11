@@ -208,7 +208,7 @@ $('#mu-example').onclick = () => { remember(); const keep = song.name; song = ex
 const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 function serialize() { return JSON.stringify({ app: 'sudo-make-music', kind: 'song', v: 1, name: song.name, engine: song.engine, speed: song.speed, loopStart: song.loopStart, order: song.order, patterns: song.patterns.map(p => ({ rows: p.rows, data: b64(p.data) })), instruments: song.inst, channels: song.ch }); }
-function load(json) {
+function parse(json) { // checks a song file and returns the song, without opening it
   const o = JSON.parse(json); if (o.app !== 'sudo-make-music' || o.v !== 1) throw new Error('Not a Sudo Make Music file');
   const eng = C.ENGINES[o.engine]; if (!eng) throw new Error('This song needs a sound engine this version does not have'); const nch = eng.channels.length, bad = () => { throw new Error('Damaged song file'); };
   const patterns = o.patterns.map(p => { const rows = clampi(p.rows, 1, 128), data = unb64(p.data); if (data.length !== rows * nch * F) bad(); for (let i = 0; i < data.length; i += F) { if (data[i] > 96 && data[i] !== 255 || data[i + 1] > 16 || data[i + 2] > 16 || (data[i + 3] && !C.EFFECTS.includes(String.fromCharCode(data[i + 3])))) bad(); } return { rows, data }; });
@@ -219,8 +219,9 @@ function load(json) {
   take('noise', (x, d) => ({ name: nm(x, d), width7: !!x.width7, vol: n(x.vol, 0, 15, 12), dir: n(x.dir, -1, 1, 0), period: n(x.period, 0, 7, 0) }));
   take('wave', (x, d) => ({ name: nm(x, d), wave: Array.isArray(x.wave) && x.wave.length === 32 ? x.wave.map(v => n(v, 0, 15, 0)) : d.wave, vol: n(x.vol, 0, 3, 1) }));
   const ch = eng.channels.map((_, i) => { const c = (o.channels || [])[i] || {}; return { mute: !!c.mute, solo: !!c.solo, pan: ['L', 'C', 'R'].includes(c.pan) ? c.pan : 'C', vol: n(c.vol, 0, 100, 100) }; });
-  loadSong({ engine: o.engine, name: String(o.name || 'Untitled song').slice(0, 120), speed: n(o.speed, 1, 31, 6), loopStart: n(o.loopStart, 0, o.order.length - 1, 0), order: o.order.slice(), patterns, inst, ch });
+  return { engine: o.engine, name: String(o.name || 'Untitled song').slice(0, 120), speed: n(o.speed, 1, 31, 6), loopStart: n(o.loopStart, 0, o.order.length - 1, 0), order: o.order.slice(), patterns, inst, ch };
 }
+function load(json) { loadSong(parse(json)); }
 function thumb() { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#2b2d38'; g.fillRect(0, 0, 128, 64); const p = song.patterns[song.order[0]], cols = ['#8b5cf6', '#41a6f6', '#73eff7', '#ef7d57']; for (let r = 0; r < Math.min(p.rows, 64); r++) for (let ch = 0; ch < NCH(); ch++) { const v = p.data[C.cellIndex(r, ch, 0, NCH())]; if (v && v !== 255) { g.fillStyle = cols[ch % 4]; g.fillRect(r * 2, 60 - ch * 14 - ((v - 1) % 12), 2, 3); } } return Promise.resolve(c.toDataURL('image/png')); }
 
 // ---------- export ----------
@@ -231,7 +232,7 @@ $('#mu-export').onchange = e => { const v = e.target.value; e.target.value = '';
 
 // ---------- hooks for the rest of the app ----------
 const api = {
-  serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, getName: () => name, setName: n => { name = n; song.name = n; $('#mu-name').value = n; }, load,
+  serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, getName: () => name, setName: n => { name = n; song.name = n; $('#mu-name').value = n; }, load, parse,
   show() { requestAnimationFrame(() => { markCursor(); }); }, hide() { stop(); },
   reset() { pid = null; loadSong(C.newSong(), 'Untitled song'); },
   wavBytes, info: () => ({ orderPos, orders: song.order.length, patterns: song.patterns.length, rows: pat().rows, cur: { ...cur }, speed: song.speed, undo: undoS.length, playing: !!play }),

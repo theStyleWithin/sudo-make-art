@@ -177,6 +177,47 @@
   <dialog id="mu-newdlg"><form method="dialog"><h3>New song?</h3><p class="hint">This starts an empty song. The current one stays saved.</p><div class="px-row"><button id="mu-newok" class="pri">New song</button><button id="mu-newcancel">Cancel</button></div></form></dialog>
   <dialog id="mu-opendlg"><form method="dialog"><h3>Open a song</h3><div id="mu-openlist"></div><div class="px-row"><button id="mu-opencancel">Close</button></div></form></dialog>
 </section>
+<section id="gamesview">
+  <div id="gm-bar">
+    <input id="gm-name" maxlength="120" placeholder="Untitled game" aria-label="Game name">
+    <button id="gm-new">New…</button><button id="gm-open">Open…</button>
+    <button id="gm-undo" title="Undo (Ctrl+Z)">↶</button><button id="gm-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <button id="gm-play" class="pri" title="Play from the first level">▶ Play</button><button id="gm-playlevel" title="Play from this level">▶ This level</button>
+    <span class="sp"></span>
+    <select id="gm-export"><option value="">Export…</option><option value="html">Playable web page (one .html file)</option></select>
+  </div>
+  <div id="gm-main">
+    <aside id="gm-assets">
+      <h4>Tiles <small>(click to select)</small></h4><div id="gm-tiles"></div>
+      <div class="px-row" id="gm-flags"><label class="cv-chk"><input type="radio" name="gmflag" value="0"> Walk through</label><label class="cv-chk"><input type="radio" name="gmflag" value="1"> Solid</label><label class="cv-chk"><input type="radio" name="gmflag" value="2"> Hurts</label></div>
+      <button id="gm-imptiles" title="Use a tileset made in Sudo Make Tiles">Import tileset…</button>
+      <h4>Characters</h4><div id="gm-sprites"></div><button id="gm-impsprite" title="Use a sprite made in Sudo Make Pixels">Import sprite…</button>
+      <h4>Music</h4><div id="gm-music" class="hint"></div><div class="px-row"><button id="gm-impsong" title="Use a song made in Sudo Make Music">Import song…</button><button id="gm-rmsong">Remove</button></div>
+    </aside>
+    <div id="gm-center">
+      <div id="gm-levelbar" class="px-row"><select id="gm-level"></select><input id="gm-lname" maxlength="40" aria-label="Level name"><button id="gm-ladd" title="New level">+</button><button id="gm-ldup" title="Duplicate level">⧉</button><button id="gm-ldel" title="Delete level">🗑</button>
+        <label class="px-inl">W <input id="gm-lw" type="number" min="10" max="128"></label><label class="px-inl">H <input id="gm-lh" type="number" min="9" max="128"></label><button id="gm-lresize">Resize</button></div>
+      <div id="gm-tools" class="px-row"></div>
+      <div id="gm-stage"><div id="gm-board"><canvas id="gm-cv"></canvas></div></div>
+      <div id="gm-foot"><span id="gm-status"></span><span class="sp"></span><span id="gm-zoomctl"><button id="gm-zout">−</button><span id="gm-zoom">4×</span><button id="gm-zin">+</button></span></div>
+    </div>
+    <aside id="gm-side">
+      <h4>Game</h4>
+      <label>Kind of game <select id="gm-type"><option value="platformer">Platformer (jump and run)</option><option value="topdown">Top-down (walk in four directions)</option></select></label>
+      <label>Lives <select id="gm-lives"></select></label>
+      <label>Look <select id="gm-pal"><option value="green">Handheld green</option><option value="grey">Greys</option><option value="sepia">Sepia</option><option value="ice">Ice</option></select></label>
+      <label>Title screen <input id="gm-title" maxlength="60"></label><label>Win message <input id="gm-win" maxlength="60"></label>
+      <h4>Selected thing</h4><div id="gm-ent" class="hint">Click something in the level with the Select tool.</div>
+    </aside>
+  </div>
+  <div id="gm-playbox" hidden>
+    <div id="gm-playwrap"><canvas id="gm-screen"></canvas>
+      <div id="gm-pad"><div class="dpad"><button data-k="up">▲</button><button data-k="left">◀</button><button data-k="right">▶</button><button data-k="down">▼</button></div><div class="abtns"><button data-k="b">B</button><button data-k="a">A</button></div><button data-k="start" class="st">START</button></div>
+      <div class="hint">Arrow keys or W A S D to move · Z or Space = A (jump, talk) · Enter = Start</div><button id="gm-playclose" class="pri">■ Stop and go back</button></div>
+  </div>
+  <dialog id="gm-newdlg"><form method="dialog"><h3>New game?</h3><p class="hint">This starts a small ready-to-play game. The current one stays saved.</p><div class="px-row"><button id="gm-newok" class="pri">New game</button><button id="gm-newcancel">Cancel</button></div></form></dialog>
+  <dialog id="gm-opendlg"><form method="dialog"><h3 id="gm-picktitle">Open</h3><div id="gm-openlist"></div><label class="cv-chk" id="gm-pickopt" hidden><input id="gm-pickchk" type="checkbox" checked> <span id="gm-picktxt"></span></label><div class="px-row"><button id="gm-opencancel">Close</button></div></form></dialog>
+</section>
 <section id="soonview">
   <h1 id="soon-name"></h1><p id="soon-tag"></p><ul id="soon-plan"></ul>
   <p class="hint">This one is still being built. Tell me what it should do and it gets built next.</p>
@@ -185,7 +226,7 @@
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
   <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-folder">Open projects folder</button></div>
-  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option></select></div>
+  <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option></select></div>
   <div id="h-grid"></div>
 </section>
 <section id="vconvertview">
@@ -368,6 +409,8 @@
 <script src="src/tiles.js"></script>
 <script src="src/chip.js"></script>
 <script src="src/music.js"></script>
+<script src="src/gameengine.js"></script>
+<script src="src/games.js"></script>
 <script src="src/apps.js"></script>
 </body>
 </html>
