@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('vconvert:progress', cb),
     onFinished: cb => on('vconvert:finished', cb),
   },
+  writepdf: { render: (html, opts) => ipcRenderer.invoke('writepdf:render', html, opts) },
   savefiles: { save: (files, title) => ipcRenderer.invoke('savefiles:save', files, title) },
   vnpack: { build: (platform, name, json) => ipcRenderer.invoke('vnpack:build', platform, name, json) },
   gamepack: {

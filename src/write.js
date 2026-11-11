@@ -1,0 +1,149 @@
+// Sudo Write Stuff: the writing editor. Original code for this project. A document is one plain "sudo-make-write" JSON file holding a small,
+// strict subset of HTML (see src/writeformat.js), which can be exported as PDF, Word, LibreOffice, RTF, text, Markdown or a web page.
+(() => {
+'use strict';
+const $ = s => document.querySelector(s), SMA = window.SMA, F = window.SMA_wfmt;
+const el = (tag, attrs = {}, text) => { const e = Object.assign(document.createElement(tag), attrs); if (text !== undefined) e.textContent = text; return e; };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), numv = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? clamp(v, lo, hi) : d; };
+const paper = $('#wr-paper'), scroll = $('#wr-scroll'), msg = $('#wr-msg'), say = t => { msg.textContent = t; };
+const THEMES = ['paper', 'sepia', 'dark', 'night'];
+let name = 'Untitled document', pid = null, S = Object.assign({}, F.DEFAULTS, { theme: 'paper', goal: 0 }), zoomMode = 'fit', typewriter = false;
+const touch = () => document.dispatchEvent(new Event('sma-edit'));
+const TEMPLATES = [
+  ['Blank page', 'Start with nothing', '<p><br></p>', {}],
+  ['Story or novel', 'Title page, then chapters. Book font, roomy lines', '<h1 style="text-align:center">Title of Your Story</h1><p style="text-align:center">by Your Name</p><hr class="pb"><h2>Chapter One</h2><p>Once upon a time…</p>', { font: 'Georgia', size: 12, spacing: 1.5 }],
+  ['Notes', 'Headings and bullet lists', '<h1>Notes</h1><h2>Today</h2><ul><li>First point</li><li>Second point</li></ul><h2>To do</h2><ul><li>One thing</li></ul>', { font: 'Arial', size: 11, spacing: 1.15 }],
+  ['Essay or report', 'Title, headings, double spaced, page numbers', '<h1>Title</h1><p>Your Name · Course · Date</p><h2>Introduction</h2><p>Start writing here.</p><h2>Main part</h2><p><br></p><h2>Conclusion</h2><p><br></p>', { font: 'Times New Roman', size: 12, spacing: 2 }],
+  ['Letter', 'Sender, date, greeting, sign-off', '<p>Your Name<br>Your Address</p><p>Date</p><p>Dear …,</p><p>Write your letter here.</p><p>Sincerely,<br>Your Name</p>', { font: 'Times New Roman', size: 12, spacing: 1.15 }],
+  ['Screenplay', 'Typewriter font, scene headings, centred dialogue', '<h1 style="text-align:center">TITLE</h1><p style="text-align:center">Written by Your Name</p><hr class="pb"><p><b>FADE IN:</b></p><p><b>INT. LOCATION – DAY</b></p><p>Describe what we see.</p><p style="text-align:center">CHARACTER</p><p style="text-align:center">What they say goes here.</p>', { font: 'Courier New', size: 12, spacing: 1.0 }],
+];
+
+// ---------- the page on screen ----------
+function applySettings() {
+  const [pw] = F.PAGES[S.page], m = F.MARGINS[S.margin]; paper.style.width = pw + 'mm'; paper.style.padding = m + 'mm'; paper.style.fontFamily = F.fontCss(S.font); paper.style.fontSize = S.size + 'pt'; paper.style.lineHeight = String(S.spacing); paper.style.minHeight = F.PAGES[S.page][1] + 'mm'; paper.style.whiteSpace = 'pre-wrap'; paper.style.tabSize = '4';
+  $('#writeview').dataset.theme = S.theme; $('#wr-theme').value = S.theme; $('#wr-goal').value = S.goal || ''; fitZoom();
+}
+function fitZoom() { const sheet = $('#wr-sheet'); let z = zoomMode === 'fit' ? 1 : +zoomMode; if (zoomMode === 'fit') { const w = paper.offsetWidth || 794; z = clamp((scroll.clientWidth - 40) / w, 0.3, 1.6); } sheet.style.zoom = String(z); }
+window.addEventListener('resize', () => { if (document.body.classList.contains('write-mode')) fitZoom(); });
+function setHtml(html) { paper.innerHTML = F.sanitize(html) || '<p><br></p>'; for (const im of paper.querySelectorAll('img[data-w]')) im.style.width = im.dataset.w + '%'; refresh(); }
+const cleanHtml = () => { const c = paper.cloneNode(true); for (const f of c.querySelectorAll('font')) f.replaceWith(...f.childNodes); for (const i of c.querySelectorAll('img')) i.classList.remove('wsel'); return F.sanitize(c.innerHTML); };
+function serialize() { return JSON.stringify({ app: 'sudo-make-write', kind: 'write', v: 1, name, settings: S, html: cleanHtml() }); }
+function parse(json) { const o = JSON.parse(json); if (!o || o.app !== 'sudo-make-write' || o.v !== 1 || typeof o.html !== 'string' || o.html.length > 150e6) throw new Error('Not a Sudo Write Stuff file'); const s = o.settings || {}; return { name: String(o.name || 'Untitled document').slice(0, 120), settings: { page: F.PAGES[s.page] ? s.page : 'a4', margin: F.MARGINS[s.margin] ? s.margin : 'normal', spacing: numv(s.spacing, 1, 3, 1.15), font: F.FONTS.includes(s.font) ? s.font : 'Georgia', size: numv(s.size, 8, 24, 12), numbers: s.numbers !== false, theme: THEMES.includes(s.theme) ? s.theme : 'paper', goal: Math.round(numv(s.goal, 0, 10000000, 0)) }, html: F.sanitize(o.html) }; }
+function load(json) { const o = parse(json); name = o.name; S = o.settings; $('#wr-name').value = name; applySettings(); setHtml(o.html); }
+function newDoc(html, st) { pid = null; name = 'Untitled document'; S = Object.assign({}, F.DEFAULTS, { theme: S.theme, goal: 0 }, st || {}); $('#wr-name').value = name; applySettings(); setHtml(html || '<p><br></p>'); paper.focus(); }
+
+// ---------- outline and counts ----------
+const words = t => (t.trim().match(/\S+/g) || []).length;
+function refresh() {
+  const text = paper.innerText || '', n = words(text), pages = Math.max(1, Math.round(n / 450)); $('#wr-stats').textContent = `${n.toLocaleString()} word${n === 1 ? '' : 's'} · ${text.replace(/\s/g, '').length.toLocaleString()} characters · about ${pages} page${pages === 1 ? '' : 's'} · ${Math.max(1, Math.round(n / 230))} min to read`;
+  const g = S.goal || 0; $('#wr-goalbar').value = g ? Math.min(1, n / g) : 0; $('#wr-goalbar').style.visibility = g ? 'visible' : 'hidden';
+  const list = $('#wr-outlinelist'); list.textContent = ''; const hs = [...paper.querySelectorAll('h1,h2,h3')]; if (!hs.length) list.append(el('div', { className: 'hint' }, 'Headings you write show up here.')); for (const h of hs) { const d = el('div', { className: 'l' + h.tagName[1], title: h.textContent }, h.textContent.trim() || '(empty heading)'); d.onclick = () => { h.scrollIntoView({ block: 'center' }); const r = document.createRange(); r.selectNodeContents(h); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); paper.focus(); }; list.append(d); }
+}
+let rt = 0; const later = () => { clearTimeout(rt); rt = setTimeout(refresh, 250); };
+paper.addEventListener('input', () => { later(); touch(); updateTools(); if (typewriter) centerCaret(); });
+function centerCaret() { const s = getSelection(); if (!s.rangeCount) return; const r = s.getRangeAt(0).getBoundingClientRect(); if (!r.height) return; const box = scroll.getBoundingClientRect(); scroll.scrollTop += r.top - (box.top + box.height / 2); }
+
+// ---------- formatting ----------
+const exec = (c, v) => { paper.focus(); document.execCommand(c, false, v); updateTools(); later(); touch(); };
+const css = (c, v) => { paper.focus(); document.execCommand('styleWithCSS', false, true); document.execCommand(c, false, v); document.execCommand('styleWithCSS', false, false); later(); touch(); };
+function setSize(pt) { paper.focus(); document.execCommand('styleWithCSS', false, false); document.execCommand('fontSize', false, '7'); const made = []; for (const f of paper.querySelectorAll('font[size="7"]')) { const sp = el('span'); sp.style.fontSize = pt + 'pt'; sp.append(...f.childNodes); f.replaceWith(sp); made.push(sp); } if (made.length) { const r = document.createRange(); r.setStartBefore(made[0]); r.setEndAfter(made[made.length - 1]); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } later(); touch(); }
+function inCell() { const s = getSelection(); if (!s.rangeCount) return null; let n = s.anchorNode; while (n && n !== paper) { if (n.nodeType === 1 && (n.tagName === 'TD' || n.tagName === 'TH')) return n; n = n.parentNode; } return null; }
+const emptyCell = th => { const c = el(th ? 'th' : 'td'); c.append(el('p')); c.firstChild.append(el('br')); return c; };
+function tableOp(op) { const c = inCell(); if (op === 'insert') { const row = '<tr>' + '<td><p><br></p></td>'.repeat(3) + '</tr>'; exec('insertHTML', `<table data-new="1"><tbody><tr>${'<th><p><br></p></th>'.repeat(3)}</tr>${row.repeat(2)}</tbody></table><p><br></p>`); const nt = paper.querySelector('table[data-new]'); if (nt) { nt.removeAttribute('data-new'); const r = document.createRange(), cell = nt.querySelector('th,td'); r.selectNodeContents(cell); r.collapse(true); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); } return; } if (!c) { say('Click inside a table first.'); return; } const tr = c.parentNode, table = c.closest('table'), idx = [...tr.children].indexOf(c);
+  if (op === 'row') tr.after(...[(() => { const n = el('tr'); for (let i = 0; i < tr.children.length; i++) n.append(emptyCell(false)); return n; })()]); else if (op === 'col') for (const r of table.rows) { const n = emptyCell(r.rowIndex === 0 && r.children[0].tagName === 'TH'); r.children[idx] ? r.children[idx].after(n) : r.append(n); } else if (op === 'delrow') { if (table.rows.length > 1) tr.remove(); else table.remove(); } else if (op === 'delcol') { if (tr.children.length > 1) for (const r of table.rows) r.children[idx] && r.children[idx].remove(); else table.remove(); } else if (op === 'deltable') table.remove(); later(); touch(); }
+function pickLink() { const dlg = $('#wr-linkdlg'), s = getSelection(); const a = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode).closest && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode).closest('a'); $('#wr-linkurl').value = a ? a.getAttribute('href') : ''; paper._range = s.rangeCount ? s.getRangeAt(0).cloneRange() : null; dlg.showModal(); }
+const restoreRange = () => { paper.focus(); if (paper._range) { const s = getSelection(); s.removeAllRanges(); s.addRange(paper._range); } };
+$('#wr-linkok').onclick = e => { e.preventDefault(); const u = $('#wr-linkurl').value.trim(); $('#wr-linkdlg').close(); restoreRange(); if (/^(https?:\/\/|mailto:)/i.test(u)) exec('createLink', u); else if (u) { const v = 'https://' + u; exec('createLink', v); } };
+$('#wr-linkrm').onclick = e => { e.preventDefault(); $('#wr-linkdlg').close(); restoreRange(); exec('unlink'); }; $('#wr-linkcancel').onclick = e => { e.preventDefault(); $('#wr-linkdlg').close(); };
+// pictures
+async function pictureData(file) { if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) throw new Error(file.name + ' is not a picture (PNG, JPG, GIF or WebP).'); if (file.size > 30e6) throw new Error('That picture is too big (over 30 MB).'); const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Could not read the file')); r.readAsDataURL(file); }); if (file.type === 'image/gif') return url;
+  const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('That picture could not be opened.')); i.src = url; }), big = Math.max(im.naturalWidth, im.naturalHeight); if (big <= 1800 && file.type !== 'image/webp') return url; const k = Math.min(1, 1800 / big), c = el('canvas', { width: Math.round(im.naturalWidth * k), height: Math.round(im.naturalHeight * k) }); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); return c.toDataURL(file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png', 0.92); }
+async function insertPictures(files) { for (const f of files) { try { const src = await pictureData(f); paper.focus(); document.execCommand('insertHTML', false, `<img src="${src}" data-w="60" style="width:60%" alt="">`); } catch (e) { say(String(e.message || e)); } } later(); touch(); }
+let selImg = null; const imgbar = el('span', { className: 'wr-imgbar' });
+function selectImage(im) { if (selImg) selImg.classList.remove('wsel'); selImg = im; if (im) im.classList.add('wsel'); renderImgBar(); }
+function renderImgBar() { imgbar.textContent = ''; if (!selImg) return; const w = el('input', { type: 'range', min: 10, max: 100, step: 5, value: parseFloat(selImg.dataset.w) || 60, title: 'Picture width' }); w.oninput = () => { selImg.dataset.w = w.value; selImg.style.width = w.value + '%'; later(); touch(); }; imgbar.append(el('span', { className: 'hint' }, 'Picture:'), w); for (const [a, t] of [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']]) { const b = el('button', { type: 'button', textContent: t, className: (selImg.dataset.align || 'left') === a ? 'on' : '' }); b.onclick = () => { selImg.dataset.align = a; renderImgBar(); later(); touch(); }; imgbar.append(b); } const d = el('button', { type: 'button', textContent: 'Delete' }); d.onclick = () => { selImg.remove(); selectImage(null); later(); touch(); }; imgbar.append(d); }
+paper.addEventListener('click', e => { selectImage(e.target.tagName === 'IMG' ? e.target : null); });
+// paste and drop
+paper.addEventListener('paste', async e => { const cd = e.clipboardData; if (!cd) return; const files = [...cd.files].filter(f => /^image\//.test(f.type)); if (files.length) { e.preventDefault(); await insertPictures(files); return; } const html = cd.getData('text/html'); e.preventDefault(); if (html) document.execCommand('insertHTML', false, F.sanitize(html)); else document.execCommand('insertText', false, cd.getData('text/plain')); later(); touch(); });
+const DOCS = /\.(docx|odt|txt|md|markdown|html?)$/i;
+$('#writeview').addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+$('#writeview').addEventListener('drop', async e => { const fs = [...e.dataTransfer.files]; if (!fs.length) return; e.preventDefault(); const pics = fs.filter(f => /^image\//.test(f.type)), doc = fs.find(f => DOCS.test(f.name)); if (pics.length) { const r = document.caretRangeFromPoint && document.caretRangeFromPoint(e.clientX, e.clientY); if (r && paper.contains(r.startContainer)) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); } await insertPictures(pics); } else if (doc) await importFile(doc); });
+
+// ---------- the toolbar ----------
+const tools = $('#wr-tools'), btns = {};
+function addBtn(label, title, fn, key) { const b = el('button', { type: 'button', textContent: label, title }); b.onmousedown = e => e.preventDefault(); b.onclick = fn; tools.append(b); if (key) btns[key] = b; return b; }
+const sep = () => tools.append(el('span', { className: 'sep' }));
+function addSel(opts, onchange, title, w) { const s = el('select', { title }); for (const [v, t] of opts) s.append(el('option', { value: v }, t)); s.onchange = () => { const v = s.value; s.value = opts[0][0]; if (v !== '') onchange(v); }; if (w) s.style.width = w; tools.append(s); return s; }
+function buildTools() {
+  addBtn('↶', 'Undo (Ctrl+Z)', () => exec('undo')); addBtn('↷', 'Redo (Ctrl+Shift+Z)', () => exec('redo')); sep();
+  const st = addSel([['', 'Style…'], ['p', 'Paragraph'], ['h1', 'Heading 1'], ['h2', 'Heading 2'], ['h3', 'Heading 3'], ['q', 'Quote']], v => exec('formatBlock', v === 'q' ? 'blockquote' : v), 'Paragraph style'); btns.style = st;
+  addSel([['', 'Font…'], ...F.FONTS.map(f => [f, f])], v => css('fontName', v), 'Font'); addSel([['', 'Size…'], ...[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72].map(n => [String(n), n + ' pt'])], v => setSize(+v), 'Size'); sep();
+  addBtn('B', 'Bold (Ctrl+B)', () => exec('bold'), 'bold'); addBtn('I', 'Italic (Ctrl+I)', () => exec('italic'), 'italic'); addBtn('U', 'Underline (Ctrl+U)', () => exec('underline'), 'underline'); addBtn('S', 'Strikethrough', () => exec('strikeThrough'), 'strikeThrough'); addBtn('x²', 'Superscript', () => exec('superscript'), 'superscript'); addBtn('x₂', 'Subscript', () => exec('subscript'), 'subscript'); sep();
+  const c = el('input', { type: 'color', value: '#cc0000', title: 'Text colour' }); c.oninput = () => css('foreColor', c.value); tools.append(el('span', { className: 'hint' }, 'A'), c); const h = el('input', { type: 'color', value: '#ffee58', title: 'Highlight colour' }); h.oninput = () => css('hiliteColor', h.value); tools.append(el('span', { className: 'hint' }, '▮'), h); sep();
+  addBtn('⯇', 'Align left', () => exec('justifyLeft'), 'justifyLeft'); addBtn('≡', 'Centre', () => exec('justifyCenter'), 'justifyCenter'); addBtn('⯈', 'Align right', () => exec('justifyRight'), 'justifyRight'); addBtn('☰', 'Justify', () => exec('justifyFull'), 'justifyFull'); sep();
+  addBtn('• List', 'Bulleted list', () => exec('insertUnorderedList'), 'insertUnorderedList'); addBtn('1. List', 'Numbered list', () => exec('insertOrderedList'), 'insertOrderedList'); addBtn('⇤', 'Less indent', () => exec('outdent')); addBtn('⇥', 'More indent', () => exec('indent')); sep();
+  addBtn('Link', 'Make a link (Ctrl+K)', pickLink); addBtn('Picture', 'Add a picture (JPG, PNG, GIF, WebP)', () => $('#wr-imgfile').click());
+  addSel([['', 'Table…'], ['insert', 'Insert a 3 × 3 table'], ['row', 'Add a row below'], ['col', 'Add a column'], ['delrow', 'Delete this row'], ['delcol', 'Delete this column'], ['deltable', 'Delete the table']], tableOp, 'Tables');
+  addBtn('―', 'Horizontal line', () => exec('insertHorizontalRule')); addBtn('⏎ Page', 'Start a new page here', () => exec('insertHTML', '<hr class="pb"><p><br></p>')); addBtn('Tx', 'Clear formatting', () => { exec('removeFormat'); exec('formatBlock', 'p'); }); sep();
+  addBtn('Find…', 'Find and replace (Ctrl+F)', openFind); addBtn('Typewriter', 'Keep the line you are writing in the middle of the screen', e => { typewriter = !typewriter; btns.tw.classList.toggle('on', typewriter); if (typewriter) centerCaret(); }, 'tw'); tools.append(imgbar);
+}
+function updateTools() { for (const k of ['bold', 'italic', 'underline', 'strikeThrough', 'superscript', 'subscript', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'insertUnorderedList', 'insertOrderedList']) { try { btns[k].classList.toggle('on', document.queryCommandState(k)); } catch (e) {} } }
+document.addEventListener('selectionchange', () => { if (!document.body.classList.contains('write-mode')) return; const s = getSelection(); if (s.rangeCount && paper.contains(s.anchorNode)) { updateTools(); const t = s.toString(); if (t.trim()) $('#wr-stats').dataset.sel = words(t) + ' selected'; else delete $('#wr-stats').dataset.sel; } });
+paper.addEventListener('keydown', e => { if (e.key === 'Tab' && !e.ctrlKey && !e.altKey) { const c = inCell(), sl = getSelection(); const li = sl.anchorNode && (sl.anchorNode.nodeType === 1 ? sl.anchorNode : sl.anchorNode.parentNode).closest && (sl.anchorNode.nodeType === 1 ? sl.anchorNode : sl.anchorNode.parentNode).closest('li');
+    e.preventDefault(); if (c) { const cells = [...c.closest('table').querySelectorAll('td,th')], i = cells.indexOf(c) + (e.shiftKey ? -1 : 1); if (i >= cells.length) { tableOp('row'); const t = c.closest('table'); const last = [...t.querySelectorAll('td,th')]; const nc = last[i]; if (nc) { const r = document.createRange(); r.selectNodeContents(nc); r.collapse(true); sl.removeAllRanges(); sl.addRange(r); } } else if (cells[i]) { const r = document.createRange(); r.selectNodeContents(cells[i]); r.collapse(true); sl.removeAllRanges(); sl.addRange(r); } } else if (li) exec(e.shiftKey ? 'outdent' : 'indent'); else exec('insertText', '\t'); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pickLink(); } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')) { e.preventDefault(); openFind(); } });
+$('#wr-imgfile').onchange = async e => { const f = [...e.target.files]; e.target.value = ''; await insertPictures(f); };
+
+// ---------- find and replace ----------
+function openFind() { const s = getSelection().toString(); if (s && s.length < 80) $('#wr-find').value = s; $('#wr-findmsg').textContent = ''; $('#wr-finddlg').show(); $('#wr-find').focus(); }
+const findNext = (back = false) => { const t = $('#wr-find').value; if (!t) return false; paper.focus(); return window.find(t, $('#wr-case').checked, back, true, false, false, false); };
+$('#wr-findnext').onclick = e => { e.preventDefault(); $('#wr-findmsg').textContent = findNext() ? '' : 'Not found.'; };
+$('#wr-replone').onclick = e => { e.preventDefault(); const t = $('#wr-find').value, s = getSelection().toString(), same = $('#wr-case').checked ? s === t : s.toLowerCase() === t.toLowerCase(); if (same && t) { exec('insertText', $('#wr-repl').value); } $('#wr-findmsg').textContent = findNext() ? '' : 'No more matches.'; };
+$('#wr-replall').onclick = e => { e.preventDefault(); const t = $('#wr-find').value; if (!t) return; let n = 0; const s = getSelection(); const r = document.createRange(); r.selectNodeContents(paper); r.collapse(true); s.removeAllRanges(); s.addRange(r); paper.focus(); while (n < 20000 && findNext()) { document.execCommand('insertText', false, $('#wr-repl').value); n++; } $('#wr-findmsg').textContent = `Replaced ${n}.`; later(); touch(); };
+$('#wr-findclose').onclick = e => { e.preventDefault(); $('#wr-finddlg').close(); };
+$('#wr-find').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#wr-findnext').click(); } };
+
+// ---------- page settings, themes, focus ----------
+$('#wr-set').onclick = () => { const b = $('#wr-setbody'); b.textContent = ''; const row = (label, ctl) => { const l = el('label', {}, label + ' '); l.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin:6px 0'; l.append(ctl); b.append(l); }; const sel = (opts, v, set) => { const s = el('select'); for (const [k, t] of opts) s.append(el('option', { value: k }, t)); s.value = String(v); s.onchange = () => { set(s.value); applySettings(); touch(); }; return s; };
+  row('Page size', sel([['a4', 'A4 (210 × 297 mm)'], ['letter', 'US Letter (8.5 × 11 in)'], ['a5', 'A5 (148 × 210 mm)'], ['legal', 'US Legal (8.5 × 14 in)']], S.page, v => { S.page = v; })); row('Margins', sel([['normal', 'Normal (2.5 cm)'], ['narrow', 'Narrow (1.3 cm)'], ['wide', 'Wide (3.8 cm)']], S.margin, v => { S.margin = v; })); row('Line spacing', sel([['1', 'Single'], ['1.15', '1.15'], ['1.5', '1.5'], ['2', 'Double']], S.spacing, v => { S.spacing = +v; })); row('Font', sel(F.FONTS.map(f => [f, f]), S.font, v => { S.font = v; })); row('Text size', sel([8, 9, 10, 11, 12, 13, 14, 16, 18].map(n => [n, n + ' pt']), S.size, v => { S.size = +v; }));
+  const l = el('label', { className: 'cv-chk' }), c = el('input', { type: 'checkbox', checked: S.numbers }); c.onchange = () => { S.numbers = c.checked; touch(); }; l.style.cssText = 'flex-direction:row;margin:6px 0'; l.append(c, ' Page numbers in PDF, Word and LibreOffice files'); b.append(l, el('div', { className: 'hint' }, 'These apply to the whole document and to exported files. Text you format yourself (a different font or size) keeps its own look.')); $('#wr-setdlg').showModal(); };
+$('#wr-setok').onclick = e => { e.preventDefault(); $('#wr-setdlg').close(); };
+$('#wr-theme').onchange = e => { S.theme = e.target.value; applySettings(); touch(); }; $('#wr-zoom').onchange = e => { zoomMode = e.target.value; fitZoom(); };
+$('#wr-goal').onchange = e => { S.goal = Math.round(numv(e.target.value, 0, 10000000, 0)); refresh(); touch(); };
+$('#wr-outlinebtn').onclick = () => { $('#wr-outline').hidden = !$('#wr-outline').hidden; fitZoom(); };
+$('#wr-focus').onclick = () => { document.body.classList.add('wr-focus'); fitZoom(); paper.focus(); say(''); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('wr-focus')) { document.body.classList.remove('wr-focus'); fitZoom(); } });
+$('#wr-name').oninput = e => { name = e.target.value || 'Untitled document'; touch(); };
+
+// ---------- export ----------
+const safeName = () => (name || 'document').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'document';
+function download(blob, fname) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); }
+async function gifsToPng(blocks) { for (const b of blocks) { if (b.t === 'img' && b.info.ext === 'gif') { const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = b.src; }); const c = el('canvas', { width: im.naturalWidth, height: im.naturalHeight }); c.getContext('2d').drawImage(im, 0, 0); b.src = c.toDataURL('image/png'); b.info = F.imageInfo(b.src); } else if (b.t === 'list') for (const it of b.items) await gifsToPng(it.blocks); else if (b.t === 'table') for (const r of b.rows) for (const c of r) await gifsToPng(c.blocks); } return blocks; }
+async function exportAs(kind) {
+  const html = cleanHtml(); if (!html.trim()) { say('The document is empty.'); return; } say('Working…'); const blocks = F.toModel(html), base = safeName();
+  try {
+    if (kind === 'pdf') { const api = window.sma && window.sma.writepdf; if (!api) throw new Error('PDF export needs the desktop app.'); const bytes = await api.render(F.toHtmlDoc(html, name, S, { pdf: true }), { page: S.page, margin: S.margin, numbers: S.numbers }); download(new Blob([bytes], { type: 'application/pdf' }), base + '.pdf'); }
+    else if (kind === 'docx') download(new Blob([await F.toDocx(blocks, name, S)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), base + '.docx');
+    else if (kind === 'odt') download(new Blob([await F.toOdt(blocks, name, S)], { type: 'application/vnd.oasis.opendocument.text' }), base + '.odt');
+    else if (kind === 'rtf') download(new Blob([F.toRtf(await gifsToPng(blocks), S)], { type: 'application/rtf' }), base + '.rtf');
+    else if (kind === 'txt') download(new Blob([F.toText(blocks)], { type: 'text/plain;charset=utf-8' }), base + '.txt');
+    else if (kind === 'md') download(new Blob([F.toMarkdown(blocks)], { type: 'text/markdown;charset=utf-8' }), base + '.md');
+    else if (kind === 'html') download(new Blob([F.toHtmlDoc(html, name, S)], { type: 'text/html;charset=utf-8' }), base + '.html');
+    say(`Saved ${base}.${kind}`);
+  } catch (err) { say('Export failed: ' + String(err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')); }
+}
+$('#wr-export').onchange = e => { const v = e.target.value; e.target.value = ''; if (v) exportAs(v); };
+
+// ---------- new, open, import ----------
+$('#wr-new').onclick = () => { const box = $('#wr-templates'); box.textContent = ''; for (const [t, d, html, st] of TEMPLATES) { const b = el('button', { type: 'button', className: 'op' }); b.append(el('b', {}, t), el('small', {}, ' ' + d)); b.onclick = () => { $('#wr-newdlg').close(); newDoc(html, st); }; box.append(b); } $('#wr-newdlg').showModal(); };
+$('#wr-newcancel').onclick = e => { e.preventDefault(); $('#wr-newdlg').close(); };
+$('#wr-open').onclick = async () => { const dlg = $('#wr-opendlg'), box = $('#wr-openlist'); dlg.showModal(); box.textContent = 'Loading…'; let items = []; try { items = (await SMA.store.list()).filter(i => i.type === 'write'); } catch (e) {} box.textContent = ''; if (!items.length) box.append(el('p', { className: 'hint' }, 'No saved documents yet. Everything you write is saved automatically.'));
+  items.forEach(i => { const b = el('button', { type: 'button', className: 'op' }); if (i.thumb) b.append(Object.assign(el('img'), { src: i.thumb, alt: '' })); b.append(el('b', {}, i.name || 'Untitled')); b.onclick = async () => { try { const r = await SMA.store.get(i.id); if (r) { load(r.data); pid = r.id; } dlg.close(); } catch (err) { box.prepend(el('p', { className: 'mh-bad' }, String(err.message || err))); } }; box.append(b); }); };
+$('#wr-opencancel').onclick = e => { e.preventDefault(); $('#wr-opendlg').close(); };
+async function importFile(f) { try { if (f.size > 120e6) throw new Error('That file is too big.'); const ext = (f.name.split('.').pop() || '').toLowerCase(); let html; if (ext === 'docx') html = await F.fromDocx(new Uint8Array(await f.arrayBuffer())); else if (ext === 'odt') html = await F.fromOdt(new Uint8Array(await f.arrayBuffer())); else if (ext === 'md' || ext === 'markdown') html = F.fromMarkdown(await f.text()); else if (ext === 'html' || ext === 'htm') html = F.fromHtml(await f.text()); else if (ext === 'txt') html = F.fromText(await f.text()); else throw new Error('Open .docx, .odt, .txt, .md or .html files.'); newDoc(html, {}); name = f.name.replace(/\.[^.]+$/, '').slice(0, 120); $('#wr-name').value = name; touch(); say(`Opened ${f.name}.`); } catch (e) { say(String(e.message || e)); } }
+$('#wr-import').onclick = () => $('#wr-importfile').click(); $('#wr-importfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) await importFile(f); };
+
+const thumb = () => { try { const c = el('canvas', { width: 200, height: 120 }), x = c.getContext('2d'); x.fillStyle = '#e6e6e3'; x.fillRect(0, 0, 200, 120); x.fillStyle = '#fff'; x.fillRect(50, 8, 100, 112); x.fillStyle = '#222'; x.font = 'bold 9px sans-serif'; x.fillText(name.slice(0, 22), 56, 24); x.fillStyle = '#777'; x.font = '6px sans-serif'; const lines = (paper.innerText || '').split('\n').filter(Boolean).slice(0, 12); lines.forEach((t, i) => x.fillText(t.slice(0, 40), 56, 36 + i * 7)); return Promise.resolve(c.toDataURL('image/jpeg', 0.7)); } catch (e) { return Promise.resolve(null); } };
+const api = { serialize, thumb, getPid: () => pid, setPid: p => { pid = p; }, getName: () => name, setName: n => { name = n; $('#wr-name').value = n; }, load, parse, exportAs, importFile, html: cleanHtml, setHtml, settings: () => S, info: () => ({ words: words(paper.innerText || ''), name }), show() { applySettings(); refresh(); }, hide() { document.body.classList.remove('wr-focus'); }, reset() { newDoc('<p><br></p>', {}); } };
+window.SMA_write = api; buildTools(); newDoc(TEMPLATES[0][2], TEMPLATES[0][3]);
+})();

@@ -8,7 +8,7 @@ const APPS = [
   { id: 'video', name: 'Sudo Make Video', tag: 'Cut, caption and export videos', ready: true, mode: 'video' },
   { id: 'tcg', name: 'Sudo Make TCG', tag: 'Trading cards and whole decks: frames, art, stats, print sheets', ready: true, mode: 'tcg' },
   { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages: panels, bubbles, tones', ready: true, beta: true, mode: 'manga' },
-  { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts', plan: ['Distraction-free writing', 'Chapters and an outline', 'Export to common formats'] },
+  { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts: write, then export as PDF, Word, LibreOffice', ready: true, mode: 'write' },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
   { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune tracker for retro handheld-style music', ready: true, mode: 'music' },
