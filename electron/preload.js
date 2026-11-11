@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('vconvert:progress', cb),
     onFinished: cb => on('vconvert:finished', cb),
   },
+  vnpack: { build: (platform, name, json) => ipcRenderer.invoke('vnpack:build', platform, name, json) },
   gamepack: {
     status: () => ipcRenderer.invoke('gamepack:status'),
     build: (platform, name, html) => ipcRenderer.invoke('gamepack:build', platform, name, html),

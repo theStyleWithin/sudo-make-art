@@ -71,6 +71,7 @@ body.tiles-mode #tilesview{display:flex}
 body.music-mode #musicview{display:flex}
 body.games-mode #gamesview{display:flex}
 body.manga-mode #mangaview{display:flex}
+body.vn-mode #vnview{display:flex}
 body.vconvert-mode #vconvertview{display:flex}
 .v-top{display:flex;gap:6px;align-items:center;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
 #v-time{font-variant-numeric:tabular-nums;min-width:120px}
@@ -265,7 +266,7 @@ body.home-mode #home{display:flex}
 #soonview{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
 #soonview h1{margin:0;color:var(--acc)}#soonview p{margin:0;opacity:.75}#soonview ul{margin:8px 0;padding:0;list-style:none;opacity:.85;line-height:1.8}#soonview .hint{font-size:12px;opacity:.55}
 body.app-soon #soonview{display:flex}
-body.app-soon main,body.app-soon footer,body.app-soon #pages,body.app-soon #videoview,body.app-soon #pixview,body.app-soon #tilesview,body.app-soon #musicview,body.app-soon #gamesview,body.app-soon #mangaview,body.app-soon #convertview,body.app-soon #vconvertview,body.app-soon #home,body.app-soon .modes,body.app-soon .dz,body.app-soon .nm{display:none!important}
+body.app-soon main,body.app-soon footer,body.app-soon #pages,body.app-soon #videoview,body.app-soon #pixview,body.app-soon #tilesview,body.app-soon #musicview,body.app-soon #gamesview,body.app-soon #mangaview,body.app-soon #vnview,body.app-soon #convertview,body.app-soon #vconvertview,body.app-soon #home,body.app-soon .modes,body.app-soon .dz,body.app-soon .nm{display:none!important}
 
 #pixview{display:none;flex:1;flex-direction:column;min-height:0}
 body.pixels-mode main,body.pixels-mode footer,body.pixels-mode #pages,body.pixels-mode #videoview,body.pixels-mode .modes,body.pixels-mode .dz,body.pixels-mode .nm{display:none}
@@ -384,3 +385,22 @@ body.manga-mode main,body.manga-mode footer,body.manga-mode #pages,body.manga-mo
 #mg-lib{display:flex;flex-direction:column;gap:8px}.mgl{display:flex;gap:8px;align-items:center;padding:4px;border:1px solid var(--line);border-radius:8px}.mgl canvas{width:46px;height:62px;background:#fff;border-radius:4px;cursor:grab;flex:none}.mgl .nm{flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis}.mgl .nm small{display:block;opacity:.55;font-size:10px}.mgl button{padding:2px 6px;font-size:11px}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px}.tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px;border:2px solid var(--line);border-radius:8px;background:#fff;color:#223;font-size:10.5px;cursor:pointer}.tile canvas{width:100%;height:auto;display:block;border-radius:5px}.tile.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}.tile:hover{border-color:var(--acc)}.tilelab{font-size:12px;opacity:.8;margin-top:4px}
+
+#vnview{display:none;flex:1;flex-direction:column;min-height:0}
+body.vn-mode main,body.vn-mode footer,body.vn-mode #pages,body.vn-mode #videoview,body.vn-mode .modes,body.vn-mode .dz,body.vn-mode .nm{display:none}
+#vn-bar{display:flex;gap:6px;align-items:center;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}#vn-name{width:220px}#vn-prog{width:140px}
+#vn-main{flex:1;display:flex;min-height:0}
+#vn-left{width:290px;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0}#vn-tabs{padding:6px;flex-wrap:wrap}#vn-tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#vn-lbody{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+#vn-center{flex:1;min-width:0;display:flex;flex-direction:column}#vn-sh{padding:8px 12px;font-weight:700;border-bottom:1px solid var(--line)}#vn-steps{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px}#vn-add{display:flex;gap:4px;flex-wrap:wrap;padding:8px;border-top:1px solid var(--line);background:var(--panel)}
+#vn-right{width:340px;padding:10px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:8px;overflow:auto}
+#vn-prevwrap{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden}#vn-prev{width:100%;height:100%}
+.vns{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--line);border-left:5px solid var(--c,#667);border-radius:8px;background:var(--panel)}.vns.on{outline:2px solid var(--acc)}.vns.over{box-shadow:0 -3px 0 var(--acc)}
+.vns .tp{width:84px;flex:none;font-size:11px;text-transform:uppercase;font-weight:700;opacity:.8;padding-top:5px;cursor:grab}.vns .fl{flex:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}.vns .fl label{display:flex;gap:4px;align-items:center;font-size:12px}.vns textarea{flex:1 1 280px;min-height:46px;resize:vertical}.vns .tl{display:flex;gap:2px}.vns .tl button{padding:2px 6px}
+.vns .opt{flex-basis:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.vns input[type=text]{min-width:120px}.vns input[type=number]{width:70px}
+.vnrow{display:flex;gap:6px;align-items:center;padding:5px 6px;border:1px solid var(--line);border-radius:8px;cursor:pointer}.vnrow.on{outline:2px solid var(--acc)}.vnrow.over{box-shadow:0 -3px 0 var(--acc)}.vnrow .nm2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vnrow input{flex:1;min-width:0}
+.vngrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}.vnth{position:relative;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:11px;display:flex;flex-direction:column;gap:2px;cursor:grab}.vnth img,.vnth canvas{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:5px;background:#222}.vnth button{position:absolute;right:3px;top:3px;padding:0 5px}.vnth input{width:100%}
+.vndrop{outline:3px dashed var(--acc);outline-offset:-6px}
+.vnbox{border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px}.vnbox h5{margin:0;font-size:12px}.vnbox label{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.vn-fs{position:fixed;inset:0;z-index:200;background:#000}.vn-fsr{position:absolute;inset:0}.vn-fsx{position:absolute;top:10px;right:10px;z-index:3;opacity:.7}.vn-fsx:hover{opacity:1}
+.vns select.bad,.vns select option.bad{border-color:#e55;color:#e55}

@@ -7,13 +7,13 @@ const APPS = [
   { id: 'art', name: 'Sudo Make Art', tag: 'Designs, thumbnails, photos, conversion', ready: true, mode: 'home' },
   { id: 'video', name: 'Sudo Make Video', tag: 'Cut, caption and export videos', ready: true, mode: 'video' },
   { id: 'tcg', name: 'Sudo Make TCG', tag: 'Trading cards and whole decks', plan: ['Card templates and frames', 'Art box, name, stats and rules text', 'Print sheets for a whole deck'] },
-  { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages: panels, bubbles, tones', ready: true, mode: 'manga' },
+  { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages: panels, bubbles, tones', ready: true, beta: true, mode: 'manga' },
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts', plan: ['Distraction-free writing', 'Chapters and an outline', 'Export to common formats'] },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
   { id: 'music', name: 'Sudo Make Music', tag: 'Chiptune tracker for retro handheld-style music', ready: true, mode: 'music' },
   { id: 'games', name: 'Sudo Make Games', tag: 'Game Boy-style games from your tiles, sprites and music', ready: true, mode: 'games' },
-  { id: 'vn', name: 'Sudo Make Visual Novel', tag: 'Visual novels', plan: ['Scenes, characters and dialogue', 'Branching choices', 'Export a playable story'] },
+  { id: 'vn', name: 'Sudo Make Visual Novel', tag: 'Visual novels: scenes, characters, choices, music', ready: true, beta: true, mode: 'vn' },
 ];
 const KEY = 'sma-app';
 let cur = 'art';
@@ -25,7 +25,7 @@ function build() {
   APPS.forEach(a => {
     const b = el('button', { type: 'button', role: 'menuitemradio', className: 'app-item' + (a.id === cur ? ' on' : '') });
     b.setAttribute('aria-checked', String(a.id === cur));
-    b.append(el('b', {}, a.name), el('small', {}, a.tag), el('span', { className: 'app-tag' }, a.ready ? '' : 'Coming soon'));
+    b.append(el('b', {}, a.name), el('small', {}, a.tag), el('span', { className: 'app-tag' }, a.ready ? (a.beta ? 'Beta' : '') : 'Coming soon'));
     b.onclick = () => { choose(a.id); close(); btn.focus(); };
     menu.append(b);
   });
@@ -34,7 +34,7 @@ function open() { build(); menu.hidden = false; btn.setAttribute('aria-expanded'
 function close() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
 function choose(id, quiet) {
   const a = APPS.find(x => x.id === id) || APPS[0]; cur = a.id;
-  $('#appname').textContent = a.name; document.title = a.name;
+  $('#appname').textContent = a.name + (a.beta ? ' (beta)' : ''); document.title = a.name;
   document.body.classList.toggle('app-soon', !a.ready);
   if (a.ready) { if (!(quiet && a.id === 'art')) window.SMA && window.SMA.setMode(a.mode); }
   else { $('#soon-name').textContent = a.name; $('#soon-tag').textContent = a.tag; const ul = $('#soon-plan'); ul.textContent = ''; (a.plan || []).forEach(t => ul.append(el('li', {}, t))); }
