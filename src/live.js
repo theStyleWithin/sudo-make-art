@@ -390,7 +390,7 @@ function menus(name) {
   if (name === 'Docks') return ['scenes', 'sources', 'mixer'].map(k => ({ label: (st.docks[k] !== false ? '✓ ' : '') + ({ scenes: 'Scenes', sources: 'Sources', mixer: 'Audio Mixer' })[k], fn: () => { st.docks[k] = st.docks[k] === false; save(); layout(); } }));
   if (name === 'Profile') return [...Object.keys(st.profiles).map(n => ({ label: 'Load: ' + n, fn: () => { Object.assign(st.set, st.profiles[n]); sizeCanvas(true); loop(); save(); render(); notify('Loaded the profile "' + n + '".'); } })), ...(Object.keys(st.profiles).length ? ['sep'] : []),
     { label: 'Save the current output settings as…', fn: profileSave }, ...Object.keys(st.profiles).map(n => ({ label: 'Delete: ' + n, danger: true, fn: () => { delete st.profiles[n]; save(); } }))];
-  if (name === 'Tools') return [{ label: 'Back up settings now', fn: backupNow }, { label: 'Restore settings from a backup…', fn: restoreDialog }, 'sep', { label: 'Stream key storage…', fn: keyInfo }];
+  if (name === 'Tools') return [{ label: 'Import from HopCast…', fn: () => window.SMA_profile && SMA_profile.importHopcast() }, { label: 'Import a Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.importProfile() }, { label: 'Export my Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.exportProfile() }, 'sep', { label: 'Back up settings now', fn: backupNow }, { label: 'Restore settings from a backup…', fn: restoreDialog }, 'sep', { label: 'Stream key storage…', fn: keyInfo }];
   if (name === 'Help') return [{ label: 'How Sudo Make Live works', fn: helpDialog }, { label: 'Mouse and keyboard tips', fn: tipsDialog }];
   return [];
 }
@@ -508,6 +508,49 @@ document.addEventListener('sma-mode', ev => {
   else if (!status.live) { clearInterval(timer); [...rt.keys()].forEach(dropRuntime); } // leaving without streaming: let go of the screen and camera
 });
 async function dailyBackup() { try { const last = +localStorage.getItem('sma-live-backup') || 0; if (Date.now() - last > 864e5) { await api.backup(JSON.stringify(st, (k, v) => (k[0] === '_' ? undefined : v))); localStorage.setItem('sma-live-backup', String(Date.now())); } } catch (e) {} }
-window.SMA_live = { goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
+// ---------- importing a HopCast profile (see electron/profile.js and src/profile.js) ----------
+const PRESETS = ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast'];
+async function importHopcast(sel) { // sel: { profile, collections: [...], channels: [...], audio: bool, global: bool, recordDir: bool }
+  const pr = window.sma.profile, done = { settings: 0, collections: 0, items: 0, channels: 0, audio: 0 }, skipped = [];
+  if (sel.profile) { const p = sel.profile, [rw, rh] = [p.width, p.height]; let best = '1280x720', d0 = 1e12; for (const [k, [w, h]] of Object.entries(RES)) { const d = Math.abs(w - rw) + Math.abs(h - rh); if (d < d0) { d0 = d; best = k; } }
+    st.set.res = best; st.set.fps = [24, 30, 60].reduce((a, b) => (Math.abs(b - p.fps) < Math.abs(a - p.fps) ? b : a), 30); st.set.vbr = Math.max(300, Math.min(60000, Math.round(p.vbr))); st.set.abr = Math.max(32, Math.min(512, Math.round(p.abr)));
+    st.set.encoder = p.nvenc && info.nvenc ? 'nvenc' : 'x264'; if (PRESETS.includes(p.preset)) st.set.preset = p.preset; st.set.recFormat = p.recFormat; sizeCanvas(true); loop(); done.settings = 1;
+    if (sel.recordDir && p.recordDir) { try { info.recordDir = await api.setDir(p.recordDir); } catch (e) { skipped.push('The recording folder (' + p.recordDir + ') does not exist on this computer.'); } } }
+  const [cw, ch] = RES[st.set.res];
+  for (const col of sel.collections || []) {
+    const k = cw / (col.baseW || (sel.profile && sel.profile.baseW) || 1920), scenes = [];
+    for (const sc of col.scenes) {
+      const items = [];
+      for (const it of sc.items) {
+        const base = { id: uid(), name: it.name, visible: it.visible, lock: it.lock, x: it.x * k, y: it.y * k, w: 0, h: 0 };
+        try {
+          if (it.kind === 'image' || it.kind === 'media') {
+            const f = await pr.readFile(it.file), file = new File([f.bytes], f.name, { type: it.kind === 'image' ? 'image/' + (f.name.split('.').pop() || 'png').toLowerCase().replace('jpg', 'jpeg') : '' });
+            const rec = await window.SMA.addSourceRec(file); if (!rec) { skipped.push(`"${it.name}": the file type is not supported.`); continue; }
+            let nw = 0, nh = 0; if (it.kind === 'image') { const u = URL.createObjectURL(file), im = new Image(); im.src = u; try { await im.decode(); nw = im.naturalWidth; nh = im.naturalHeight; } catch (e) {} URL.revokeObjectURL(u); }
+            else { const u = URL.createObjectURL(file), v = el('video', { src: u, preload: 'metadata' }); await new Promise(r => { v.onloadedmetadata = r; v.onerror = r; setTimeout(r, 4000); }); nw = v.videoWidth; nh = v.videoHeight; URL.revokeObjectURL(u); }
+            Object.assign(base, { kind: it.kind, src: rec.id, loop: !!it.loop, vol: 1, w: it.bw ? it.bw * k : (nw || 640) * it.sx * k, h: it.bh ? it.bh * k : (nh || 360) * it.sy * k });
+          } else if (it.kind === 'text') Object.assign(base, { kind: 'text', text: it.text, size: Math.max(8, Math.round(it.size * k)), color: it.color, font: it.face || 'Arial', bold: it.bold, stroke: false });
+          else if (it.kind === 'color') Object.assign(base, { kind: 'color', color: it.color, w: it.bw ? it.bw * k : (it.w0 || col.baseW || 1920) * it.sx * k, h: it.bh ? it.bh * k : (it.h0 || col.baseH || 1080) * it.sy * k });
+          else if (it.kind === 'camera' || it.kind === 'screen') Object.assign(base, { kind: it.kind, device: '', sourceId: '', w: it.bw ? it.bw * k : 1280 * it.sx * k, h: it.bh ? it.bh * k : 720 * it.sy * k });
+          else continue;
+          items.push(base); done.items++;
+        } catch (e) { skipped.push(`"${it.name}": ${clean(e)}`); }
+      }
+      scenes.push({ id: uid(), name: sc.name, items });
+    }
+    if (!scenes.length) scenes.push({ id: uid(), name: 'Scene 1', items: [] });
+    let name = col.name; while (st.cols.some(c => c.name === name)) name += ' (HopCast)';
+    st.cols.push({ id: uid(), name, scenes, cur: 0, sel: null }); st.col = st.cols.length - 1; progId = null; done.collections++;
+    if (col.transition) st.trans = { type: col.transition, ms: Math.max(100, Math.min(2000, col.transitionMs || 300)) };
+    for (const a of col.audio || []) if (sel.audio && !st.audio.some(x => x.name === a.name)) { st.audio.push({ id: uid(), name: a.name, device: '', vol: a.vol, mute: a.mute }); done.audio++; }
+  }
+  if (sel.global && sel.globalData) { if (sel.globalData.snap) st.snap = { ...st.snap, ...sel.globalData.snap }; if (sel.globalData.tray && window.sma.tray) { try { await window.sma.tray.set(sel.globalData.tray); } catch (e) {} } }
+  for (const c of sel.channels || []) { if (channels.some(x => x.url === c.url && x.key === c.key)) { skipped.push(`Channel "${c.name}" is already here.`); continue; } channels.push({ id: uid(), ...c, enabled: false }); done.channels++; }
+  if (done.channels) await persistChannels();
+  save(); render(); chbar(); return { done, skipped };
+}
+function liveReloadFromStorage() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j) { Object.keys(st).forEach(k => delete st[k]); Object.assign(st, j); } } catch (e) {} }
+window.SMA_live = { ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
 icons(); menubar(); bottom(); render();
 })();
