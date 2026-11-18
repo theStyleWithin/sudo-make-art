@@ -19,6 +19,7 @@ const PRESETS = { // what each choice does; crf = [default, min, max]
   'webm-av1': { ext: '.webm', v: 'av1', crf: [38, 20, 50] },
   'mkv-h265': { ext: '.mkv', v: 'hevc', crf: [26, 18, 40] },
   'mkv-av1': { ext: '.mkv', v: 'av1', crf: [38, 20, 50] },
+  'mpg-mpeg2': { ext: '.mpg', v: 'mpeg2', crf: [4, 2, 12] }, // MPEG-2 video + MP2 audio in a program stream; "crf" here is the encoder's quality scale (lower = better)
   'mkv-remux': { ext: '.mkv', v: 'copy' },
   'mp4-remux': { ext: '.mp4', v: 'copy' },
   'audio-mp3': { ext: '.mp3', v: 'none' },
@@ -101,9 +102,10 @@ function buildArgs(spec, src, info, out, perJob) {
     const k = clamp(spec.audioKbps, 64, 320, 192);
     return [...a, '-vn', '-map', '0:a:0', '-map_metadata', '0', '-c:a', 'libmp3lame', '-b:a', k + 'k', out];
   }
-  a.push('-map', '0:v:0', '-map', '0:a?');
+  const mpg = P.ext === '.mpg'; // an MPG holds one audio track and no chapters
+  a.push('-map', '0:v:0', '-map', mpg ? '0:a:0?' : '0:a?');
   if (P.ext === '.mkv') a.push('-map', '0:s?'); // MKV can hold any subtitles unchanged
-  a.push('-map_metadata', '0', '-map_chapters', '0');
+  a.push('-map_metadata', '0', '-map_chapters', mpg ? '-1' : '0');
   const cap = clamp(spec.maxHeight, 0, 8640, 0), vf = [];
   if (P.v !== 'copy') {
     if (cap && info.height > cap) vf.push(`scale=-2:${cap}:flags=lanczos`);
@@ -115,12 +117,14 @@ function buildArgs(spec, src, info, out, perJob) {
     else if (P.v === 'h264') a.push('-c:v', 'libx264', '-preset', ['veryfast', 'medium', 'slower'][slow], '-crf', String(crf), ...th);
     else if (P.v === 'hevc') a.push('-c:v', 'libx265', '-preset', ['veryfast', 'medium', 'slower'][slow], '-crf', String(crf), ...(P.ext === '.mp4' ? ['-tag:v', 'hvc1'] : []), '-x265-params', 'log-level=error', ...th);
     else if (P.v === 'vp9') a.push('-c:v', 'libvpx-vp9', '-crf', String(crf), '-b:v', '0', '-row-mt', '1', '-cpu-used', ['5', '3', '1'][slow], ...th);
+    else if (P.v === 'mpeg2') a.push('-c:v', 'mpeg2video', '-q:v', String(crf), '-g', '15', '-bf', '2', ...th);
     else if (P.v === 'av1' && encCache && encCache.svtav1) a.push('-c:v', 'libsvtav1', '-crf', String(crf), '-preset', ['10', '6', '4'][slow], '-svtav1-params', 'lp=' + perJob);
     else if (P.v === 'av1') a.push('-c:v', 'libaom-av1', '-crf', String(crf), '-b:v', '0', '-row-mt', '1', '-cpu-used', ['7', '5', '3'][slow], ...th);
     a.push('-vf', vf.join(','));
   } else a.push('-c:v', 'copy');
   // audio
-  if (P.ext === '.webm') a.push('-c:a', 'libopus', '-b:a', clamp(spec.audioKbps, 64, 320, 160) + 'k');
+  if (mpg) a.push('-c:a', 'mp2', '-b:a', clamp(spec.audioKbps, 64, 384, 192) + 'k', '-ar', '48000', '-ac', '2');
+  else if (P.ext === '.webm') a.push('-c:a', 'libopus', '-b:a', clamp(spec.audioKbps, 64, 320, 160) + 'k');
   else if (spec.audio === 'copy' || P.v === 'copy') a.push('-c:a', 'copy');
   else a.push('-c:a', 'aac', '-b:a', clamp(spec.audioKbps, 64, 320, 160) + 'k');
   if (P.ext === '.mkv') a.push('-c:s', 'copy'); else a.push('-sn');
@@ -128,7 +132,7 @@ function buildArgs(spec, src, info, out, perJob) {
   return [...a, out];
 }
 
-const targetCodecName = { h264: 'h264', hevc: 'hevc', vp9: 'vp9', av1: 'av1' };
+const targetCodecName = { h264: 'h264', hevc: 'hevc', vp9: 'vp9', av1: 'av1', mpeg2: 'mpeg2video' };
 
 // Converts one file. Returns {status, outPath, outSize, note}.
 async function convertOne(it, spec, job, report) {
