@@ -523,3 +523,12 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #vtdlg .caprow{display:grid;grid-template-columns:90px 90px 1fr 30px;gap:6px;margin-bottom:4px}
 #vtdlg .bar{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 #vtdlg .hint{font-size:12px;opacity:.7}
+
+/* source folders */
+#srccrumbs{font-size:11px;opacity:.9;margin:4px 0 8px;display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+#srccrumbs .crumb{border:0;background:none;padding:1px 4px;border-radius:4px;color:inherit}
+#srccrumbs .crumb.on{font-weight:700}
+#srccrumbs .crumb.over,.src.fld.over{outline:2px solid #8b5cf6;background:#8b5cf633}
+.src.fld .ico{font-size:34px}
+.src .x.r{right:26px}
+.src.fld .rn{width:100%;font-size:11px;padding:1px 3px;margin-top:3px}

@@ -61,6 +61,9 @@ Exports leave out hidden personal details. Image conversions, the design export 
 - **Forms**: text fields, checkboxes, radio buttons, switches, dropdowns, buttons, search bars, sliders, ratings, progress bars and tabs, for mock-ups.
 - **New design window**: more sizes (flyers, postcards, invitations, logos, web banners and ads), custom sizes in pixels, inches, millimetres or centimetres with a ratio lock, and Docs and Videos entries that open the writing app and the video editor.
 
+## Source folders
+The Sources panel (design editor) now has folders. Press **+ Folder**, name it, and drag any picture, video, audio file or font into it, or drop files from your computer straight onto a folder. Folders can hold folders, can be dragged into each other or onto the breadcrumb path (Library › Photos › Holiday) to move them, and can be renamed any time with the pencil button or by double-clicking the name. Deleting a folder moves what is inside up one level; nothing inside is deleted. The folder layout is saved on this device.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 

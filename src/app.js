@@ -421,28 +421,66 @@ const idb = () => new Promise((res, rej) => { const r = indexedDB.open('sudo-mak
 async function dbDo(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const q = fn(db.transaction('sources', mode).objectStore('sources')); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
 let sources = [], thumbURLs = [];
 async function loadSources() { try { sources = (await dbDo('readonly', st => st.getAll())).sort((a, b) => a.added - b.added); } catch (e) { sources = []; } renderSources(); }
-async function addSource(file, meta) {
+async function addSource(file, meta, folder = null) {
   const kind = kindOf(file); if (!kind) return null;
   const dup = sources.find(x => x.name === file.name && x.blob.size === file.size); if (dup) return dup; // already in the library
-  const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now(), ...(meta && typeof meta.fontName === 'string' ? { fontName: meta.fontName.slice(0, 80) } : {}) };
+  const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now(), folder, ...(meta && typeof meta.fontName === 'string' ? { fontName: meta.fontName.slice(0, 80) } : {}) };
   try { await dbDo('readwrite', st => st.put(rec)); } catch (e) { alert('Could not save to the local library: ' + e.message); }
   sources.push(rec); renderSources(); return rec;
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
 window.SMA = { ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+// ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
+let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
+let curFolder = null, renamingFolder = null;
+const saveFolders = () => { try { localStorage.setItem('sma-folders', JSON.stringify(folders)); } catch (e) {} };
+const folderOf = id => folders.find(f => f.id === id);
+const validFolder = id => (id && folderOf(id) ? id : null);
+const inside = (id, anc) => { for (let f = folderOf(id), n = 0; f && n < 99; f = folderOf(f.parent), n++) if (f.id === anc) return true; return false; }; // is id anc or inside anc?
+async function moveSource(id, folder) { const sr = sources.find(x => x.id === id); if (!sr) return; sr.folder = folder; try { await dbDo('readwrite', st => st.put(sr)); } catch (e) {} renderSources(); }
+function moveFolder(id, parent) { const f = folderOf(id); if (!f || (parent && inside(parent, id)) || f.parent === parent) return; f.parent = parent; saveFolders(); renderSources(); }
+function newFolder() { const f = { id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: 'New folder', parent: curFolder }; folders.push(f); saveFolders(); renamingFolder = f.id; renderSources(); }
+function deleteFolder(id) { const f = folderOf(id); if (!f) return; const n = sources.filter(s => s.folder === id).length + folders.filter(x => x.parent === id).length;
+  if (n && !confirm(`Delete the folder "${f.name}"? Its ${n} item${n > 1 ? 's' : ''} move up one level. Nothing in it is deleted.`)) return;
+  folders.filter(x => x.parent === id).forEach(x => { x.parent = f.parent; }); sources.filter(s => s.folder === id).forEach(s => { s.folder = f.parent; dbDo('readwrite', st => st.put(s)).catch(() => {}); });
+  folders = folders.filter(x => x.id !== id); if (curFolder === id || inside(curFolder, id)) curFolder = f.parent; saveFolders(); renderSources(); }
+function dropOnFolder(ev, target) { // target: folder id or null (the top level)
+  ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.classList.remove('over');
+  const sid = ev.dataTransfer.getData('text/sma-source'), fid = ev.dataTransfer.getData('text/sma-folder');
+  if (sid) moveSource(sid, target); else if (fid) moveFolder(fid, target); else if (ev.dataTransfer.files.length) ingest([...ev.dataTransfer.files], false, undefined, target);
+}
+const dropTarget = (n, target) => { n.addEventListener('dragover', ev => { ev.preventDefault(); ev.stopPropagation(); n.classList.add('over'); }); n.addEventListener('dragleave', () => n.classList.remove('over')); n.addEventListener('drop', ev => dropOnFolder(ev, target)); };
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
+  curFolder = validFolder(curFolder);
+  const crumbs = $('#srccrumbs'); crumbs.textContent = ''; const chain = []; for (let f = folderOf(curFolder), n = 0; f && n < 99; f = folderOf(f.parent), n++) chain.unshift(f);
+  [{ id: null, name: 'Library' }, ...chain].forEach((f, i, a) => { const b = document.createElement('button'); b.textContent = f.name; b.className = 'crumb' + (i === a.length - 1 ? ' on' : ''); b.onclick = () => { curFolder = f.id; renderSources(); }; dropTarget(b, f.id); crumbs.append(b); if (i < a.length - 1) crumbs.append(' › '); });
   const box = $('#srclist'); box.textContent = '';
-  if (!sources.length) box.innerHTML = '<p class="hint">Drop images, videos or audio here, or press Add files. They stay in your library next time you open the app.</p>';
-  sources.forEach(sr => {
+  const subs = folders.filter(f => (validFolder(f.parent) || null) === curFolder).sort((a, b) => a.name.localeCompare(b.name)), files = sources.filter(s => validFolder(s.folder) === curFolder);
+  if (!sources.length && !folders.length) box.innerHTML = '<p class="hint">Drop images, videos or audio here, or press Add files. They stay in your library next time you open the app. Use + Folder to organise them; drag anything into a folder.</p>';
+  else if (!subs.length && !files.length) box.innerHTML = '<p class="hint">This folder is empty. Drag files or folders here, or drop files from your computer.</p>';
+  subs.forEach(f => {
+    const d = document.createElement('div'); d.className = 'src fld'; d.draggable = true; d.dataset.folder = f.id; d.title = f.name + ' (click to open, drag to move)';
+    d.ondragstart = ev => { ev.dataTransfer.setData('text/sma-folder', f.id); ev.stopPropagation(); };
+    d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '📁' }));
+    const count = sources.filter(s => s.folder === f.id).length + folders.filter(x => x.parent === f.id).length;
+    if (renamingFolder === f.id) { const i = document.createElement('input'); i.value = f.name; i.className = 'rn'; i.maxLength = 60;
+      const done = ok => { if (renamingFolder !== f.id) return; renamingFolder = null; if (ok && i.value.trim()) { f.name = i.value.trim(); saveFolders(); } renderSources(); };
+      i.onkeydown = ev => { if (ev.key === 'Enter') done(true); else if (ev.key === 'Escape') done(false); ev.stopPropagation(); }; i.onblur = () => done(true); i.onclick = ev => ev.stopPropagation(); d.append(i); setTimeout(() => { i.focus(); i.select(); }, 0); }
+    else { const n = document.createElement('small'); n.textContent = f.name + ' · ' + count; n.ondblclick = ev => { ev.stopPropagation(); renamingFolder = f.id; renderSources(); }; d.append(n); }
+    const r = document.createElement('button'); r.className = 'x r'; r.textContent = '✎'; r.title = 'Rename folder'; r.onclick = ev => { ev.stopPropagation(); renamingFolder = f.id; renderSources(); }; d.append(r);
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Delete folder (its contents move up)'; x.onclick = ev => { ev.stopPropagation(); deleteFolder(f.id); }; d.append(x);
+    d.onclick = () => { if (renamingFolder !== f.id) { curFolder = f.id; renderSources(); } }; dropTarget(d, f.id); box.append(d);
+  });
+  files.forEach(sr => {
     const d = document.createElement('div'); d.className = 'src'; d.title = sr.name; d.draggable = true;
     d.ondragstart = ev => ev.dataTransfer.setData('text/sma-source', sr.id);
     if (sr.kind === 'font') d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: 'Aa', title: 'A font you added. Pick it in the font list of any text.' }));
     else if (sr.kind === 'image' || sr.kind === 'video') {
       const u = URL.createObjectURL(sr.blob); thumbURLs.push(u);
-      const m = document.createElement(sr.kind === 'image' ? 'img' : 'video'); m.src = u + (sr.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; d.append(m);
+      const m = document.createElement(sr.kind === 'image' ? 'img' : 'video'); m.src = u + (sr.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; m.draggable = false; d.append(m);
     } else d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '♪' }));
     const n = document.createElement('small'); n.textContent = sr.name; d.append(n);
     const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Remove from library';
@@ -452,10 +490,11 @@ function renderSources() {
   });
 }
 function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
-async function ingest(files, place, meta) {
-  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta); if (place && rec && rec.kind === 'image') useSource(rec); }
+async function ingest(files, place, meta, folder = curFolder) {
+  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
 }
 document.querySelector('[data-panel=sources]').onclick = () => { const p = $('#sources'); p.hidden = !p.hidden; };
+$('#srcnew').onclick = newFolder;
 $('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
