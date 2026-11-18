@@ -433,3 +433,4 @@ body.write-mode main,body.write-mode footer,body.write-mode #pages,body.write-mo
 #wr-status{display:flex;gap:12px;align-items:center;padding:5px 12px;background:var(--panel);border-top:1px solid var(--line);font-size:12px}#wr-status .grow{flex:1}
 body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-focus #wr-status{display:none}body.wr-focus #wr-scroll{padding:30px 0}
 .wr-imgbar{display:flex;gap:6px;align-items:center}
+.vc-ff{display:flex;flex-direction:column;gap:6px;font-size:12px}.vc-ff small{opacity:.8}
