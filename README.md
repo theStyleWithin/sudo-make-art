@@ -70,6 +70,9 @@ The list on the left starts with **Default image size**: the sizes a standard PN
 ## Channel icons and banners
 A **Channel icons & banners** section in the New design window lists icon and banner sizes for Kick, blaze.stream, Rumble and Odysee first, then Twitch, YouTube, Kamtape, Discord, X / Twitter and Facebook. Rumble's banner (3600×600) and Odysee's ratios (1:1 icon, 6.25:1 cover) come from their own help pages. Kick, blaze.stream and Kamtape do not publish exact sizes, so those entries are marked *(typical)*: they are sizes that scale down cleanly, so check the site's upload screen if it shows a different number.
 
+## Right-click menu, copy and paste, multi-select
+In the design editor, right-click an item for Copy, Paste, Duplicate, Bring to front, Send to back, Add text here and Delete; right-click empty canvas for Paste and Add text here. Ctrl+C / Ctrl+V copy and paste items. The video editor has right-click menus on clips (Split, Add text, Delete) and on the preview (Add text here, Delete). In Sources, Ctrl-click (Cmd-click) to select several files or folders, or Shift-click for a range, then drag any one of them: they all move into the folder together. Dropping several on the canvas places each picture.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 

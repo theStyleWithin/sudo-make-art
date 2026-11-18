@@ -557,6 +557,12 @@ canvas.addEventListener('pointerup', () => {
 SIZES.forEach(([n], i) => $('#v-size').add(new Option(n, i)));
 $('#v-size').onchange = () => { commit(); [, project.w, project.h] = SIZES[$('#v-size').value]; sizeCanvas(); draw(); save(); };
 $('#v-play').onclick = () => (playing ? pause() : play());
+$('#v-lanes').addEventListener('contextmenu', ev => { ev.preventDefault(); const d = ev.target.closest('.clip'); if (d && find(d.dataset.id)) { sel = d.dataset.id; renderTimeline(); renderProps(); }
+  const c = sel && find(sel); window.SMA_CTX && SMA_CTX.show(ev.clientX, ev.clientY, c ? [{ label: 'Split at playhead', hint: 'S', fn: split }, 'sep', { label: 'Add text at playhead', fn: addText }, 'sep', { label: 'Delete', hint: 'Del', danger: true, fn: del }] : [{ label: 'Add text at playhead', fn: addText }]); });
+canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const r = canvas.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * project.w, y = (ev.clientY - r.top) / r.height * project.h;
+  const hit = [...project.clips].reverse().find(c => (c.kind === 'text' || c.kind === 'overlay' || c.kind === 'sticker') && t >= c.start && t < c.start + c.dur && c._box && x >= c._box[0] && x <= c._box[0] + c._box[2] && y >= c._box[1] && y <= c._box[1] + c._box[3]);
+  if (hit) { sel = hit.id; renderTimeline(); renderProps(); }
+  window.SMA_CTX && SMA_CTX.show(ev.clientX, ev.clientY, (() => { const here = { label: 'Add text here', fn: () => { addText(); const n = find(sel); if (n) { n.x = x / project.w; n.y = y / project.h; draw(); save(); renderProps(); } } }; return hit ? [here, 'sep', { label: 'Delete', hint: 'Del', danger: true, fn: del }] : [here]; })());  });
 $('#v-split').onclick = split; $('#v-del').onclick = del; $('#v-addtext').onclick = addText;
 $('#v-add').onclick = () => { const f = $('#file'); f.accept = 'video/*,audio/*,image/*'; f.multiple = true; f.value = ''; f.onchange = () => { SMA.addFiles([...f.files]); f.multiple = false; }; f.click(); };
 $('#v-zoom').oninput = e => { pps = +e.target.value; renderTimeline(); };
@@ -578,7 +584,7 @@ window.addEventListener('resize', () => { if (document.body.classList.contains('
 
 document.addEventListener('sma-fonts', () => { if (document.body.classList.contains('video-mode')) draw(); });
 window.SMA_video = {
-  api: { project: () => project, commit, refreshAll, draw, seek, time: () => t, uid, find, select: id => { sel = id; refreshAll(); draw(); }, ANIMS },
+  api: { del: () => del(), split: () => split(), addText: () => addText(), project: () => project, commit, refreshAll, draw, seek, time: () => t, uid, find, select: id => { sel = id; refreshAll(); draw(); }, ANIMS },
   serialize: () => JSON.stringify(project), getPid: () => project.pid, setPid: p => { project.pid = p; }, getName: () => project.name || 'Untitled video', setName: n => { project.name = n; },
   load(json) { pause(); media.forEach((m, id) => disposeMedia(id)); project = JSON.parse(json); sel = null; t = 0; undoS = []; redoS = []; },
   reset() { pause(); media.forEach((m, id) => disposeMedia(id)); project = { w: 1080, h: 1920, clips: [] }; sel = null; t = 0; undoS = []; redoS = []; },

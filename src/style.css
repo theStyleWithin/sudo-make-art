@@ -532,3 +532,14 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 .src.fld .ico{font-size:34px}
 .src .x.r{right:26px}
 .src.fld .rn{width:100%;font-size:11px;padding:1px 3px;margin-top:3px}
+
+/* right-click menu */
+#ctxmenu{position:fixed;z-index:90;min-width:190px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 8px 28px #000b}
+#ctxmenu button{display:flex;justify-content:space-between;gap:24px;width:100%;border:0;background:none;text-align:left;padding:6px 10px;border-radius:5px}
+#ctxmenu button:hover:not(:disabled),#ctxmenu button:focus{background:#8b5cf633;outline:none}
+#ctxmenu button:disabled{opacity:.4}
+#ctxmenu button.danger{color:#ff7b7b}
+#ctxmenu kbd{opacity:.55;font:11px inherit;font-family:inherit}
+#ctxmenu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+#srcsel{font-size:11px;margin:-4px 0 6px;color:#c4b5fd}
+.src.picked{outline:2px solid #8b5cf6;background:#8b5cf633}
