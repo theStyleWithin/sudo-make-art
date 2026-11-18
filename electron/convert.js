@@ -22,6 +22,7 @@ const loadSettings = () => { try { return { tools: {}, ...JSON.parse(fs.readFile
 const saveSettings = s => fs.writeFileSync(settingsFile(), JSON.stringify(s, null, 2));
 
 const exe = n => (process.platform === 'win32' ? n + '.exe' : n);
+const stripMeta = require('../src/stripmeta.js');
 const ffmpegPath = () => process.env.SMA_FFMPEG || require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 function findTool(name) {
   const own = loadSettings().tools[name]; if (own && fs.existsSync(own)) return own;
@@ -92,6 +93,7 @@ async function convertOne(it, spec, job) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sma-cv-')), out = path.join(tmp, 'out' + outExt), st = fs.statSync(it.path);
   try {
     await encode(it.path, inExt, spec, job, tmp, out);
+    if (spec.stripMeta && ['.jpg', '.png', '.webp'].includes(outExt)) { const r = stripMeta.strip(fs.readFileSync(out)); if (r.changed) fs.writeFileSync(out, r.data); } // the pixels stay exactly as they are
     if (!fs.existsSync(out) || fs.statSync(out).size === 0) throw new Error('The encoder produced no file');
     fs.mkdirSync(destDir, { recursive: true }); fs.copyFileSync(out, dest);
     if (spec.keepTimes) fs.utimesSync(dest, st.atime, st.mtime);
@@ -113,14 +115,14 @@ async function encode(file, inExt, spec, job, tmp, out) {
   const src0 = () => (inExt === '.jxl' ? decodeJxl().then(async p => { if (!vf) return p; const p2 = path.join(tmp, 'scaled.png'); await run(ff, ['-hide_banner', '-loglevel', 'error', '-y', '-i', p, '-vf', vf, '-frames:v', '1', p2], job); return p2; }) : null);
   const ffFrom = async (extra, filters) => { // run ffmpeg on the original (or the decoded JXL) with codec options
     const input = inExt === '.jxl' ? await src0() : file; const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', input, '-an', '-sn', '-frames:v', '1'];
-    const f = [...(inExt === '.jxl' ? [] : vf ? [vf] : []), ...filters].join(','); if (f) args.push('-vf', f); await run(ff, [...args, ...extra, out], job);
+    const f = [...(inExt === '.jxl' ? [] : vf ? [vf] : []), ...filters].join(','); if (f) args.push('-vf', f); await run(ff, [...args, ...(spec.stripMeta ? ['-map_metadata', '-1', '-fflags', '+bitexact'] : []), ...extra, out], job);
   };
 
   switch (spec.format) {
     case 'jxl': {
       const cj = findTool('cjxl'); if (!cj) throw new Error('JPEG XL needs cjxl (libjxl). Install libjxl, or set it under Tools.');
       const isJpeg = inExt === '.jpg' || inExt === '.jpeg';
-      if (isJpeg && spec.transcode && !vf) { await run(cj, [file, out, '--lossless_jpeg=1', '-e', String(effort), `--num_threads=${perJob}`], job); return; } // reversible JPEG recompression
+      if (isJpeg && spec.transcode && !vf) { await run(cj, [file, out, '--lossless_jpeg=1', ...(spec.stripMeta ? ['--store_jpeg_metadata=0'] : []), '-e', String(effort), `--num_threads=${perJob}`], job); return; } // reversible JPEG recompression
       const src = await readable();
       await run(cj, [src, out, ...(spec.lossless ? ['-d', '0'] : ['-q', String(q)]), '-e', String(effort), ...(isJpeg && src === file ? ['--lossless_jpeg=0'] : []), `--num_threads=${perJob}`], job); return;
     }
@@ -139,7 +141,7 @@ async function encode(file, inExt, spec, job, tmp, out) {
       // images that can be transparent keep their transparency as a second (alpha) stream
       const input = inExt === '.jxl' ? await src0() : file, pre = inExt === '.jxl' ? '' : vf ? vf + ',' : '';
       const graph = `[0:v]${pre}format=rgba,split[a][b];[a]alphaextract[al];[b]format=${spec.lossless ? 'yuv444p' : 'yuv420p'}[col]`;
-      await run(ff, ['-hide_banner', '-loglevel', 'error', '-y', '-i', input, '-an', '-sn', '-frames:v', '1', '-filter_complex', graph, '-map', '[col]', '-map', '[al]', ...enc, '-pix_fmt:v:0', spec.lossless ? 'yuv444p' : 'yuv420p', '-pix_fmt:v:1', 'gray', out], job); return;
+      await run(ff, ['-hide_banner', '-loglevel', 'error', '-y', '-i', input, '-an', '-sn', '-frames:v', '1', '-filter_complex', graph, '-map', '[col]', '-map', '[al]', ...(spec.stripMeta ? ['-map_metadata', '-1', '-fflags', '+bitexact'] : []), ...enc, '-pix_fmt:v:0', spec.lossless ? 'yuv444p' : 'yuv420p', '-pix_fmt:v:1', 'gray', out], job); return;
     }
   }
   throw new Error('Unknown format');
@@ -153,7 +155,7 @@ function validate(spec) {
   for (const it of spec.items) if (typeof it.id !== 'string' || !approvedIn.has(it.path) || typeof it.rel !== 'string') throw new Error('A file was not chosen through the app');
   if (spec.outDir && !approvedOut.has(spec.outDir)) throw new Error('The output folder was not chosen through the app');
   if (!['skip', 'rename', 'overwrite'].includes(spec.conflict)) spec.conflict = 'rename';
-  spec.threads = Math.round(clamp(spec.threads, 1, 32, 2));
+  spec.threads = Math.round(clamp(spec.threads, 1, 32, 2)); spec.stripMeta = !!spec.stripMeta;
   return spec;
 }
 

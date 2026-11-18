@@ -21,6 +21,7 @@
   <button class="dz" id="open">Open</button>
   <button class="dz" id="save">Save</button>
   <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option><option value="pdf">pdf (all pages)</option></select>
+  <label class="dz" title="Takes camera, GPS, date and other hidden details out of photos in your exports"><input type="checkbox" data-meta> Remove metadata</label>
 </header>
 <main>
   <nav id="tools">
@@ -343,7 +344,7 @@
     <div id="vt-tl"><div id="vt-strip"></div><canvas id="vt-kfc" height="12"></canvas><div id="vt-dl"></div><div id="vt-dr"></div><div id="vt-snap" hidden></div><div id="vt-hs" class="vt-h" title="Start of the clip: drag me"></div><div id="vt-he" class="vt-h" title="End of the clip: drag me"></div><div id="vt-ph"></div></div>
     <div id="vt-ruler"></div>
     <div id="vt-sel"><label>Start <input id="vt-start" type="text" value="00:00:00.000" spellcheck="false"></label><button id="vt-setstart" type="button" title="Use the current position as the start (I)">Set to here</button><label>End <input id="vt-end" type="text" value="00:00:00.000" spellcheck="false"></label><button id="vt-setend" type="button" title="Use the current position as the end (O)">Set to here</button><output id="vt-len"></output></div>
-    <div id="vt-opts"><label class="cv-chk"><input type="radio" name="vt-mode" value="lossless" checked> <b>Lossless</b> (fast, no re-encoding, no quality lost)</label><label class="cv-chk"><input type="radio" name="vt-mode" value="exact"> <b>Exact</b> (re-encodes to cut on the exact frame; slower)</label><label class="cv-chk"><input id="vt-mute" type="checkbox"> Remove the sound</label><p id="vt-hint" class="hint"></p></div>
+    <div id="vt-opts"><label class="cv-chk"><input type="radio" name="vt-mode" value="lossless" checked> <b>Lossless</b> (fast, no re-encoding, no quality lost)</label><label class="cv-chk"><input type="radio" name="vt-mode" value="exact"> <b>Exact</b> (re-encodes to cut on the exact frame; slower)</label><label class="cv-chk"><input id="vt-mute" type="checkbox"> Remove the sound</label><label class="cv-chk" title="Location, device, dates, titles and chapters are left out of the saved clip"><input id="vt-meta" data-meta type="checkbox"> Remove metadata</label><p id="vt-hint" class="hint"></p></div>
   </div>
   <div id="vt-foot"><progress id="vt-prog" max="100" value="0"></progress><span id="vt-stat">Open a video to begin.</span><button id="vt-reveal" hidden>Show in folder</button><button id="vt-go" class="pri" disabled>Trim…</button><button id="vt-cancel" hidden>Cancel</button></div>
 </section>
@@ -370,6 +371,7 @@
       <small>Dropped folders keep their name and layout inside the output folder.</small>
       <label>If a file already exists <select id="vc-conflict"><option value="rename">Keep both (add a number)</option><option value="skip">Skip it</option><option value="overwrite">Overwrite it</option></select></label>
       <label class="cv-chk"><input id="vc-times" type="checkbox" checked> Keep the original date and time</label>
+      <label class="cv-chk" title="Location, device, dates, titles and chapters are left out of the new videos"><input id="vc-meta" data-meta type="checkbox"> Remove metadata (location, device, dates)</label>
       <label class="cv-chk" title="Only after the new file looks complete. The originals go to your trash, not erased."><input id="vc-delete" type="checkbox"> Move originals to the trash when done</label>
       <label>Videos at once <input id="vc-threads" type="number" min="1" max="8" value="1"></label>
       <p class="hint" id="vc-hint"></p>
@@ -399,7 +401,7 @@
       <label class="cv-chk"><input id="cv-times" type="checkbox" checked> Keep the original date and time</label>
       <label class="cv-chk" title="The originals are moved to your recycle bin / trash, not erased."><input id="cv-delete" type="checkbox"> Move originals to the trash when done</label>
       <label>Files at once <input id="cv-threads" type="number" min="1" max="32" value="2"></label>
-      <p class="hint">Metadata (EXIF, GPS, camera details) is not copied to the new files.</p>
+      <label class="cv-chk" title="EXIF, GPS, camera and phone details, dates and comments are left out of the new files"><input id="cv-meta" data-meta type="checkbox"> Remove metadata (location, camera, dates)</label>
       <details id="cv-toolsbox"><summary>Tools</summary><div id="cv-tools"></div></details>
     </aside>
   </div>
@@ -513,6 +515,7 @@
   </div>
 </dialog>
 <input type="file" id="file" hidden>
+<script src="src/stripmeta.js"></script>
 <script src="src/guard.js"></script>
 <script src="src/filters.js"></script>
 <script src="src/imgedit.js"></script>

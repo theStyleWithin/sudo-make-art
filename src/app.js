@@ -178,7 +178,10 @@ function render() {
   svg.setAttribute('width', doc.w * zoom); svg.setAttribute('height', doc.h * zoom);
   svg.style.background = doc.bg;
   svg.textContent = '';
-  const art = el('g', { id: 'art' }, svg);
+  // Anything past the page edge is hidden (like a real page); it is not deleted, so moving or resizing brings it back.
+  const defs = el('defs', {}, svg); el('rect', { width: doc.w, height: doc.h }, el('clipPath', { id: 'pageclip' }, defs));
+  const ghost = sel && find(sel); if (ghost) { const gg = el('g', { id: 'ghost', opacity: 0.28, 'pointer-events': 'none' }, svg); drawEl(ghost, gg); } // faint preview of the hidden part
+  const art = el('g', { id: 'art', 'clip-path': 'url(#pageclip)' }, svg);
   doc.els.forEach(e => drawEl(e, art));
   drawHandles();
   renderProps();
@@ -191,7 +194,9 @@ function render() {
 
 // ---------- selection handles ----------
 const HANDLES = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]];
+let guides = [];
 function drawHandles() {
+  guides.forEach(([x1, y1, x2, y2]) => el('line', { x1, y1, x2, y2, stroke: '#f43f5e', 'stroke-width': 1.5 / zoom, 'pointer-events': 'none' }, svg));
   const e = sel && find(sel); if (!e) return;
   const s = (matchMedia('(pointer:coarse)').matches ? 1.9 : 1) / zoom, g = el('g', { id: 'ui', transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})` }, svg);
   el('rect', { width: e.w, height: e.h, fill: 'none', stroke: '#8b5cf6', 'stroke-width': 2 * s, 'pointer-events': 'none' }, g);
@@ -222,7 +227,17 @@ svg.addEventListener('pointerdown', ev => {
 svg.addEventListener('pointermove', ev => {
   if (!drag) return;
   const [px, py] = pt(ev), { e, o } = drag, dx = px - drag.px, dy = py - drag.py;
-  if (drag.kind === 'move') { e.x = o.x + dx; e.y = o.y + dy; }
+  if (drag.kind === 'move') {
+    e.x = o.x + dx; e.y = o.y + dy; guides = [];
+    if (!ev.altKey && !e.rot) { // snap to the page edges and centre; hold Alt to move freely
+      const T = 10 / zoom, hh = e.type === 'line' ? 0 : e.h;
+      for (const [v, dim, key, at] of [[e.x, e.w, 'x', 0], [e.y, hh, 'y', 0]]) {
+        const P = key === 'x' ? doc.w : doc.h, spots = [[v, 0], [v + dim / 2, P / 2], [v + dim, P], [v, P], [v + dim, 0]]; let best = null;
+        for (const [pos, target] of spots) { const d = target - pos; if (Math.abs(d) <= T && (!best || Math.abs(d) < Math.abs(best[0]))) best = [d, target]; }
+        if (best) { e[key] += best[0]; guides.push(key === 'x' ? [best[1], 0, best[1], doc.h] : [0, best[1], doc.w, best[1]]); }
+      }
+    }
+  }
   else if (drag.kind === 'rot') {
     e.rot = Math.atan2(py - drag.cy, px - drag.cx) * 180 / Math.PI + 90;
     if (ev.shiftKey) e.rot = Math.round(e.rot / 15) * 15;
@@ -244,7 +259,7 @@ svg.addEventListener('pointermove', ev => {
   }
   render();
 });
-svg.addEventListener('pointerup', () => { drag = null; });
+svg.addEventListener('pointerup', () => { const had = guides.length; drag = null; guides = []; if (had) render(); });
 
 // two-finger pinch zooms the canvas (touch screens)
 const fingers = new Map(); let pinch = null;
@@ -307,6 +322,17 @@ function renderProps() {
   if (e.type !== 'line' && e.type !== 'image') { h('Outline'); p.append(row('Color', field(e, 'stroke', 'color')), row('Width', field(e, 'sw', 'number', { min: 0 }))); }
   if (e.type === 'line') p.append(row('Thickness', field(e, 'sw', 'number', { min: 1 })));
   if (e.type === 'rect') p.append(row('Corner radius', field(e, 'radius', 'number', { min: 0 })));
+  if (e.type === 'image') { // snap the picture to the page
+    h('Snap to page'); const bar = document.createElement('div'); bar.className = 'row';
+    const fit = (mode) => { commit();       if (mode === 'fill') { const k = Math.max(doc.w / (e.nw || e.w), doc.h / (e.nh || e.h)); e.w = (e.nw || e.w) * k; e.h = (e.nh || e.h) * k; }
+      else if (mode === 'fit') { const k = Math.min(doc.w / (e.nw || e.w), doc.h / (e.nh || e.h)); e.w = (e.nw || e.w) * k; e.h = (e.nh || e.h) * k; }
+      else if (mode === 'stretch') { e.w = doc.w; e.h = doc.h; }
+      e.rot = 0; e.x = (doc.w - e.w) / 2; e.y = (doc.h - e.h) / 2; render(); };
+    for (const [m, label, tip] of [['fit', 'Fit', 'Whole picture inside the page'], ['fill', 'Fill', 'Cover the whole page; the overflow is hidden'], ['stretch', 'Stretch', 'Match the page exactly'], ['center', 'Center', 'Keep the size, centre it']]) {
+      const b = document.createElement('button'); b.textContent = label; b.title = tip; b.onclick = () => m === 'center' ? (commit(), e.x = (doc.w - e.w) / 2, e.y = (doc.h - e.h) / 2, render()) : fit(m); bar.append(b);
+    }
+    p.append(bar);
+  }
   if (e.type === 'image' && e.nw) cropPanel(e, h, p);
   if (e.type === 'image' && window.openImageEditor) {
     const b = document.createElement('button'); b.textContent = 'Edit image: cut out, erase, remove marks';
@@ -485,6 +511,7 @@ function cleanSVG() {
   c.insertBefore(bg, c.firstChild); c.setAttribute('xmlns', NS);
   const fontCss = window.SMA_FONTS ? window.SMA_FONTS.embedCSS(doc.els.filter(e => e.type === 'text').map(e => e.font)) : ''; // added fonts travel inside the file, so exports look the same
   if (fontCss) { const st = document.createElementNS(NS, 'style'); st.textContent = fontCss; c.insertBefore(st, c.firstChild); }
+  if (window.SMA_META && SMA_META.get()) c.querySelectorAll('image').forEach(im => { const h = im.getAttribute('href'); if (h && h.startsWith('data:image/')) im.setAttribute('href', SMA_META.dataUrl(h)); }); // photos keep their pixels, lose their EXIF / GPS
   return new XMLSerializer().serializeToString(c);
 }
 $('#export').onchange = ev => {

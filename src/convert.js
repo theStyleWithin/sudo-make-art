@@ -89,7 +89,7 @@ $('#cv-go').onclick = async () => {
   todo.forEach(i => { i.status = 'queued'; delete i.error; delete i.note; paintRow(i); });
   const ds = $('#cv-ds').value;
   const spec = { format: f, quality: +$('#cv-quality').value, effort: +$('#cv-effort').value, lossless: $('#cv-lossless').checked && !$('#cv-lossrow').hidden, transcode: $('#cv-transcode').checked,
-    downscale: { mode: ds, value: +$('#cv-ds1').value, value2: +$('#cv-ds2').value }, outDir, conflict: $('#cv-conflict').value, keepTimes: $('#cv-times').checked, deleteOriginal: $('#cv-delete').checked,
+    downscale: { mode: ds, value: +$('#cv-ds1').value, value2: +$('#cv-ds2').value }, outDir, conflict: $('#cv-conflict').value, keepTimes: $('#cv-times').checked, stripMeta: $('#cv-meta').checked, deleteOriginal: $('#cv-delete').checked,
     threads: +$('#cv-threads').value, items: todo.map(i => ({ id: i.id, path: i.path, rel: i.rel })) };
   running = true; started = Date.now(); let finished = 0; const total = todo.length; $('#cv-go').hidden = true; $('#cv-cancel').hidden = false; $('#cv-prog').max = total; $('#cv-prog').value = 0; sync();
   offs.forEach(o => o()); offs.length = 0;
