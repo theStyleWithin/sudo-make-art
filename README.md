@@ -16,6 +16,9 @@ npm run dist:win     # Windows installer + portable exe (build on Windows; CI do
 Downloads (AppImage, Windows installer and portable exe, Android APK) are on the [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). To publish a new one: GitHub → Actions → build → Run workflow, tick *publish* (bump `version` in `package.json` first).
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
+## Logo
+The icon is a terminal prompt (`>_`) next to a paintbrush. The source is `build/icon.svg`; the PNG, Android launcher, adaptive icon and splash screens are rendered from it.
+
 ## What works now
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
 - **Convert** (desktop app): batch-convert images between **JPEG XL, AVIF, WebP, JPEG and PNG**. Add files or whole folders (drag and drop works), pick quality and effort, lossless, **lossless JPEG transcoding** (JPEG → JPEG XL, fully reversible), **downscale** by percent, fit-inside size, shortest side, longest side or megapixels (never enlarges), choose where the files go (folder structure is kept), what to do if a file exists, keep the original date, and optionally move originals to the trash. Several files convert at once, with progress and time left. Metadata is not copied
