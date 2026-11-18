@@ -249,4 +249,4 @@ function register() {
   });
   ipcMain.handle('vconvert:cancel', () => { for (const job of jobs.values()) { job.cancelled = true; for (const c of job.children) { try { c.kill(); } catch (e) {} setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, 1500); } } }); // slow encoders can ignore a polite stop for minutes
 }
-module.exports = { register, PRESETS, buildArgs, scan };
+module.exports = { register, PRESETS, buildArgs, scan, ff, probe, ffmpegPath, VIDEO_EXT, fail };
