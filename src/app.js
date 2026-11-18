@@ -423,8 +423,8 @@ svg.addEventListener('contextmenu', ev => {
   else if (sel) { sel = null; render(); }
   const e = sel && find(sel), items = [];
   if (e) items.push({ label: 'Copy', hint: 'Ctrl+C', fn: copyEl }, { label: 'Paste', hint: 'Ctrl+V', disabled: !clip, fn: () => pasteEl() }, { label: 'Duplicate', hint: 'Ctrl+D', fn: dup }, 'sep',
-    { label: 'Bring to front', fn: () => reorder(1, true) }, { label: 'Send to back', fn: () => reorder(-1, true) }, 'sep', { label: 'Add text here', fn: () => addTextAt(at) }, 'sep', { label: 'Delete', hint: 'Del', danger: true, fn: del });
-  else items.push({ label: 'Paste', hint: 'Ctrl+V', disabled: !clip, fn: () => pasteEl(at) }, { label: 'Add text here', fn: () => addTextAt(at) });
+    { label: 'Bring to front', fn: () => reorder(1, true) }, { label: 'Send to back', fn: () => reorder(-1, true) }, 'sep', { label: 'Add text here', fn: () => addTextAt(at) }, { label: 'Add a signature here…', fn: () => window.SMA_ARTTOOLS2 && SMA_ARTTOOLS2.signature(at) }, 'sep', { label: 'Delete', hint: 'Del', danger: true, fn: del });
+  else items.push({ label: 'Paste', hint: 'Ctrl+V', disabled: !clip, fn: () => pasteEl(at) }, { label: 'Add text here', fn: () => addTextAt(at) }, { label: 'Add a signature here…', fn: () => window.SMA_ARTTOOLS2 && SMA_ARTTOOLS2.signature(at) });
   window.SMA_CTX && SMA_CTX.show(ev.clientX, ev.clientY, items);
 });
 

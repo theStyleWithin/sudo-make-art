@@ -54,7 +54,7 @@ Exports leave out hidden personal details. Image conversions, the design export 
 
 - **Sticky notes**: drop in a colored note and type on it.
 - **Tables**: pick a size from the grid or start from a sheet template (budget, invoice, grade book, weekly planner, habit tracker, task list). Cells accept formulas such as `=B2*C2`, `=SUM(B2:B6)`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `ROUND`. The formula engine is a small built-in parser, nothing is run as code.
-- **Signature maker**: type, draw or upload a signature (the paper becomes transparent) and drop it into your design. Saved signatures stay on this device.
+- **Signature maker**: type, draw or upload a signature (the paper becomes transparent) and drop it into your design. Saved signatures stay on this device. Right-click the page and choose **Add a signature here…** to place one where you clicked; right-click inside the signature window to switch between typing, drawing and uploading.
 
 - **Frames**: drop a picture onto a frame and it snaps in, cropped to the shape. Shapes, letters and numbers, phone, laptop and browser windows, instant photos, film strip, retro TV and stamps. Zoom and move the picture inside the frame.
 - **Collage grids**: 11 layouts of empty frames with an adjustable gap; drag your pictures in.

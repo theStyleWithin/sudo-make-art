@@ -127,10 +127,12 @@
     for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3] > 12) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     if (x1 <= x0 || y1 <= y0) return null; const pad = 8, o = document.createElement('canvas'); o.width = x1 - x0 + pad * 2; o.height = y1 - y0 + pad * 2; o.getContext('2d').drawImage(cv, x0, y0, x1 - x0 + 1, y1 - y0 + 1, pad, pad, x1 - x0 + 1, y1 - y0 + 1); return o;
   }
-  function insertSig(url, w, h) { const A = api(), d = A.doc(), W = Math.min(d.w * 0.35, 360), H = W * h / w; A.add(A.mk('image', { src: url, w: W, h: H, nw: w, nh: h, x: (d.w - W) / 2, y: (d.h - H) / 2 })); }
-  function signatureDialog() {
+  let sigAt = null; // where a right-click asked for the signature (page coordinates), else the middle of the page
+  function insertSig(url, w, h) { const A = api(), d = A.doc(), W = Math.min(d.w * 0.35, 360), H = W * h / w, cx = sigAt ? sigAt[0] : d.w / 2, cy = sigAt ? sigAt[1] : d.h / 2; A.add(A.mk('image', { src: url, w: W, h: H, nw: w, nh: h, x: cx - W / 2, y: cy - H / 2 })); }
+  function signatureDialog(at) {
+    sigAt = at || null;
     const back = document.createElement('div'); back.id = 'sigdlg'; back.innerHTML = `<div class="box"><h3>Signature</h3><div class="tabs"><button data-t="type" class="on">Type</button><button data-t="draw">Draw</button><button data-t="upload">Upload</button></div>
-      <div class="pane" data-p="type"><input id="sig-name" placeholder="Type your name" maxlength="40"><div id="sig-styles"></div></div>
+      <div class="pane" data-p="type"><label class="sig-lab" for="sig-name">Type your name, then pick a style</label><input id="sig-name" placeholder="Your name" maxlength="40" autocomplete="off" spellcheck="false"><div id="sig-fontrow"></div><div id="sig-styles"></div></div>
       <div class="pane" data-p="draw" hidden><canvas id="sig-pad" width="560" height="200"></canvas><button id="sig-clear">Clear</button></div>
       <div class="pane" data-p="upload" hidden><input id="sig-file" type="file" accept="image/*"><p class="hint">A photo of a signature on white paper works best. The paper becomes transparent. It stays on this device.</p><canvas id="sig-up" width="560" height="200"></canvas></div>
       <div class="inks"></div><div class="mine"><div class="cap">Saved on this device</div><div id="sig-saved"></div></div>
@@ -138,9 +140,16 @@
     document.body.append(back); const $ = s => back.querySelector(s); let tab = 'type', ink = INKS[0], styleIx = 0, upImg = null;
     const FONTS = [['"Brush Script MT","Segoe Script","Snell Roundhand","URW Chancery L",cursive', 0.3, ''], ['"Lucida Handwriting","Apple Chancery","Z003",cursive', 0.18, ''], ['Georgia,"Times New Roman",serif', 0.1, 'italic '], ['"Helvetica Neue",Arial,sans-serif', 0.25, 'italic 700 ']]; // your system's script fonts when it has them, slanted either way
     const inks = $('.inks'); INKS.forEach(c => { const b = document.createElement('button'); b.className = 'swatch' + (c === ink ? ' on' : ''); b.style.background = c; b.onclick = () => { ink = c; inks.querySelectorAll('.swatch').forEach(x => x.classList.toggle('on', x === b)); refresh(); }; inks.append(b); });
-    const typed = (name, ix, sz = 96) => { const cv = document.createElement('canvas'); cv.width = 900; cv.height = 220; const c = cv.getContext('2d'), [fam, skew, pre] = FONTS[ix]; c.fillStyle = ink; c.font = `${pre}${sz}px ${fam}`; c.textBaseline = 'middle'; c.setTransform(1, 0, -skew, 1, 20 + skew * 110, 0); c.fillText(name, 0, 110); return cv; };
-    const styles = $('#sig-styles'); const refresh = () => { styles.textContent = ''; const nm = $('#sig-name').value || 'Your name'; FONTS.forEach((_f, i) => { const b = document.createElement('button'); b.className = i === styleIx ? 'on' : ''; const cv = typed(nm, i, 60); cv.style.width = '100%'; b.append(cv); b.onclick = () => { styleIx = i; refresh(); }; styles.append(b); }); if (tab === 'upload') drawUpload(); };
+    let customFont = ''; const fontOf = ix => (ix === 4 ? ['"' + customFont.replace(/["\\]/g, '') + '", cursive', 0, ''] : FONTS[ix]); // 4 = a font you picked yourself
+    const typed = (name, ix, sz = 96) => { const cv = document.createElement('canvas'); cv.width = 900; cv.height = 220; const c = cv.getContext('2d'), [fam, skew, pre] = fontOf(ix); c.fillStyle = ink; c.font = `${pre}${sz}px ${fam}`; c.textBaseline = 'middle'; c.setTransform(1, 0, -skew, 1, 20 + skew * 110, 0); c.fillText(name, 0, 110); return cv; };
+    const styles = $('#sig-styles'); const refresh = () => { styles.textContent = ''; const nm = $('#sig-name').value || 'Your name'; [...FONTS, ...(customFont ? [0] : [])].forEach((_f, i) => { const b = document.createElement('button'); b.className = i === styleIx ? 'on' : ''; const cv = typed(nm, i, 60); cv.style.width = '100%'; b.append(cv); b.onclick = () => { styleIx = i; refresh(); $('#sig-name').focus(); }; styles.append(b); }); if (tab === 'upload') drawUpload(); };
     $('#sig-name').oninput = refresh;
+    if (window.SMA_FONTS) { const row = $('#sig-fontrow'); row.append(document.createTextNode('Or use any font on this computer or one you added: ')); row.append(window.SMA_FONTS.pick('Choose a font…', n => { customFont = n; styleIx = 4; refresh(); $('#sig-name').focus(); })); }
+    const typeAnywhere = ev => { // typing anywhere while this window is open goes into the name box
+      if (!back.isConnected) { document.removeEventListener('keydown', typeAnywhere, true); return; }
+      if (tab === 'type' && ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) $('#sig-name').focus();
+      else if (ev.key === 'Escape' && !document.querySelector('.fp-pop')) back.remove(); };
+    document.addEventListener('keydown', typeAnywhere, true);
     const pad = $('#sig-pad'), pc = pad.getContext('2d'); let down = false, last = null; pc.lineWidth = 4; pc.lineCap = pc.lineJoin = 'round';
     const pp = ev => { const r = pad.getBoundingClientRect(); return [(ev.clientX - r.left) * pad.width / r.width, (ev.clientY - r.top) * pad.height / r.height]; };
     pad.onpointerdown = ev => { down = true; last = pp(ev); pad.setPointerCapture(ev.pointerId); pc.strokeStyle = ink; pc.beginPath(); pc.moveTo(...last); pc.lineTo(last[0] + 0.1, last[1]); pc.stroke(); };
@@ -151,7 +160,12 @@
       for (let i = 0; i < a.length; i += 4) { const lum = (a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11); const al = Math.max(0, Math.min(255, (225 - lum) * 2.6)) * (a[i + 3] / 255); a[i] = r; a[i + 1] = g; a[i + 2] = b; a[i + 3] = al; } c.putImageData(d, 0, 0); };
     $('#sig-file').onchange = ev => { const f = ev.target.files[0]; if (!f) return; const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { upImg = im; drawUpload(); URL.revokeObjectURL(u); }; im.src = u; };
     const current = () => { const cv = tab === 'type' ? typed($('#sig-name').value || '', styleIx) : tab === 'draw' ? pad : up; const t = trim(cv); return t ? { url: t.toDataURL('image/png'), w: t.width, h: t.height } : null; };
-    back.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; back.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); back.querySelectorAll('.pane').forEach(p => { p.hidden = p.dataset.p !== tab; }); refresh(); });
+    const setTab = t => { tab = t; back.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === tab)); back.querySelectorAll('.pane').forEach(p => { p.hidden = p.dataset.p !== tab; }); refresh(); if (tab === 'type') $('#sig-name').focus(); };
+    back.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setTab(b.dataset.t));
+    back.addEventListener('contextmenu', ev => { // right-click anywhere in this window: start a signature the way you like
+      ev.preventDefault(); if (!window.SMA_CTX) return;
+      SMA_CTX.show(ev.clientX, ev.clientY, [{ label: 'Type a signature (add text)', fn: () => setTab('type') }, { label: 'Draw a signature', fn: () => setTab('draw') }, { label: 'Upload a picture of a signature', fn: () => setTab('upload') }, 'sep',
+        { label: 'Clear the drawing', disabled: tab !== 'draw', fn: () => pc.clearRect(0, 0, pad.width, pad.height) }, 'sep', { label: 'Add to design', fn: () => $('#sig-use').click() }, { label: 'Save', fn: () => $('#sig-save').click() }, 'sep', { label: 'Close', fn: () => back.remove() }]); });
     const paintSaved = () => { const box = $('#sig-saved'); box.textContent = ''; const l = loadSigs(); if (!l.length) box.textContent = 'Nothing saved yet.'; l.forEach((s, i) => { const w = document.createElement('div'); w.className = 'sv'; const im = new Image(); im.src = s.url; im.title = 'Add to design'; im.onclick = () => { insertSig(s.url, s.w, s.h); close(); }; const x = document.createElement('button'); x.textContent = '×'; x.title = 'Remove'; x.onclick = () => { const n = loadSigs(); n.splice(i, 1); saveSigs(n); paintSaved(); }; w.append(im, x); box.append(w); }); };
     const close = () => back.remove();
     $('#sig-cancel').onclick = close; back.onclick = ev => { if (ev.target === back) close(); };
@@ -168,6 +182,6 @@
     const sign = T.mkBtn('sign', '✍', 'Sign', () => { T.closeFly(); signatureDialog(); });
     after.after(notes, tables, sign); window.SMA.render();
   }
-  window.SMA_ARTTOOLS2 = { evalCell, TEMPLATES, newTable, FN };
+  window.SMA_ARTTOOLS2 = { evalCell, TEMPLATES, newTable, FN, signature: at => signatureDialog(at) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0)); else init();
 })();
