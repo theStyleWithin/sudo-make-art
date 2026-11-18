@@ -132,7 +132,7 @@
   }
   function attach() { const s = svg(); s.addEventListener('pointerdown', onDown, true); s.addEventListener('pointermove', onMove, true); s.addEventListener('pointerup', onUp, true); }
 
-  function addShape(id) { const A = api(), d = A.doc(); A.add(A.mk('shape', { shape: id, x: d.w / 2 - 150, y: d.h / 2 - 150, w: 300, h: 300, fill: S.shapeFill })); }
+  function addShape(id) { const A = api(), d = A.doc(), ar = (SH.byId[id] || {}).ar || 1, w = ar >= 1 ? 300 * Math.sqrt(ar) : 300, h = w / ar; A.add(A.mk('shape', { shape: id, x: d.w / 2 - w / 2, y: d.h / 2 - h / 2, w, h, fill: S.shapeFill })); }
 
   // ---------- tool rail + flyouts ----------
   let fly = null, flyFor = null;
@@ -181,8 +181,8 @@
   function mkBtn(id, icon, label, fn) { const b = document.createElement('button'); b.dataset.tool = id; b.innerHTML = `${icon}<small>${label}</small>`; b.onclick = () => fn(b); return b; }
   function init() {
     const rail = document.getElementById('tools'); if (!rail || rail.dataset.art) return; rail.dataset.art = 1; attach();
-    const lineBtn = rail.querySelector('[data-add=line]'), starBtn = rail.querySelector('[data-add=star]');
-    starBtn.after(mkBtn('shapes', '◇', 'Shapes', b => openFly(b, shapeFly)));
+    const lineBtn = rail.querySelector('[data-add=line]');
+    lineBtn.after(mkBtn('shapes', '◇', 'Shapes', b => openFly(b, shapeFly)));
     lineBtn.before(mkBtn('pen', '✎', 'Pens', b => { if (flyFor === b) { setTool(null); } openFly(b, penFly); }));
     // the Line button now draws by dragging; a plain click still drops in a default line
     lineBtn.dataset.tool = 'line'; lineBtn.addEventListener('click', ev => { ev.stopImmediatePropagation(); closeFly(); setTool({ kind: 'line', group: 'line' }); }, true);

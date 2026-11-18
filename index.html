@@ -10,7 +10,7 @@
 <body>
 <header id="top">
   <span class="appsw-wrap"><button id="appsw" class="logo" aria-haspopup="menu" aria-expanded="false" title="Switch app"><span id="appname">Sudo Make Art</span> <i>▾</i></button><div id="appmenu" role="menu" hidden></div></span>
-  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button><button id="mode-vconvert" hidden>Convert videos</button><button id="mode-vtrim" hidden>Trim video</button></span>
+  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button><button id="mode-vconvert" hidden>Convert videos</button><button id="mode-vtrim" hidden>Trim video</button><button id="mode-live" hidden>Live</button></span>
   <input id="docname" class="nm" placeholder="Untitled" maxlength="120">
   <button class="dz" id="new">+ New design</button>
   <select class="dz" id="size" title="Resize page"></select>
@@ -26,16 +26,13 @@
 <main>
   <nav id="tools">
     <button data-add="text">T<small>Text</small></button>
-    <button data-add="rect">▭<small>Rect</small></button>
-    <button data-add="ellipse">◯<small>Ellipse</small></button>
     <button data-add="line">／<small>Line</small></button>
-    <button data-add="star">★<small>Star</small></button>
     <button id="tool-ai" hidden>✨<small>AI</small></button>
     <button data-panel="sources">🗂<small>Sources</small></button>
   </nav>
   <aside id="sources" hidden>
     <div class="shead"><b>Sources</b><span><button id="srcnew" title="Make a folder here">+ Folder</button> <button id="srcadd">+ Add files</button></span></div>
-    <div id="srccrumbs"></div>
+    <div id="srccrumbs"></div><div id="srcsel" class="hint" hidden></div>
     <div id="srclist"></div>
   </aside>
   <section id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></section>
@@ -332,9 +329,27 @@
 </section>
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
-  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-vtrim" hidden>Trim a video</button><button id="h-folder">Open projects folder</button></div>
+  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-vtrim" hidden>Trim a video</button><button id="h-steam" hidden>Add to Steam</button><button id="h-folder">Open projects folder</button></div>
   <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option><option value="vn">Visual novels</option><option value="tcg">Card decks</option><option value="write">Documents</option></select></div>
   <div id="h-grid"></div>
+</section>
+<section id="liveview" class="hc">
+  <div id="hc-chbar"><div class="hc-chname"><b>My Channel</b><button id="hc-chmenu" aria-label="Channel menu" title="Add channels">⋮</button></div><div id="hc-chlist"></div><button id="hc-chtoggle" aria-label="Hide the channel bar" title="Hide the channel bar">⌃</button></div>
+  <div id="hc-menubar" role="menubar"></div>
+  <div id="hc-body">
+    <div id="hc-main">
+      <div id="hc-preview"><div class="hc-pv" id="hc-pvbox"><div class="hc-lbl" hidden>Preview</div><div class="hc-stage" id="hc-stage-e"></div></div><div class="hc-pv" id="hc-pgbox"><div class="hc-lbl" hidden>Program</div><div class="hc-stage" id="lv-stage"><canvas id="lv-canvas" width="1280" height="720"></canvas><div id="lv-sel" hidden><i class="lv-h"></i></div></div></div></div>
+      <div id="hc-note" hidden></div>
+      <div id="hc-strip"><span id="hc-srclabel">No source selected</span><button id="hc-props" disabled>Properties</button><button id="hc-filters" disabled>Filters</button></div>
+      <div id="hc-docks">
+        <section class="hc-dock" id="hc-scenes"><header><b>Scenes</b><button class="hc-coll" id="hc-coll">Untitled <i>⌄</i></button><span class="sp"></span><button id="hc-addscene" title="Add a scene" aria-label="Add a scene"></button><button id="hc-trans" title="Transition" aria-label="Transition"></button><button id="hc-scmore" title="More" aria-label="More">⋮</button></header><div class="hc-list" id="lv-scenes"></div></section>
+        <section class="hc-dock" id="hc-sources"><header><b>Sources</b><span class="sp"></span><button id="hc-addsrc" title="Add a source" aria-label="Add a source"></button><button id="hc-srcmore" title="More" aria-label="More">⋮</button></header><div class="hc-list" id="lv-items"></div></section>
+        <section class="hc-dock" id="hc-mixer"><header><b>Audio Mixer</b><span class="sp"></span><button id="hc-muteall" title="Mute or unmute everything" aria-label="Mute everything"></button><button id="hc-mixset" title="Audio settings" aria-label="Audio settings"></button><button id="hc-mixmore" title="More" aria-label="More">⋮</button></header><div class="hc-list" id="lv-mixer"></div></section>
+      </div>
+    </div>
+    <nav id="hc-side" aria-label="Studio tools"></nav>
+  </div>
+  <div id="hc-bottom"><span id="hc-res"></span><button id="hc-resgear" title="Output settings" aria-label="Output settings"></button><button id="hc-cpu" title="Performance"></button><span class="sp"></span><span id="hc-live">LIVE <i id="hc-time">00:00:00</i></span><button id="lv-go" class="hc-golive">Go Live</button><button id="lv-rec" class="hc-rec">Rec</button></div>
 </section>
 <section id="vtrimview">
   <div id="vt-bar"><button id="vt-open" class="pri">Open a video…</button><span id="vt-name"></span><span class="sp"></span><span id="vt-info" class="hint"></span></div>
@@ -517,6 +532,7 @@
 </dialog>
 <input type="file" id="file" hidden>
 <script src="src/stripmeta.js"></script>
+<script src="src/ctxmenu.js"></script>
 <script src="src/guard.js"></script>
 <script src="src/filters.js"></script>
 <script src="src/imgedit.js"></script>
@@ -535,6 +551,9 @@
 <script src="src/convert.js"></script>
 <script src="src/vconvert.js"></script>
 <script src="src/vtrim.js"></script>
+<script src="src/live.js"></script>
+<script src="src/steam.js"></script>
+<script src="src/shot.js"></script>
 <script src="src/pixels.js"></script>
 <script src="src/tiles.js"></script>
 <script src="src/chip.js"></script>

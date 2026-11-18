@@ -30,7 +30,9 @@
   const frame = (w, h) => P([[0, 0], [1, 0], [1, 1], [0, 1]], w, h) + P([[0.12, 0.12], [0.12, 0.88], [0.88, 0.88], [0.88, 0.12]], w, h);
   const blob = (w, h) => `M${f(w * 0.5)} ${f(h * 0.02)}C${f(w * 0.8)} ${f(h * -0.02)} ${f(w * 1.02)} ${f(h * 0.3)} ${f(w * 0.97)} ${f(h * 0.55)}C${f(w * 0.93)} ${f(h * 0.85)} ${f(w * 0.7)} ${f(h * 1.02)} ${f(w * 0.45)} ${f(h * 0.97)}C${f(w * 0.15)} ${f(h * 0.93)} ${f(w * -0.03)} ${f(h * 0.65)} ${f(w * 0.05)} ${f(h * 0.35)}C${f(w * 0.1)} ${f(h * 0.12)} ${f(w * 0.3)} ${f(h * 0.05)} ${f(w * 0.5)} ${f(h * 0.02)}Z`;
   const L = [
-    ['square', 'Square', 'basic', 'box rectangle', (w, h) => P([[0, 0], [1, 0], [1, 1], [0, 1]], w, h)],
+    ['rect', 'Rectangle', 'basic', 'box rect', (w, h) => P([[0, 0], [1, 0], [1, 1], [0, 1]], w, h), 1.5],
+    ['ellipse', 'Ellipse', 'basic', 'oval circle round', ell, 1.5],
+    ['square', 'Square', 'basic', 'box', (w, h) => P([[0, 0], [1, 0], [1, 1], [0, 1]], w, h)],
     ['rounded', 'Rounded square', 'basic', 'rectangle round corners', rrect],
     ['circle', 'Circle', 'basic', 'ellipse oval round', ell],
     ['triangle', 'Triangle', 'basic', 'three', (w, h) => P([[0.5, 0], [1, 1], [0, 1]], w, h)],
@@ -52,7 +54,8 @@
     ['blob', 'Blob', 'basic', 'organic', blob],
     ['star4', '4-point star', 'stars', 'sparkle twinkle', star(4, 0.38)],
     ['star5', 'Star', 'stars', 'five favorite rating', star(5, 0.4)],
-    ['star6', '6-point star', 'stars', 'david', star(6, 0.58)],
+    ['star6', '6-point star', 'stars', 'six', star(6, 0.5)],
+    ['david', 'Star of David', 'stars', 'hexagram david jewish israel six pointed', star(6, 1 / Math.sqrt(3))],
     ['star8', '8-point star', 'stars', '', star(8, 0.5)],
     ['star12', '12-point star', 'stars', 'seal badge', star(12, 0.82)],
     ['burst16', 'Burst', 'stars', 'explosion sale sticker', star(16, 0.78)],
@@ -80,7 +83,7 @@
     ['folder', 'Folder', 'callouts', 'tab file', folder],
     ['plaque', 'Plaque', 'callouts', 'label scoreboard', plaque],
   ];
-  const byId = {}; const list = L.map(([id, name, cat, tags, d]) => (byId[id] = { id, name, cat, tags, d }));
+  const byId = {}; const list = L.map(([id, name, cat, tags, d, ar]) => (byId[id] = { id, name, cat, tags, d, ar: ar || 1 }));
   const cats = ['basic', 'stars', 'nature', 'symbols', 'arrows', 'callouts'];
   const search = q => { q = (q || '').trim().toLowerCase(); return q ? list.filter(s => (s.name + ' ' + s.cat + ' ' + s.tags).toLowerCase().includes(q)) : list; };
   window.SMA_SHAPES = { list, byId, cats, search };

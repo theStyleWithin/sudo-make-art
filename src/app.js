@@ -235,6 +235,7 @@ function drawHandles() {
 let drag = null;
 const pt = ev => { const r = svg.getBoundingClientRect(); return [(ev.clientX - r.left) / zoom, (ev.clientY - r.top) / zoom]; };
 svg.addEventListener('pointerdown', ev => {
+  if (ev.button > 0) return; // right-click opens the menu; it must not start a drag or capture the pointer
   const h = ev.target.closest('[data-h]'), g = ev.target.closest('[data-id]');
   const [px, py] = pt(ev);
   if (h && sel) {
@@ -409,6 +410,23 @@ function reorder(dir, edge) {
 }
 function dup() { const e = sel && find(sel); if (!e) return; commit(); const c = { ...e, id: mk('x').id, x: e.x + 30, y: e.y + 30 }; doc.els.push(c); sel = c.id; render(); }
 function del() { if (!sel) return; commit(); doc.els = doc.els.filter(e => e.id !== sel); sel = null; render(); }
+// ---------- copy / paste and the right-click menu ----------
+let clip = null; // a copy of an element made with Copy (kept inside the app)
+function copyEl() { const e = sel && find(sel); if (e) clip = JSON.parse(JSON.stringify(e)); return !!e; }
+function pasteEl(at) { if (!clip) return false; commit(); const c = JSON.parse(JSON.stringify(clip)); c.id = mk('x').id;
+  if (at) { c.x = at[0] - c.w / 2; c.y = at[1] - (c.type === 'line' ? 0 : c.h / 2); } else { c.x += 30; c.y += 30; clip.x += 30; clip.y += 30; }
+  doc.els.push(c); sel = c.id; render(); return true; }
+function addTextAt(at) { commit(); const e = mk('text', { x: at[0] - 200, y: at[1] - 40 }); doc.els.push(e); sel = e.id; render(); setTimeout(() => { const t = $('#p-text'); if (t) { t.focus(); t.select(); } }, 0); }
+svg.addEventListener('contextmenu', ev => {
+  ev.preventDefault(); const g = ev.target.closest('[data-id]'), at = pt(ev);
+  if (g && find(g.dataset.id)) { sel = g.dataset.id; render(); }
+  else if (sel) { sel = null; render(); }
+  const e = sel && find(sel), items = [];
+  if (e) items.push({ label: 'Copy', hint: 'Ctrl+C', fn: copyEl }, { label: 'Paste', hint: 'Ctrl+V', disabled: !clip, fn: () => pasteEl() }, { label: 'Duplicate', hint: 'Ctrl+D', fn: dup }, 'sep',
+    { label: 'Bring to front', fn: () => reorder(1, true) }, { label: 'Send to back', fn: () => reorder(-1, true) }, 'sep', { label: 'Add text here', fn: () => addTextAt(at) }, 'sep', { label: 'Delete', hint: 'Del', danger: true, fn: del });
+  else items.push({ label: 'Paste', hint: 'Ctrl+V', disabled: !clip, fn: () => pasteEl(at) }, { label: 'Add text here', fn: () => addTextAt(at) });
+  window.SMA_CTX && SMA_CTX.show(ev.clientX, ev.clientY, items);
+});
 
 // ---------- toolbar ----------
 document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
@@ -429,7 +447,11 @@ function readImage(file) {
   r.readAsDataURL(file);
 }
 // ---------- sources (persistent local library, like OBS sources) ----------
-const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|woff2?)$/i.test(f.name) ? 'font' : null;
+const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|ttc|woff2?)$/i.test(f.name) ? 'font' : null;
+// Some systems hand over font files with no extension or as "application/octet-stream": recognise them by their first bytes instead
+const FONT_ACCEPT = '.ttf,.otf,.ttc,.woff,.woff2,font/*,application/font-sfnt,application/font-woff,application/x-font-ttf,application/x-font-otf,application/x-font-truetype,application/x-font-opentype,application/octet-stream';
+async function sniffFont(f) { try { const b = new Uint8Array(await f.slice(0, 4).arrayBuffer()), t = String.fromCharCode(...b);
+  if ((b[0] === 0 && b[1] === 1 && b[2] === 0 && b[3] === 0) || t === 'true') return '.ttf'; if (t === 'OTTO') return '.otf'; if (t === 'ttcf') return '.ttc'; if (t === 'wOFF') return '.woff'; if (t === 'wOF2') return '.woff2'; } catch (e) {} return null; }
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('sudo-make-art', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('sources', { keyPath: 'id' });
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -445,10 +467,11 @@ async function addSource(file, meta, folder = null) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 // ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
 let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
 let curFolder = null, renamingFolder = null;
+const picked = new Set(); let lastPick = null, visibleKeys = []; // tiles chosen with Ctrl/Shift-click, so several can be dragged at once
 const saveFolders = () => { try { localStorage.setItem('sma-folders', JSON.stringify(folders)); } catch (e) {} };
 const folderOf = id => folders.find(f => f.id === id);
 const validFolder = id => (id && folderOf(id) ? id : null);
@@ -460,10 +483,35 @@ function deleteFolder(id) { const f = folderOf(id); if (!f) return; const n = so
   if (n && !confirm(`Delete the folder "${f.name}"? Its ${n} item${n > 1 ? 's' : ''} move up one level. Nothing in it is deleted.`)) return;
   folders.filter(x => x.parent === id).forEach(x => { x.parent = f.parent; }); sources.filter(s => s.folder === id).forEach(s => { s.folder = f.parent; dbDo('readwrite', st => st.put(s)).catch(() => {}); });
   folders = folders.filter(x => x.id !== id); if (curFolder === id || inside(curFolder, id)) curFolder = f.parent; saveFolders(); renderSources(); }
+function paintPicked() { document.querySelectorAll('#srclist [data-key]').forEach(n => n.classList.toggle('picked', picked.has(n.dataset.key))); const c = $('#srcsel'); if (c) { c.hidden = !picked.size; c.textContent = picked.size ? picked.size + ' selected. Drag any of them into a folder. Esc clears.' : ''; } }
+(() => { // hold the left button on empty space in Sources and drag a box over tiles to select them (Ctrl/Shift adds to the selection)
+  const list = $('#srclist'); let m = null;
+  list.addEventListener('pointerdown', ev => { if (ev.button !== 0 || ev.target.closest('.src') || ev.target.closest('input,button')) return;
+    m = { x0: ev.clientX, y0: ev.clientY, add: ev.ctrlKey || ev.metaKey || ev.shiftKey, base: new Set(picked), box: document.createElement('div') }; m.box.className = 'marquee'; document.body.append(m.box);
+    list.setPointerCapture(ev.pointerId); if (!m.add) picked.clear(); paintPicked(); ev.preventDefault(); });
+  list.addEventListener('pointermove', ev => { if (!m) return; const L = Math.min(m.x0, ev.clientX), T = Math.min(m.y0, ev.clientY), R = Math.max(m.x0, ev.clientX), B = Math.max(m.y0, ev.clientY);
+    Object.assign(m.box.style, { left: L + 'px', top: T + 'px', width: R - L + 'px', height: B - T + 'px' });
+    list.querySelectorAll('[data-key]').forEach(n => { const b = n.getBoundingClientRect(), k = n.dataset.key; if (b.left < R && b.right > L && b.top < B && b.bottom > T) picked.add(k); else if (!m.base.has(k)) picked.delete(k); });
+    paintPicked(); const pr = list.parentElement.getBoundingClientRect(); if (ev.clientY > pr.bottom - 24) list.parentElement.scrollTop += 12; else if (ev.clientY < pr.top + 24) list.parentElement.scrollTop -= 12; });
+  const end = () => { if (m) { m.box.remove(); m = null; } }; list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
+})();
+function pickTile(key, ev) { // true when the click was a selection click (Ctrl/Cmd toggles, Shift selects a range)
+  if (ev.ctrlKey || ev.metaKey) { if (picked.has(key)) picked.delete(key); else picked.add(key); lastPick = key; paintPicked(); return true; }
+  if (ev.shiftKey && lastPick && visibleKeys.includes(lastPick)) { const a = visibleKeys.indexOf(lastPick), b = visibleKeys.indexOf(key); visibleKeys.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(k => picked.add(k)); paintPicked(); return true; }
+  if (picked.size) { picked.clear(); paintPicked(); } lastPick = key; return false; }
+function startDrag(ev, key, single, kind) { // dragging a picked tile takes every picked tile along
+  if (picked.has(key) && picked.size > 1) ev.dataTransfer.setData('text/sma-multi', JSON.stringify([...picked]));
+  else { picked.clear(); paintPicked(); ev.dataTransfer.setData(kind, single); }
+  ev.dataTransfer.effectAllowed = 'copyMove'; }
+function moveMany(keys, target) { let changed = false;
+  for (const k of keys) { const id = k.slice(2);
+    if (k[0] === 's') { const sr = sources.find(x => x.id === id); if (sr && (sr.folder || null) !== target) { sr.folder = target; dbDo('readwrite', st => st.put(sr)).catch(() => {}); changed = true; } }
+    else if (k[0] === 'f') { const f = folderOf(id); if (f && id !== target && !(target && inside(target, id)) && (f.parent || null) !== target) { f.parent = target; changed = true; } } }
+  if (changed) saveFolders(); picked.clear(); renderSources(); }
 function dropOnFolder(ev, target) { // target: folder id or null (the top level)
   ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.classList.remove('over');
-  const sid = ev.dataTransfer.getData('text/sma-source'), fid = ev.dataTransfer.getData('text/sma-folder');
-  if (sid) moveSource(sid, target); else if (fid) moveFolder(fid, target); else if (ev.dataTransfer.files.length) ingest([...ev.dataTransfer.files], false, undefined, target);
+  const sid = ev.dataTransfer.getData('text/sma-source'), fid = ev.dataTransfer.getData('text/sma-folder'), many = ev.dataTransfer.getData('text/sma-multi');
+  if (many) { try { moveMany(JSON.parse(many), target); } catch (e) {} } else if (sid) moveSource(sid, target); else if (fid) moveFolder(fid, target); else if (ev.dataTransfer.files.length) ingest([...ev.dataTransfer.files], false, undefined, target);
 }
 const dropTarget = (n, target) => { n.addEventListener('dragover', ev => { ev.preventDefault(); ev.stopPropagation(); n.classList.add('over'); }); n.addEventListener('dragleave', () => n.classList.remove('over')); n.addEventListener('drop', ev => dropOnFolder(ev, target)); };
 function renderSources() {
@@ -476,9 +524,10 @@ function renderSources() {
   const subs = folders.filter(f => (validFolder(f.parent) || null) === curFolder).sort((a, b) => a.name.localeCompare(b.name)), files = sources.filter(s => validFolder(s.folder) === curFolder);
   if (!sources.length && !folders.length) box.innerHTML = '<p class="hint">Drop images, videos or audio here, or press Add files. They stay in your library next time you open the app. Use + Folder to organise them; drag anything into a folder.</p>';
   else if (!subs.length && !files.length) box.innerHTML = '<p class="hint">This folder is empty. Drag files or folders here, or drop files from your computer.</p>';
+  visibleKeys = [...subs.map(f => 'f:' + f.id), ...files.map(x => 's:' + x.id)]; [...picked].forEach(k => { if (!visibleKeys.includes(k)) picked.delete(k); });
   subs.forEach(f => {
-    const d = document.createElement('div'); d.className = 'src fld'; d.draggable = true; d.dataset.folder = f.id; d.title = f.name + ' (click to open, drag to move)';
-    d.ondragstart = ev => { ev.dataTransfer.setData('text/sma-folder', f.id); ev.stopPropagation(); };
+    const d = document.createElement('div'); d.className = 'src fld'; d.draggable = true; d.dataset.folder = f.id; d.dataset.key = 'f:' + f.id; d.title = f.name + ' (click to open, drag to move; Ctrl-click to select several)';
+    d.ondragstart = ev => { startDrag(ev, 'f:' + f.id, f.id, 'text/sma-folder'); ev.stopPropagation(); };
     d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '📁' }));
     const count = sources.filter(s => s.folder === f.id).length + folders.filter(x => x.parent === f.id).length;
     if (renamingFolder === f.id) { const i = document.createElement('input'); i.value = f.name; i.className = 'rn'; i.maxLength = 60;
@@ -487,11 +536,11 @@ function renderSources() {
     else { const n = document.createElement('small'); n.textContent = f.name + ' · ' + count; n.ondblclick = ev => { ev.stopPropagation(); renamingFolder = f.id; renderSources(); }; d.append(n); }
     const r = document.createElement('button'); r.className = 'x r'; r.textContent = '✎'; r.title = 'Rename folder'; r.onclick = ev => { ev.stopPropagation(); renamingFolder = f.id; renderSources(); }; d.append(r);
     const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Delete folder (its contents move up)'; x.onclick = ev => { ev.stopPropagation(); deleteFolder(f.id); }; d.append(x);
-    d.onclick = () => { if (renamingFolder !== f.id) { curFolder = f.id; renderSources(); } }; dropTarget(d, f.id); box.append(d);
+    d.onclick = ev => { if (renamingFolder === f.id || pickTile('f:' + f.id, ev)) return; curFolder = f.id; renderSources(); }; dropTarget(d, f.id); box.append(d);
   });
   files.forEach(sr => {
-    const d = document.createElement('div'); d.className = 'src'; d.title = sr.name; d.draggable = true;
-    d.ondragstart = ev => ev.dataTransfer.setData('text/sma-source', sr.id);
+    const d = document.createElement('div'); d.className = 'src'; d.title = sr.name; d.draggable = true; d.dataset.key = 's:' + sr.id;
+    d.ondragstart = ev => startDrag(ev, 's:' + sr.id, sr.id, 'text/sma-source');
     if (sr.kind === 'font') d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: 'Aa', title: 'A font you added. Pick it in the font list of any text.' }));
     else if (sr.kind === 'image' || sr.kind === 'video') {
       const u = URL.createObjectURL(sr.blob); thumbURLs.push(u);
@@ -500,25 +549,33 @@ function renderSources() {
     const n = document.createElement('small'); n.textContent = sr.name; d.append(n);
     const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Remove from library';
     x.onclick = ev => { ev.stopPropagation(); delSource(sr.id); }; d.append(x);
-    d.onclick = () => useSource(sr);
+    d.onclick = ev => { if (!pickTile('s:' + sr.id, ev)) useSource(sr); };
     box.append(d);
   });
+  paintPicked();
 }
 function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
 async function ingest(files, place, meta, folder = curFolder) {
-  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
+  for (let f of files) { if (!kindOf(f)) { const x = await sniffFont(f); if (!x) continue; f = new File([f], f.name.replace(/\.[^.]*$/, '') + x, { type: f.type }); } const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
 }
 document.querySelector('[data-panel=sources]').onclick = () => { const p = $('#sources'); p.hidden = !p.hidden; };
 $('#srcnew').onclick = newFolder;
-$('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && picked.size) { picked.clear(); paintPicked(); } });
+$('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,' + FONT_ACCEPT; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   e.preventDefault();
+  const many = e.dataTransfer.getData('text/sma-multi');
+  if (many) { if (!e.target.closest('#sources')) { try { JSON.parse(many).filter(k => k[0] === 's').forEach(k => { const sr = sources.find(x => x.id === k.slice(2)); if (sr) useSource(sr); }); } catch (er) {} } return; }
   const id = e.dataTransfer.getData('text/sma-source');
   if (id) { const sr = sources.find(s => s.id === id); if (sr && !e.target.closest('#sources')) useSource(sr); return; }
   ingest([...e.dataTransfer.files], !e.target.closest('#sources'));
 });
-document.addEventListener('paste', e => ingest([...(e.clipboardData?.files || [])], true));
+document.addEventListener('paste', e => {
+  const files = [...(e.clipboardData?.files || [])], typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (files.length) ingest(files, true); else if (!typing && isDesign()) pasteEl(); // Ctrl+V pastes the element you copied
+});
+const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write)-mode/.test(document.body.className);
 
 // ---------- new design dialog ----------
 const dlg = $('#newdlg');
@@ -653,6 +710,7 @@ document.addEventListener('keydown', ev => {
   if (mod && k === 'z') { ev.preventDefault(); $(ev.shiftKey ? '#redo' : '#undo').click(); }
   else if (mod && k === 'y') { ev.preventDefault(); $('#redo').click(); }
   else if (mod && k === 'd') { ev.preventDefault(); dup(); }
+  else if (mod && k === 'c' && sel && isDesign()) { copyEl(); }
   else if (k === 'delete' || k === 'backspace') del();
   else if (k.startsWith('arrow') && sel) {
     ev.preventDefault(); const e = find(sel), d = ev.shiftKey ? 10 : 1; commit();
@@ -662,8 +720,8 @@ document.addEventListener('keydown', ev => {
 
 // ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write');
-  ['home', 'design', 'video', 'convert', 'vconvert', 'vtrim'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write');
+  ['home', 'design', 'video', 'convert', 'vconvert', 'vtrim', 'live'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
   if (m !== 'video') window.SMA_video?.hide();
   if (m !== 'pixels') window.SMA_pixels?.hide(); else window.SMA_pixels?.show();
   if (m === 'tiles') window.SMA_tiles?.show();
@@ -678,7 +736,7 @@ function setMode(m) {
 }
 $('#mode-home').onclick = () => setMode('home'); $('#mode-design').onclick = () => setMode('design'); $('#mode-video').onclick = () => setMode('video');
 $('#mode-convert').onclick = () => setMode('convert');
-$('#mode-vconvert').onclick = () => setMode('vconvert'); $('#mode-vtrim').onclick = () => setMode('vtrim');
+$('#mode-vconvert').onclick = () => setMode('vconvert'); $('#mode-vtrim').onclick = () => setMode('vtrim'); $('#mode-live').onclick = () => setMode('live');
 async function designThumb() {
   const xml = cleanSVG();
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });

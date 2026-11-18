@@ -5,7 +5,7 @@
 const SMA = window.SMA; if (!SMA) return;
 const css = SMA.cssFamily;
 const BASIC = ['sans-serif', 'serif', 'monospace', 'Arial', 'Helvetica', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Georgia', 'Times New Roman', 'Courier New', 'Impact', 'Comic Sans MS'];
-const FONT_EXT = /\.(ttf|otf|woff2?)$/i;
+const FONT_EXT = /\.(ttf|otf|ttc|woff2?)$/i;
 const mine = new Map();   // library id -> { family, weight, style, face, css }
 let system = [];          // families installed on the computer
 
@@ -41,7 +41,7 @@ function styleOf(sub) {
 }
 const clean = s => String(s).replace(/["'\\;{}<>\u0000-\u001f]/g, '').trim();
 function b64(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
-const MIME = { ttf: ['font/ttf', 'truetype'], otf: ['font/otf', 'opentype'], woff: ['font/woff', 'woff'], woff2: ['font/woff2', 'woff2'] };
+const MIME = { ttf: ['font/ttf', 'truetype'], otf: ['font/otf', 'opentype'], woff: ['font/woff', 'woff'], woff2: ['font/woff2', 'woff2'], ttc: ['font/collection', 'truetype'] };
 
 async function register(rec) {
   if (mine.has(rec.id)) return; mine.set(rec.id, null); // reserve, so it is not registered twice
@@ -85,7 +85,7 @@ function pick(current, onChange) {
     pop = el('div', { className: 'fp-pop' }); pop.style.cssText = `left:${Math.max(8, Math.min(r.left, innerWidth - 300))}px;top:${Math.min(r.bottom + 4, innerHeight - 360)}px;width:290px`;
     const search = el('input', { className: 'fp-search', placeholder: 'Search fonts…', spellcheck: false }), add = el('button', { type: 'button', className: 'fp-add' }, '+ Add a font file…'), list = el('div', { className: 'fp-list' });
     const match = el('button', { type: 'button', className: 'fp-add' }, '🔎 Match a font from a picture…'); match.onclick = () => { close(); window.SMA_FONTMATCH.open(onChange); };
-    add.onclick = () => { const f = document.querySelector('#file'); f.accept = '.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { SMA.addFiles([...f.files]); f.multiple = false; close(); }; f.click(); };
+    add.onclick = () => { const f = document.querySelector('#file'); f.accept = SMA.FONT_ACCEPT || '.ttf,.otf,.ttc,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { SMA.addFiles([...f.files]); f.multiple = false; close(); }; f.click(); };
     const ownFamilies = [...new Set([...mine.values()].filter(Boolean).map(f => f.family))].sort((a, b) => a.localeCompare(b));
     const render = () => {
       const q = search.value.trim().toLowerCase(), match = n => !q || n.toLowerCase().includes(q); list.textContent = '';
