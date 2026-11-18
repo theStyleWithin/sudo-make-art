@@ -44,6 +44,35 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - **Sources**: a persistent local library (images, video, audio) that is still there next time you open the app
 - Undo/redo, zoom, autosave, save/open project files, export PNG/JPG/SVG
 
+## Privacy: metadata remover (on by default)
+Exports leave out hidden personal details. Image conversions, the design export (embedded photos in SVG), video conversions, the video trimmer and the video editor drop EXIF and GPS location, camera and phone details, dates, titles, comments, XMP, chapters and encoder stamps. The pixels are not touched, and the rotation flag of a photo is kept so it still shows the right way up. One "Remove metadata" checkbox appears in each tool and they share the setting; untick it to keep the details.
+
+## Design tools: pens, shapes and lines
+- **Pens**: pen, marker, felt tip, highlighter and a stroke eraser. Pick a color from the palette, the colors already in your design, or a custom one; set weight and transparency. Strokes stay editable after you draw them (move, resize, recolor, change brush).
+- **Shapes**: a searchable library of about 50 shapes (basic, stars and bursts, nature, symbols, arrows, callouts). Click to add, or Shift-click and drag on the page to size it as you place it.
+- **Lines**: drag on the page to draw one (Shift snaps the angle), then give it arrow, dot, diamond, square or bar ends and solid, dashed or dotted style.
+
+- **Sticky notes**: drop in a colored note and type on it.
+- **Tables**: pick a size from the grid or start from a sheet template (budget, invoice, grade book, weekly planner, habit tracker, task list). Cells accept formulas such as `=B2*C2`, `=SUM(B2:B6)`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `ROUND`. The formula engine is a small built-in parser, nothing is run as code.
+- **Signature maker**: type, draw or upload a signature (the paper becomes transparent) and drop it into your design. Saved signatures stay on this device.
+
+- **Frames**: drop a picture onto a frame and it snaps in, cropped to the shape. Shapes, letters and numbers, phone, laptop and browser windows, instant photos, film strip, retro TV and stamps. Zoom and move the picture inside the frame.
+- **Collage grids**: 11 layouts of empty frames with an adjustable gap; drag your pictures in.
+- **Forms**: text fields, checkboxes, radio buttons, switches, dropdowns, buttons, search bars, sliders, ratings, progress bars and tabs, for mock-ups.
+- **New design window**: more sizes (flyers, postcards, invitations, logos, web banners and ads), custom sizes in pixels, inches, millimetres or centimetres with a ratio lock, and Docs and Videos entries that open the writing app and the video editor.
+
+## Source folders
+The Sources panel (design editor) now has folders. Press **+ Folder**, name it, and drag any picture, video, audio file or font into it, or drop files from your computer straight onto a folder. Folders can hold folders, can be dragged into each other or onto the breadcrumb path (Library › Photos › Holiday) to move them, and can be renamed any time with the pencil button or by double-clicking the name. Deleting a folder moves what is inside up one level; nothing inside is deleted. The folder layout is saved on this device.
+
+## New design window
+The list on the left starts with **Default image size**: the sizes a standard PNG or photo usually opens at (Full HD, HD, 4K, 1024×768, square 1024 / 512 / 256, icons down to 32×32, 3:2 and 4:3 photos). Pick one to start a design at exactly that size.
+
+## Channel icons and banners
+A **Channel icons & banners** section in the New design window lists icon and banner sizes for Kick, blaze.stream, Rumble and Odysee first, then Twitch, YouTube, Kamtape, Discord, X / Twitter and Facebook. Rumble's banner (3600×600) and Odysee's ratios (1:1 icon, 6.25:1 cover) come from their own help pages. Kick, blaze.stream and Kamtape do not publish exact sizes, so those entries are marked *(typical)*: they are sizes that scale down cleanly, so check the site's upload screen if it shows a different number.
+
+## Design editor page edges
+Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
+
 ## Video editor (Video tab)
 - Timeline with video/image, audio and text lanes; drag clips, drag edges to trim, **split** at the playhead
 - **Detach audio** onto its own track, trim/split/move it separately, or **replace the visuals** and keep the audio
@@ -53,6 +82,10 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - **Overlay images** on video (your own logo or watermark): move, resize, rotate, fade, swap the image
 - **Transitions** between clips: cross-fade, dip to black, wipes, slides and zoom. Picture and sound both cross over
 - Export to **WebM** everywhere (records the preview in real time), and **MP4 (H.264/AAC), fast** in the desktop app: every frame is rendered on its own and encoded by the bundled FFmpeg, which is quicker than real time on a typical PC (about 1.1x on a 4-core machine with no GPU). If your FFmpeg build has NVIDIA's encoder (set `SMA_FFMPEG` to its path), export uses the GPU automatically; the bundled build does not include it
+
+## Video: captions and animated stickers
+- **Captions**: ten caption styles (classic, boxed, yellow, pop caps, neon, comic, minimal, word-by-word highlight, highlighter, retro screen), a caption list where you set the words and timing, and import / save of `.srt` and `.vtt` files. Long lines wrap automatically. Everything is typed or imported by you; nothing is uploaded and no speech model is downloaded.
+- **Animated stickers**: emoji and built-in vector shapes that bounce, pulse, beat, spin, wiggle, shake, float or pop in. Drag them in the preview, change size, speed and animation in the panel.
 
 ## Local AI image generation (desktop only)
 Open the **AI** tool: generate an image from a prompt, or edit the selected image (img2img with a strength slider), then add the result to your design. Everything runs on your computer; nothing is sent anywhere.

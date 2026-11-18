@@ -95,7 +95,7 @@ $('#vc-go').onclick = async () => {
   const todo = items.slice(); todo.forEach(i => { i.status = 'queued'; i.pct = 0; delete i.error; delete i.note; delete i.copied; paintRow(i); });
   const copyOthers = $('#vc-others').checked && !inplace;
   const spec = { preset: $('#vc-preset').value, crf: +$('#vc-crf').value, effort: +$('#vc-effort').value, maxHeight: +$('#vc-height').value, audio: $('#vc-audio').value, smart: $('#vc-smart').checked, hw: $('#vc-hw').checked && !$('#vc-hwrow').hidden,
-    outDir: inplace ? null : outDir, conflict: $('#vc-conflict').value, keepTimes: $('#vc-times').checked, deleteOriginal: $('#vc-delete').checked, threads: +$('#vc-threads').value,
+    outDir: inplace ? null : outDir, conflict: $('#vc-conflict').value, keepTimes: $('#vc-times').checked, stripMeta: $('#vc-meta').checked, deleteOriginal: $('#vc-delete').checked, threads: +$('#vc-threads').value,
     items: todo.map(i => ({ id: i.id, path: i.path, rel: i.rel })), others: copyOthers ? others.map(o => ({ id: o.id, path: o.path, rel: o.rel })) : [], dirs: inplace ? [] : dirs };
   running = true; started = Date.now(); let finished = 0; const total = todo.length; $('#vc-go').hidden = true; $('#vc-cancel').hidden = false; $('#vc-prog').max = total; $('#vc-prog').value = 0; sync();
   offs.forEach(o => o()); offs.length = 0;

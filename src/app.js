@@ -5,14 +5,36 @@ const $ = s => document.querySelector(s);
 const svg = $('#canvas');
 
 const PRESETS = {
+  'Default image size': [['Full HD 1920 × 1080', 1920, 1080], ['HD 1280 × 720', 1280, 720], ['4K UHD 3840 × 2160', 3840, 2160], ['QHD 2560 × 1440', 2560, 1440], ['XGA 1024 × 768', 1024, 768], ['SVGA 800 × 600', 800, 600], ['VGA 640 × 480', 640, 480],
+    ['Square 1024 × 1024', 1024, 1024], ['Square 512 × 512', 512, 512], ['Square 256 × 256', 256, 256], ['Icon 128 × 128', 128, 128], ['Icon 64 × 64', 64, 64], ['Icon 32 × 32', 32, 32], ['Portrait 1080 × 1920', 1080, 1920], ['Photo 3:2 (3000 × 2000)', 3000, 2000], ['Photo 4:3 (2048 × 1536)', 2048, 1536]],
+  // Channel art. Rumble's banner and Odysee's ratios are from their own help pages; Twitch, YouTube, Discord, X and Facebook are the usual published sizes.
+  // Kick, blaze.stream and Kamtape do not publish exact sizes, so those are "typical" sizes that scale down cleanly: check the upload screen.
+  'Channel icons & banners': [
+    ['Kick · Channel icon (typical)', 800, 800], ['Kick · Channel banner (typical)', 1280, 700], ['Kick · Offline banner (typical)', 1920, 1080],
+    ['blaze.stream · Channel icon (typical)', 800, 800], ['blaze.stream · Channel banner (typical)', 1920, 480],
+    ['Rumble · Channel icon (typical)', 800, 800], ['Rumble · Channel banner (backsplash)', 3600, 600],
+    ['Odysee · Channel icon (1:1)', 600, 600], ['Odysee · Channel cover (6.25:1)', 2500, 400],
+    ['Twitch · Channel icon', 256, 256], ['Twitch · Channel banner', 1200, 480], ['Twitch · Offline screen', 1920, 1080],
+    ['YouTube · Channel icon', 800, 800], ['YouTube · Channel banner', 2560, 1440],
+    ['Kamtape · Channel icon (typical)', 800, 800], ['Kamtape · Channel banner (typical)', 2048, 512],
+    ['Discord · Profile picture', 512, 512], ['Discord · Profile banner', 600, 240], ['Discord · Server icon', 512, 512], ['Discord · Server banner', 960, 540],
+    ['X / Twitter · Profile picture', 400, 400], ['X / Twitter · Header', 1500, 500],
+    ['Facebook · Profile picture', 320, 320], ['Facebook · Cover', 820, 312]],
   'Social media': [['Instagram Post (4:5)', 1080, 1350], ['Instagram Post (Square)', 1080, 1080], ['Instagram Story / Reel', 1080, 1920],
     ['Facebook Post', 1200, 630], ['Facebook Cover', 820, 312], ['Facebook Story', 1080, 1920], ['LinkedIn Post', 1200, 627],
     ['LinkedIn Cover', 1584, 396], ['Pinterest Pin (2:3)', 1000, 1500], ['TikTok Video / Cover', 1080, 1920], ['X / Twitter Post', 1600, 900],
     ['WhatsApp Status', 1080, 1920], ['YouTube Thumbnail', 1280, 720], ['YouTube Banner', 2560, 1440], ['YouTube Profile Picture', 800, 800],
     ['YouTube Shorts', 1080, 1920]],
   'Presentation': [['Presentation 16:9', 1920, 1080], ['Presentation 4:3', 1600, 1200]],
-  'Print': [['A4 (150 dpi)', 1240, 1754, 150], ['A3 Poster (300 dpi)', 3508, 4961, 300], ['Letter (150 dpi)', 1275, 1650, 150], ['Business Card', 1050, 600, 300]],
+  'Print': [['A4 (150 dpi)', 1240, 1754, 150], ['A3 Poster (300 dpi)', 3508, 4961, 300], ['Letter (150 dpi)', 1275, 1650, 150], ['Business Card', 1050, 600, 300],
+    ['Flyer A5 (300 dpi)', 1748, 2480, 300], ['Postcard 6×4 in (300 dpi)', 1800, 1200, 300], ['Invitation 5×7 in (300 dpi)', 1500, 2100, 300], ['Greeting Card 5×7 in (300 dpi)', 1500, 2100, 300],
+    ['Certificate (Letter, landscape)', 1650, 1275, 150], ['Menu (A4 portrait)', 1240, 1754, 150], ['Poster 18×24 in (150 dpi)', 2700, 3600, 150]],
+  'Logos & cards': [['Logo', 500, 500], ['Name Tag', 1050, 750, 300], ['Sticker', 1000, 1000], ['Album Cover', 1400, 1400], ['Podcast Cover', 3000, 3000], ['Bookmark', 450, 1500, 300], ['Gift Tag', 600, 900, 300]],
+  'Web & ads': [['Website Banner', 1920, 600], ['Email Header', 1280, 400], ['Display Ad (Medium Rectangle)', 300, 250], ['Display Ad (Leaderboard)', 728, 90], ['Display Ad (Skyscraper)', 160, 600], ['Open Graph Image', 1200, 630], ['Favicon', 256, 256]],
 };
+// Docs open the writing app and Videos open the video editor; they are listed in the new-design window next to the sizes
+const OTHER_APPS = { 'Docs': { mode: 'write', blurb: 'Documents are written in the writing app (Sudo Write Stuff), with real page layout, tables, and export to DOCX, ODT and PDF.', items: ['Document', 'Letter', 'Resume', 'Report', 'Notes'] },
+  'Videos': { mode: 'video', blurb: 'Videos are made in the video editor: a timeline, text, pictures and sound.', items: ['Video 16:9 (1920×1080)', 'Vertical video 9:16 (1080×1920)', 'Square video (1080×1080)'] } };
 const FLAT = Object.values(PRESETS).flat();
 // a font name as CSS: quoted, except the generic families (sans-serif, serif, monospace, ...) which must stay bare
 const GENERIC = new Set(['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui']);
@@ -81,7 +103,9 @@ function drawEl(e, parent) {
   const g = el('g', { 'data-id': e.id, transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})`, opacity: e.opacity }, parent);
   if (hasFl || hasSh) g.setAttribute('filter', `url(#${addFilter(e, g, hasFl, hasSh)})`);
   const paint = { fill: e.fill, stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw };
-  if (e.type === 'rect') el('rect', { width: e.w, height: e.h, rx: e.radius, ...paint }, g);
+  const X = window.SMA_EXT && SMA_EXT.types[e.type]; // new element kinds (pens, shapes, tables…) register here
+  if (X && X.draw) X.draw(e, g, el);
+  else if (e.type === 'rect') el('rect', { width: e.w, height: e.h, rx: e.radius, ...paint }, g);
   else if (e.type === 'ellipse') el('ellipse', { cx: e.w / 2, cy: e.h / 2, rx: e.w / 2, ry: e.h / 2, ...paint }, g);
   else if (e.type === 'star') el('polygon', { points: star(e.w, e.h), ...paint }, g);
   else if (e.type === 'line') el('line', { x1: 0, y1: 0, x2: e.w, y2: 0, stroke: e.stroke, 'stroke-width': Math.max(e.sw, 1), 'stroke-linecap': 'round' }, g);
@@ -178,7 +202,10 @@ function render() {
   svg.setAttribute('width', doc.w * zoom); svg.setAttribute('height', doc.h * zoom);
   svg.style.background = doc.bg;
   svg.textContent = '';
-  const art = el('g', { id: 'art' }, svg);
+  // Anything past the page edge is hidden (like a real page); it is not deleted, so moving or resizing brings it back.
+  const defs = el('defs', {}, svg); el('rect', { width: doc.w, height: doc.h }, el('clipPath', { id: 'pageclip' }, defs));
+  const ghost = sel && find(sel); if (ghost) { const gg = el('g', { id: 'ghost', opacity: 0.28, 'pointer-events': 'none' }, svg); drawEl(ghost, gg); } // faint preview of the hidden part
+  const art = el('g', { id: 'art', 'clip-path': 'url(#pageclip)' }, svg);
   doc.els.forEach(e => drawEl(e, art));
   drawHandles();
   renderProps();
@@ -191,7 +218,9 @@ function render() {
 
 // ---------- selection handles ----------
 const HANDLES = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]];
+let guides = [];
 function drawHandles() {
+  guides.forEach(([x1, y1, x2, y2]) => el('line', { x1, y1, x2, y2, stroke: '#f43f5e', 'stroke-width': 1.5 / zoom, 'pointer-events': 'none' }, svg));
   const e = sel && find(sel); if (!e) return;
   const s = (matchMedia('(pointer:coarse)').matches ? 1.9 : 1) / zoom, g = el('g', { id: 'ui', transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})` }, svg);
   el('rect', { width: e.w, height: e.h, fill: 'none', stroke: '#8b5cf6', 'stroke-width': 2 * s, 'pointer-events': 'none' }, g);
@@ -222,7 +251,17 @@ svg.addEventListener('pointerdown', ev => {
 svg.addEventListener('pointermove', ev => {
   if (!drag) return;
   const [px, py] = pt(ev), { e, o } = drag, dx = px - drag.px, dy = py - drag.py;
-  if (drag.kind === 'move') { e.x = o.x + dx; e.y = o.y + dy; }
+  if (drag.kind === 'move') {
+    e.x = o.x + dx; e.y = o.y + dy; guides = [];
+    if (!ev.altKey && !e.rot) { // snap to the page edges and centre; hold Alt to move freely
+      const T = 10 / zoom, hh = e.type === 'line' ? 0 : e.h;
+      for (const [v, dim, key, at] of [[e.x, e.w, 'x', 0], [e.y, hh, 'y', 0]]) {
+        const P = key === 'x' ? doc.w : doc.h, spots = [[v, 0], [v + dim / 2, P / 2], [v + dim, P], [v, P], [v + dim, 0]]; let best = null;
+        for (const [pos, target] of spots) { const d = target - pos; if (Math.abs(d) <= T && (!best || Math.abs(d) < Math.abs(best[0]))) best = [d, target]; }
+        if (best) { e[key] += best[0]; guides.push(key === 'x' ? [best[1], 0, best[1], doc.h] : [0, best[1], doc.w, best[1]]); }
+      }
+    }
+  }
   else if (drag.kind === 'rot') {
     e.rot = Math.atan2(py - drag.cy, px - drag.cx) * 180 / Math.PI + 90;
     if (ev.shiftKey) e.rot = Math.round(e.rot / 15) * 15;
@@ -244,7 +283,7 @@ svg.addEventListener('pointermove', ev => {
   }
   render();
 });
-svg.addEventListener('pointerup', () => { drag = null; });
+svg.addEventListener('pointerup', () => { const had = guides.length, d = drag; drag = null; guides = []; if (d && d.kind === 'move' && window.SMA_EXT && SMA_EXT.onDrop && SMA_EXT.onDrop(d.e)) return; if (had) render(); });
 
 // two-finger pinch zooms the canvas (touch screens)
 const fingers = new Map(); let pinch = null;
@@ -268,6 +307,7 @@ function field(e, key, type = 'number', opts = {}) {
   if (opts.min !== undefined) i.min = opts.min;
   if (opts.max !== undefined) i.max = opts.max;
   if (opts.step !== undefined) i.step = opts.step;
+  i.value = e[key]; // after min/max so a range keeps its real value
   if (type === 'range') i.id = 'f-' + key;
   i.onfocus = () => { i._c = false; };
   i.oninput = () => { if (!i._c) { commit(); i._c = true; } e[key] = type === 'number' || type === 'range' ? +i.value : i.value; redrawKeepFocus(i); };
@@ -290,7 +330,9 @@ function renderProps() {
     hint.textContent = 'Click an element to edit it. Shift while resizing keeps aspect ratio; Shift while rotating snaps to 15°.';
     p.append(hint); return;
   }
-  h(e.type);
+  const X = window.SMA_EXT && SMA_EXT.types[e.type], noGen = !!(X && X.generic === false);
+  h(X && X.label || e.type);
+  if (X && X.props) X.props(e, p, { h, row, field, commit, render });
   if (e.type === 'text') {
     const t = document.createElement('textarea'); t.id = 'p-text'; t.value = e.text;
     t.oninput = () => { if (!t._c) { commit(); t._c = true; } e.text = t.value; redrawKeepFocus(t); };
@@ -303,10 +345,21 @@ function renderProps() {
     [['⇤', 'start'], ['↔', 'middle'], ['⇥', 'end']].forEach(([l, v]) => { const b = document.createElement('button'); b.textContent = l; b.style.opacity = e.align === v ? 1 : .5; b.onclick = () => { commit(); e.align = v; render(); }; r.append(b); });
     p.append(r);
   }
-  if (e.type !== 'image') p.append(row(e.type === 'line' ? 'Color' : 'Fill', e.type === 'line' ? field(e, 'stroke', 'color') : field(e, 'fill', 'color')));
-  if (e.type !== 'line' && e.type !== 'image') { h('Outline'); p.append(row('Color', field(e, 'stroke', 'color')), row('Width', field(e, 'sw', 'number', { min: 0 }))); }
-  if (e.type === 'line') p.append(row('Thickness', field(e, 'sw', 'number', { min: 1 })));
-  if (e.type === 'rect') p.append(row('Corner radius', field(e, 'radius', 'number', { min: 0 })));
+  if (!noGen) if (e.type !== 'image') p.append(row(e.type === 'line' ? 'Color' : 'Fill', e.type === 'line' ? field(e, 'stroke', 'color') : field(e, 'fill', 'color')));
+  if (!noGen) if (e.type !== 'line' && e.type !== 'image') { h('Outline'); p.append(row('Color', field(e, 'stroke', 'color')), row('Width', field(e, 'sw', 'number', { min: 0 }))); }
+  if (!noGen) if (e.type === 'line') p.append(row('Thickness', field(e, 'sw', 'number', { min: 1 })));
+  if (!noGen) if (e.type === 'rect') p.append(row('Corner radius', field(e, 'radius', 'number', { min: 0 })));
+  if (e.type === 'image') { // snap the picture to the page
+    h('Snap to page'); const bar = document.createElement('div'); bar.className = 'row';
+    const fit = (mode) => { commit();       if (mode === 'fill') { const k = Math.max(doc.w / (e.nw || e.w), doc.h / (e.nh || e.h)); e.w = (e.nw || e.w) * k; e.h = (e.nh || e.h) * k; }
+      else if (mode === 'fit') { const k = Math.min(doc.w / (e.nw || e.w), doc.h / (e.nh || e.h)); e.w = (e.nw || e.w) * k; e.h = (e.nh || e.h) * k; }
+      else if (mode === 'stretch') { e.w = doc.w; e.h = doc.h; }
+      e.rot = 0; e.x = (doc.w - e.w) / 2; e.y = (doc.h - e.h) / 2; render(); };
+    for (const [m, label, tip] of [['fit', 'Fit', 'Whole picture inside the page'], ['fill', 'Fill', 'Cover the whole page; the overflow is hidden'], ['stretch', 'Stretch', 'Match the page exactly'], ['center', 'Center', 'Keep the size, centre it']]) {
+      const b = document.createElement('button'); b.textContent = label; b.title = tip; b.onclick = () => m === 'center' ? (commit(), e.x = (doc.w - e.w) / 2, e.y = (doc.h - e.h) / 2, render()) : fit(m); bar.append(b);
+    }
+    p.append(bar);
+  }
   if (e.type === 'image' && e.nw) cropPanel(e, h, p);
   if (e.type === 'image' && window.openImageEditor) {
     const b = document.createElement('button'); b.textContent = 'Edit image: cut out, erase, remove marks';
@@ -383,28 +436,66 @@ const idb = () => new Promise((res, rej) => { const r = indexedDB.open('sudo-mak
 async function dbDo(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const q = fn(db.transaction('sources', mode).objectStore('sources')); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
 let sources = [], thumbURLs = [];
 async function loadSources() { try { sources = (await dbDo('readonly', st => st.getAll())).sort((a, b) => a.added - b.added); } catch (e) { sources = []; } renderSources(); }
-async function addSource(file, meta) {
+async function addSource(file, meta, folder = null) {
   const kind = kindOf(file); if (!kind) return null;
   const dup = sources.find(x => x.name === file.name && x.blob.size === file.size); if (dup) return dup; // already in the library
-  const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now(), ...(meta && typeof meta.fontName === 'string' ? { fontName: meta.fontName.slice(0, 80) } : {}) };
+  const rec = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob: file, added: Date.now(), folder, ...(meta && typeof meta.fontName === 'string' ? { fontName: meta.fontName.slice(0, 80) } : {}) };
   try { await dbDo('readwrite', st => st.put(rec)); } catch (e) { alert('Could not save to the local library: ' + e.message); }
   sources.push(rec); renderSources(); return rec;
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+// ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
+let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
+let curFolder = null, renamingFolder = null;
+const saveFolders = () => { try { localStorage.setItem('sma-folders', JSON.stringify(folders)); } catch (e) {} };
+const folderOf = id => folders.find(f => f.id === id);
+const validFolder = id => (id && folderOf(id) ? id : null);
+const inside = (id, anc) => { for (let f = folderOf(id), n = 0; f && n < 99; f = folderOf(f.parent), n++) if (f.id === anc) return true; return false; }; // is id anc or inside anc?
+async function moveSource(id, folder) { const sr = sources.find(x => x.id === id); if (!sr) return; sr.folder = folder; try { await dbDo('readwrite', st => st.put(sr)); } catch (e) {} renderSources(); }
+function moveFolder(id, parent) { const f = folderOf(id); if (!f || (parent && inside(parent, id)) || f.parent === parent) return; f.parent = parent; saveFolders(); renderSources(); }
+function newFolder() { const f = { id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: 'New folder', parent: curFolder }; folders.push(f); saveFolders(); renamingFolder = f.id; renderSources(); }
+function deleteFolder(id) { const f = folderOf(id); if (!f) return; const n = sources.filter(s => s.folder === id).length + folders.filter(x => x.parent === id).length;
+  if (n && !confirm(`Delete the folder "${f.name}"? Its ${n} item${n > 1 ? 's' : ''} move up one level. Nothing in it is deleted.`)) return;
+  folders.filter(x => x.parent === id).forEach(x => { x.parent = f.parent; }); sources.filter(s => s.folder === id).forEach(s => { s.folder = f.parent; dbDo('readwrite', st => st.put(s)).catch(() => {}); });
+  folders = folders.filter(x => x.id !== id); if (curFolder === id || inside(curFolder, id)) curFolder = f.parent; saveFolders(); renderSources(); }
+function dropOnFolder(ev, target) { // target: folder id or null (the top level)
+  ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.classList.remove('over');
+  const sid = ev.dataTransfer.getData('text/sma-source'), fid = ev.dataTransfer.getData('text/sma-folder');
+  if (sid) moveSource(sid, target); else if (fid) moveFolder(fid, target); else if (ev.dataTransfer.files.length) ingest([...ev.dataTransfer.files], false, undefined, target);
+}
+const dropTarget = (n, target) => { n.addEventListener('dragover', ev => { ev.preventDefault(); ev.stopPropagation(); n.classList.add('over'); }); n.addEventListener('dragleave', () => n.classList.remove('over')); n.addEventListener('drop', ev => dropOnFolder(ev, target)); };
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
+  curFolder = validFolder(curFolder);
+  const crumbs = $('#srccrumbs'); crumbs.textContent = ''; const chain = []; for (let f = folderOf(curFolder), n = 0; f && n < 99; f = folderOf(f.parent), n++) chain.unshift(f);
+  [{ id: null, name: 'Library' }, ...chain].forEach((f, i, a) => { const b = document.createElement('button'); b.textContent = f.name; b.className = 'crumb' + (i === a.length - 1 ? ' on' : ''); b.onclick = () => { curFolder = f.id; renderSources(); }; dropTarget(b, f.id); crumbs.append(b); if (i < a.length - 1) crumbs.append(' › '); });
   const box = $('#srclist'); box.textContent = '';
-  if (!sources.length) box.innerHTML = '<p class="hint">Drop images, videos or audio here, or press Add files. They stay in your library next time you open the app.</p>';
-  sources.forEach(sr => {
+  const subs = folders.filter(f => (validFolder(f.parent) || null) === curFolder).sort((a, b) => a.name.localeCompare(b.name)), files = sources.filter(s => validFolder(s.folder) === curFolder);
+  if (!sources.length && !folders.length) box.innerHTML = '<p class="hint">Drop images, videos or audio here, or press Add files. They stay in your library next time you open the app. Use + Folder to organise them; drag anything into a folder.</p>';
+  else if (!subs.length && !files.length) box.innerHTML = '<p class="hint">This folder is empty. Drag files or folders here, or drop files from your computer.</p>';
+  subs.forEach(f => {
+    const d = document.createElement('div'); d.className = 'src fld'; d.draggable = true; d.dataset.folder = f.id; d.title = f.name + ' (click to open, drag to move)';
+    d.ondragstart = ev => { ev.dataTransfer.setData('text/sma-folder', f.id); ev.stopPropagation(); };
+    d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '📁' }));
+    const count = sources.filter(s => s.folder === f.id).length + folders.filter(x => x.parent === f.id).length;
+    if (renamingFolder === f.id) { const i = document.createElement('input'); i.value = f.name; i.className = 'rn'; i.maxLength = 60;
+      const done = ok => { if (renamingFolder !== f.id) return; renamingFolder = null; if (ok && i.value.trim()) { f.name = i.value.trim(); saveFolders(); } renderSources(); };
+      i.onkeydown = ev => { if (ev.key === 'Enter') done(true); else if (ev.key === 'Escape') done(false); ev.stopPropagation(); }; i.onblur = () => done(true); i.onclick = ev => ev.stopPropagation(); d.append(i); setTimeout(() => { i.focus(); i.select(); }, 0); }
+    else { const n = document.createElement('small'); n.textContent = f.name + ' · ' + count; n.ondblclick = ev => { ev.stopPropagation(); renamingFolder = f.id; renderSources(); }; d.append(n); }
+    const r = document.createElement('button'); r.className = 'x r'; r.textContent = '✎'; r.title = 'Rename folder'; r.onclick = ev => { ev.stopPropagation(); renamingFolder = f.id; renderSources(); }; d.append(r);
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Delete folder (its contents move up)'; x.onclick = ev => { ev.stopPropagation(); deleteFolder(f.id); }; d.append(x);
+    d.onclick = () => { if (renamingFolder !== f.id) { curFolder = f.id; renderSources(); } }; dropTarget(d, f.id); box.append(d);
+  });
+  files.forEach(sr => {
     const d = document.createElement('div'); d.className = 'src'; d.title = sr.name; d.draggable = true;
     d.ondragstart = ev => ev.dataTransfer.setData('text/sma-source', sr.id);
     if (sr.kind === 'font') d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: 'Aa', title: 'A font you added. Pick it in the font list of any text.' }));
     else if (sr.kind === 'image' || sr.kind === 'video') {
       const u = URL.createObjectURL(sr.blob); thumbURLs.push(u);
-      const m = document.createElement(sr.kind === 'image' ? 'img' : 'video'); m.src = u + (sr.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; d.append(m);
+      const m = document.createElement(sr.kind === 'image' ? 'img' : 'video'); m.src = u + (sr.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; m.draggable = false; d.append(m);
     } else d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '♪' }));
     const n = document.createElement('small'); n.textContent = sr.name; d.append(n);
     const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Remove from library';
@@ -414,10 +505,11 @@ function renderSources() {
   });
 }
 function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
-async function ingest(files, place, meta) {
-  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta); if (place && rec && rec.kind === 'image') useSource(rec); }
+async function ingest(files, place, meta, folder = curFolder) {
+  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
 }
 document.querySelector('[data-panel=sources]').onclick = () => { const p = $('#sources'); p.hidden = !p.hidden; };
+$('#srcnew').onclick = newFolder;
 $('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
@@ -434,15 +526,25 @@ function buildDialog() {
   const nav = $('#newcats'), grid = $('#newgrid');
   const show = cat => {
     nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat)); grid.textContent = '';
+    if (OTHER_APPS[cat]) { const o = OTHER_APPS[cat], p = document.createElement('p'); p.className = 'hint'; p.textContent = o.blurb; grid.append(p);
+      o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.mode === 'write' ? 'the writing app' : 'the video editor') + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); setMode(o.mode); }; grid.append(b); }); return; }
     if (cat === 'Custom size') {
-      grid.innerHTML = '<label>Width <input id="cw" type="number" value="1080" min="16"></label><label>Height <input id="ch" type="number" value="1080" min="16"></label><button id="cgo">Create</button>';
-      $('#cgo').onclick = () => make(Math.max(16, +$('#cw').value || 1080), Math.max(16, +$('#ch').value || 1080));
+      grid.innerHTML = '<div class="cust"><label>Width <input id="cw" type="number" value="1080" min="1" step="any"></label><button id="clock" type="button" title="Keep the shape (aspect ratio) when you change one side" aria-pressed="false">🔓</button><label>Height <input id="ch" type="number" value="1080" min="1" step="any"></label>' +
+        '<label>Units <select id="cu"><option value="px">pixels</option><option value="in">inches</option><option value="mm">millimetres</option><option value="cm">centimetres</option></select></label>' +
+        '<label id="cdpil" hidden>Resolution <select id="cdpi"><option>72</option><option>150</option><option selected>300</option></select> dpi</label><p id="cinfo" class="hint"></p><button id="cgo" class="pri">Create</button></div>';
+      let lock = false, ratio = 1; const W = $('#cw'), H = $('#ch'), U = $('#cu'), D = $('#cdpi'), perUnit = () => ({ px: 1, in: +D.value, mm: +D.value / 25.4, cm: +D.value / 2.54 })[U.value];
+      const info = () => { const k = perUnit(); $('#cinfo').textContent = `${Math.round(Math.max(1, +W.value) * k)} × ${Math.round(Math.max(1, +H.value) * k)} px` + (U.value === 'px' ? '' : ' at ' + D.value + ' dpi'); };
+      $('#clock').onclick = () => { lock = !lock; ratio = (+W.value || 1) / (+H.value || 1); $('#clock').textContent = lock ? '🔒' : '🔓'; $('#clock').setAttribute('aria-pressed', lock); };
+      W.oninput = () => { if (lock) H.value = +(W.value / ratio).toFixed(3); info(); }; H.oninput = () => { if (lock) W.value = +(H.value * ratio).toFixed(3); info(); };
+      U.onchange = () => { const old = U.dataset.u || 'px', kOld = { px: 1, in: +D.value, mm: +D.value / 25.4, cm: +D.value / 2.54 }[old], kNew = perUnit(); W.value = +(W.value * kOld / kNew).toFixed(2); H.value = +(H.value * kOld / kNew).toFixed(2); U.dataset.u = U.value; $('#cdpil').hidden = U.value === 'px'; info(); };
+      D.onchange = info; info();
+      $('#cgo').onclick = () => { const k = perUnit(), w = Math.min(8000, Math.max(16, Math.round(+W.value * k) || 1080)), h = Math.min(8000, Math.max(16, Math.round(+H.value * k) || 1080)); make(w, h, U.value === 'px' ? undefined : +D.value); };
       return;
     }
     PRESETS[cat].forEach(([n, w, h, dpi]) => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = `<b></b><small>${w} × ${h} px</small>`; b.firstChild.textContent = n; b.onclick = () => make(w, h, dpi); grid.append(b); });
   };
-  [...Object.keys(PRESETS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
-  show('Social media');
+  [...Object.keys(PRESETS), ...Object.keys(OTHER_APPS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
+  show('Default image size');
 }
 function make(w, h, dpi) { commit(); newDoc(w, h, dpi); dlg.close(); setMode('design'); fit(); }
 $('#new').onclick = () => dlg.showModal();
@@ -485,6 +587,7 @@ function cleanSVG() {
   c.insertBefore(bg, c.firstChild); c.setAttribute('xmlns', NS);
   const fontCss = window.SMA_FONTS ? window.SMA_FONTS.embedCSS(doc.els.filter(e => e.type === 'text').map(e => e.font)) : ''; // added fonts travel inside the file, so exports look the same
   if (fontCss) { const st = document.createElementNS(NS, 'style'); st.textContent = fontCss; c.insertBefore(st, c.firstChild); }
+  if (window.SMA_META && SMA_META.get()) c.querySelectorAll('image').forEach(im => { const h = im.getAttribute('href'); if (h && h.startsWith('data:image/')) im.setAttribute('href', SMA_META.dataUrl(h)); }); // photos keep their pixels, lose their EXIF / GPS
   return new XMLSerializer().serializeToString(c);
 }
 $('#export').onchange = ev => {

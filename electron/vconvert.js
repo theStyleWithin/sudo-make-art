@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const metaFlags = require('./metaflags');
 
 const VIDEO_EXT = new Set(['.mp4', '.m4v', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mpg', '.mpeg', '.ts', '.m2ts', '.mts', '.3gp', '.ogv', '.vob', '.divx']);
 const MAX_ITEMS = 50000;
@@ -156,12 +157,16 @@ async function convertOne(it, spec, job, report) {
     // Already what you asked for (same codec and container, not too tall)? Then there is nothing to gain from re-encoding: copy it as it is.
     const cap = clamp(spec.maxHeight, 0, 8640, 0);
     if (spec.smart && P.v in targetCodecName && info.vcodec === targetCodecName[P.v] && inExt === P.ext && (!cap || info.height <= cap)) {
-      fs.copyFileSync(it.path, part); fs.renameSync(part, dest); if (spec.keepTimes) fs.utimesSync(dest, st.atime, st.mtime);
-      return { status: 'done', copied: true, note: 'already ' + P.v + ', copied as it is', outPath: dest, outSize: fs.statSync(dest).size, inDur: info.duration };
+      if (spec.stripMeta) { // same video, but without the personal tags: copy the streams into a clean container
+        const r = await ff(metaFlags.apply(['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', it.path, '-map', '0:v:0', '-map', P.ext === '.mpg' ? '0:a:0?' : '0:a?', ...(P.ext === '.mkv' ? ['-map', '0:s?'] : []), '-c', 'copy', ...(P.ext === '.mp4' ? ['-movflags', '+faststart'] : []), part], true), job);
+        if (r.code !== 0) throw fail(r);
+      } else fs.copyFileSync(it.path, part);
+      fs.renameSync(part, dest); if (spec.keepTimes) fs.utimesSync(dest, st.atime, st.mtime);
+      return { status: 'done', copied: true, note: 'already ' + P.v + (spec.stripMeta ? ', copied without metadata' : ', copied as it is'), outPath: dest, outSize: fs.statSync(dest).size, inDur: info.duration };
     }
     const perJob = Math.max(1, Math.floor(os.cpus().length / Math.max(1, spec.threads)));
     let last = 0;
-    const r = await ff(buildArgs(spec, { path: it.path }, info, part, perJob), job, { onLine: l => {
+    const r = await ff(metaFlags.apply(buildArgs(spec, { path: it.path }, info, part, perJob), spec.stripMeta), job, { onLine: l => {
       const m = /^out_time_(?:us|ms)=(\d+)/.exec(l); if (!m || !info.duration) return; const now = Date.now(); if (now - last < 300) return; last = now;
       report(Math.max(0, Math.min(99, Math.round(+m[1] / 1e6 / info.duration * 100))));
     } });

@@ -7,7 +7,7 @@ const SMA = window.SMA;
 if (!SMA) return;
 
 const SIZES = [['Landscape 1920×1080', 1920, 1080], ['YouTube / TikTok / Reels / Shorts 1080×1920', 1080, 1920], ['Square 1080×1080', 1080, 1080], ['Landscape 1280×720', 1280, 720]];
-const LANE = { video: 'video', image: 'video', audio: 'audio', text: 'text', overlay: 'overlay' };
+const LANE = { video: 'video', image: 'video', audio: 'audio', text: 'text', overlay: 'overlay', sticker: 'overlay' };
 
 let project = { w: 1080, h: 1920, clips: [] };
 let sel = null, t = 0, playing = false, t0 = 0, w0 = 0, pps = 60, undoS = [], redoS = [];
@@ -157,6 +157,7 @@ function draw() {
     ctx.globalAlpha = 1;
   }
   for (const c of project.clips) if (c.kind === 'overlay' && active(c)) drawOverlay(c);
+  for (const c of project.clips) if (c.kind === 'sticker' && active(c)) { ctx.globalAlpha = fadeAt(c, t); drawSticker(c); ctx.globalAlpha = 1; }
   for (const c of project.clips) if (c.kind === 'text' && active(c)) { ctx.globalAlpha = fadeAt(c, t); drawText(c); ctx.globalAlpha = 1; }
 }
 function drawOverlay(c) { // an image placed on top of the video: move, resize, rotate, fade (e.g. your own watermark or logo)
@@ -165,15 +166,44 @@ function drawOverlay(c) { // an image placed on top of the video: move, resize, 
   ctx.save(); ctx.globalAlpha = (c.opacity ?? 1) * fadeAt(c, t); ctx.translate(cx, cy); ctx.rotate((c.rot || 0) * Math.PI / 180); ctx.drawImage(m.el, -w / 2, -h / 2, w, h); ctx.restore();
   c._box = [cx - w / 2, cy - h / 2, w, h];
 }
-function drawText(c) {
+function drawText(c) { // titles and captions: outline, box behind, glow, capitals, wrapping, and word-by-word highlight
   ctx.save(); ctx.font = `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${c.size}px ${SMA.cssFamily(c.font)}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const lines = c.text.split('\n'), lh = c.size * 1.2, cx = c.x * project.w, cy = c.y * project.h, top = cy - (lines.length - 1) * lh / 2;
-  let wmax = 0; lines.forEach((l, i) => {
-    const y = top + i * lh; wmax = Math.max(wmax, ctx.measureText(l).width);
+  const txt = c.upper ? c.text.toUpperCase() : c.text; let lines = txt.split('\n');
+  if (c.maxw) lines = lines.flatMap(para => { const out = []; let line = ''; for (const w of para.split(' ')) { const tt = line ? line + ' ' + w : w; if (ctx.measureText(tt).width <= c.maxw * project.w || !line) line = tt; else { out.push(line); line = w; } } out.push(line); return out; });
+  const lh = c.size * 1.2, cx = c.x * project.w, cy = c.y * project.h, top = cy - (lines.length - 1) * lh / 2, widths = lines.map(l => ctx.measureText(l).width), wmax = Math.max(0, ...widths);
+  if (c.bg) { const pad = c.size * 0.3; ctx.fillStyle = c.bg; const x = cx - wmax / 2 - pad, y = cy - lines.length * lh / 2 - pad / 2, w = wmax + pad * 2, h = lines.length * lh + pad, r = Math.min(h / 2, c.size * 0.4);
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill(); }
+  const total = lines.join(' ').split(/\s+/).filter(Boolean).length, spoken = c.karaoke ? Math.floor(clamp01((t - c.start) / Math.max(0.1, c.dur)) * total + 0.9999) : 0; let wi = 0;
+  lines.forEach((l, i) => {
+    const y = top + i * lh;
     if (c.sw) { ctx.lineWidth = c.sw * 2; ctx.strokeStyle = c.stroke; ctx.lineJoin = 'round'; ctx.strokeText(l, cx, y); }
-    ctx.fillStyle = c.color; ctx.fillText(l, cx, y);
+    if (c.glow) { ctx.shadowColor = c.glow; ctx.shadowBlur = c.size * 0.4; }
+    if (c.karaoke) { ctx.textAlign = 'left'; let x = cx - widths[i] / 2; const sp = ctx.measureText(' ').width; l.split(' ').forEach(w => { if (!w) return; ctx.fillStyle = wi < spoken ? (c.hi || '#ffe14d') : c.color; ctx.fillText(w, x, y); x += ctx.measureText(w).width + sp; wi++; }); ctx.textAlign = 'center'; }
+    else { ctx.fillStyle = c.color; ctx.fillText(l, cx, y); }
+    ctx.shadowBlur = 0;
   });
   c._box = [cx - wmax / 2, cy - lines.length * lh / 2, wmax, lines.length * lh]; ctx.restore();
+}
+
+// ---------- animated stickers (emoji or built-in vector shapes that bounce, spin, pulse…) ----------
+const ANIMS = [['none', 'Still'], ['bounce', 'Bounce'], ['pulse', 'Pulse'], ['heartbeat', 'Heartbeat'], ['spin', 'Spin'], ['wiggle', 'Wiggle'], ['shake', 'Shake'], ['float', 'Float'], ['pop', 'Pop in']];
+const easeBack = p => { const s = 1.70158; p -= 1; return p * p * ((s + 1) * p + s) + 1; };
+function drawSticker(c) {
+  const s = c.scale * project.w, tt = Math.max(0, t - c.start) * (c.speed2 || 1); let dx = 0, dy = 0, k = 1, rot = c.rot || 0;
+  switch (c.anim) {
+    case 'bounce': dy = -Math.abs(Math.sin(tt * Math.PI * 1.6)) * s * 0.3; break;
+    case 'pulse': k = 1 + 0.14 * Math.sin(tt * Math.PI * 3); break;
+    case 'heartbeat': k = 1 + 0.2 * Math.pow(Math.max(0, Math.sin(tt * Math.PI * 2.4)), 3); break;
+    case 'spin': rot += tt * 180; break;
+    case 'wiggle': rot += Math.sin(tt * Math.PI * 4) * 12; break;
+    case 'shake': dx = Math.sin(tt * 45) * s * 0.035; rot += Math.sin(tt * 33) * 4; break;
+    case 'float': dy = Math.sin(tt * Math.PI * 1.2) * s * 0.14; dx = Math.cos(tt * Math.PI * 0.8) * s * 0.05; break;
+    case 'pop': k = tt < 0.45 ? easeBack(tt / 0.45) : 1 + 0.04 * Math.sin((tt - 0.45) * Math.PI * 3); break;
+  }
+  const cx = c.x * project.w, cy = c.y * project.h; ctx.save(); ctx.globalAlpha *= (c.opacity ?? 1); ctx.translate(cx + dx, cy + dy); ctx.rotate(rot * Math.PI / 180); ctx.scale(k, k);
+  if (c.glyph && c.glyph.startsWith('v:')) { const sh = window.SMA_SHAPES && SMA_SHAPES.byId[c.glyph.slice(2)]; if (sh) { ctx.translate(-s / 2, -s / 2); ctx.fillStyle = c.color || '#ffcc00'; ctx.fill(new Path2D(sh.d(s, s)), sh.id === 'ring' ? 'evenodd' : 'nonzero'); } }
+  else { ctx.font = `${s * 0.85}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.glyph || '⭐', 0, s * 0.04); }
+  ctx.restore(); c._box = [cx - s / 2, cy - s / 2, s, s];
 }
 
 // ---------- transport ----------
@@ -265,7 +295,7 @@ function renderTimeline() {
     const d = document.createElement('div'); d.className = 'clip k-' + c.kind + (c.id === sel ? ' sel' : ''); d.dataset.id = c.id;
     d.style.left = c.start * pps + 'px'; d.style.width = Math.max(6, c.dur * pps) + 'px';
     if (c.trans) d.append(Object.assign(document.createElement('i'), { className: 'tr', title: 'Transition' })), d.lastChild.style.width = Math.min(c.dur, c.trans.dur) * pps + 'px';
-    const label = c.kind === 'text' ? c.text.split('\n')[0] : (src(c.src)?.name || 'missing source') + (c.mute ? ' (audio detached)' : '');
+    const label = c.kind === 'sticker' ? (c.glyph.startsWith('v:') ? c.glyph.slice(2) : c.glyph) + ' ' + (c.anim || '') : c.kind === 'text' ? c.text.split('\n')[0] : (src(c.src)?.name || 'missing source') + (c.mute ? ' (audio detached)' : '');
     d.append(Object.assign(document.createElement('span'), { textContent: label }), Object.assign(document.createElement('i'), { className: 'h l' }), Object.assign(document.createElement('i'), { className: 'h r' }));
     document.querySelector(`.lane[data-lane=${LANE[c.kind]}]`).append(d);
   }
@@ -292,11 +322,23 @@ function renderProps() {
     p.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Drag it in the preview to move it. Size is a fraction of the video width.' }));
   }
   if (c.kind === 'text') {
+    c.maxw ??= 0; c.hi ??= '#ffe14d'; c.upper ??= false; c.karaoke ??= false;
     const ta = document.createElement('textarea'); ta.value = c.text; ta.oninput = () => { commit(); c.text = ta.value; renderTimeline(); draw(); }; p.append(ta);
     const f = window.SMA_FONTS.pick(c.font, name => { commit(); c.font = name; draw(); refreshAll(); });
     const fl = document.createElement('label'); fl.append('Font', f); p.append(fl);
     p.append(num('Size', c, 'size', { min: 8 }), num('Colour', c, 'color', { type: 'color' }), num('Outline colour', c, 'stroke', { type: 'color' }), num('Outline width', c, 'sw', { min: 0 }),
-      num('Bold', c, 'bold', { type: 'checkbox' }), num('X (0–1)', c, 'x', { step: 0.01, min: 0, max: 1 }), num('Y (0–1)', c, 'y', { step: 0.01, min: 0, max: 1 }));
+      num('Bold', c, 'bold', { type: 'checkbox' }), num('Capitals', c, 'upper', { type: 'checkbox' }), num('Highlight words as spoken', c, 'karaoke', { type: 'checkbox' }), num('Highlight colour', c, 'hi', { type: 'color' }),
+      num('Wrap at (fraction of width, 0 = off)', c, 'maxw', { step: 0.05, min: 0, max: 1 }), num('X (0–1)', c, 'x', { step: 0.01, min: 0, max: 1 }), num('Y (0–1)', c, 'y', { step: 0.01, min: 0, max: 1 }));
+    const bg = document.createElement('label'); const bgc = document.createElement('input'); bgc.type = 'color'; bgc.value = (c.bg || '#000000').slice(0, 7); const bgo = document.createElement('input'); bgo.type = 'checkbox'; bgo.checked = !!c.bg;
+    const setBg = () => { commit(); c.bg = bgo.checked ? bgc.value : null; draw(); save(); }; bgo.onchange = setBg; bgc.oninput = () => { bgo.checked = true; setBg(); }; bg.append('Box behind text', bgo, bgc); p.append(bg);
+  }
+  if (c.kind === 'sticker') {
+    c.speed2 ??= 1; c.opacity ??= 1; c.rot ??= 0;
+    const an = document.createElement('select'); ANIMS.forEach(([v, n]) => an.add(new Option(n, v, false, v === (c.anim || 'none')))); an.onchange = () => { commit(); c.anim = an.value; draw(); save(); renderTimeline(); }; const al = document.createElement('label'); al.append('Animation', an); p.append(al);
+    const gl = document.createElement('input'); gl.value = c.glyph.startsWith('v:') ? '' : c.glyph; gl.placeholder = 'emoji'; gl.onchange = () => { if (gl.value) { commit(); c.glyph = gl.value; draw(); save(); renderTimeline(); } }; const gll = document.createElement('label'); gll.append('Emoji', gl); p.append(gll);
+    p.append(num('Speed (x)', c, 'speed2', { step: 0.25, min: 0.25, max: 4 }), num('Size (% of width)', c, 'scale', { min: 0.03, max: 1.5, step: 0.01 }), num('Rotation (°)', c, 'rot', { min: -360, max: 360, step: 1 }), num('Opacity', c, 'opacity', { type: 'range', min: 0, max: 1, step: 0.05 }));
+    if (c.glyph.startsWith('v:')) p.append(num('Colour', c, 'color', { type: 'color' }));
+    p.append(num('X (0–1)', c, 'x', { step: 0.01, min: 0, max: 1 }), num('Y (0–1)', c, 'y', { step: 0.01, min: 0, max: 1 }));
   }
   if (c.kind === 'video' || c.kind === 'image') { const f = document.createElement('select'); [['cover', 'Fill frame (crop)'], ['contain', 'Fit inside (bars)']].forEach(([v, n]) => f.add(new Option(n, v, false, v === c.fit))); f.onchange = () => { commit(); c.fit = f.value; draw(); }; const fl = document.createElement('label'); fl.append('Framing', f); p.append(fl); }
   if (c.kind === 'video' || c.kind === 'audio') p.append(num('Volume', c, 'vol', { type: 'range', min: 0, max: 1.5, step: 0.05 }));
@@ -356,7 +398,7 @@ $('#v-ruler').addEventListener('pointerdown', ev => { const mv = e => { const r 
 let tdrag = null;
 canvas.addEventListener('pointerdown', ev => {
   const r = canvas.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * project.w, y = (ev.clientY - r.top) / r.height * project.h;
-  const hit = [...project.clips].reverse().find(c => (c.kind === 'text' || c.kind === 'overlay') && t >= c.start && t < c.start + c.dur && c._box && x >= c._box[0] && x <= c._box[0] + c._box[2] && y >= c._box[1] && y <= c._box[1] + c._box[3]);
+  const hit = [...project.clips].reverse().find(c => (c.kind === 'text' || c.kind === 'overlay' || c.kind === 'sticker') && t >= c.start && t < c.start + c.dur && c._box && x >= c._box[0] && x <= c._box[0] + c._box[2] && y >= c._box[1] && y <= c._box[1] + c._box[3]);
   if (!hit) return; sel = hit.id; commit(); tdrag = { c: hit, dx: x - hit.x * project.w, dy: y - hit.y * project.h }; canvas.setPointerCapture(ev.pointerId); renderTimeline(); renderProps();
 });
 canvas.addEventListener('pointermove', ev => { if (!tdrag) return; const r = canvas.getBoundingClientRect(); tdrag.c.x = ((ev.clientX - r.left) / r.width * project.w - tdrag.dx) / project.w; tdrag.c.y = ((ev.clientY - r.top) / r.height * project.h - tdrag.dy) / project.h; draw(); });
@@ -536,6 +578,7 @@ window.addEventListener('resize', () => { if (document.body.classList.contains('
 
 document.addEventListener('sma-fonts', () => { if (document.body.classList.contains('video-mode')) draw(); });
 window.SMA_video = {
+  api: { project: () => project, commit, refreshAll, draw, seek, time: () => t, uid, find, select: id => { sel = id; refreshAll(); draw(); }, ANIMS },
   serialize: () => JSON.stringify(project), getPid: () => project.pid, setPid: p => { project.pid = p; }, getName: () => project.name || 'Untitled video', setName: n => { project.name = n; },
   load(json) { pause(); media.forEach((m, id) => disposeMedia(id)); project = JSON.parse(json); sel = null; t = 0; undoS = []; redoS = []; },
   reset() { pause(); media.forEach((m, id) => disposeMedia(id)); project = { w: 1080, h: 1920, clips: [] }; sel = null; t = 0; undoS = []; redoS = []; },

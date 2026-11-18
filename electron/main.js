@@ -56,7 +56,7 @@ ipcMain.handle('vexport:start', (e, p) => {
   const hasAudio = p.wav instanceof ArrayBuffer && p.wav.byteLength > 44; if (hasAudio) fs.writeFileSync(audio, Buffer.from(p.wav));
   const args = ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', ...(hasAudio ? ['-i', audio] : []),
     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', ...videoEncoder(), '-pix_fmt', 'yuv420p',
-    ...(hasAudio ? ['-c:a', 'aac', '-b:a', '192k', '-shortest'] : []), '-movflags', '+faststart', out];
+    ...(hasAudio ? ['-c:a', 'aac', '-b:a', '192k', '-shortest'] : []), '-movflags', '+faststart', ...require('./metaflags').OUT, out];
   const child = spawn(ffmpegPath(), args, { stdio: ['pipe', 'ignore', 'pipe'] });
   const job = { child, dir, out, err: '', closed: new Promise(res => child.on('close', code => res(code))) };
   child.stderr.on('data', d => { job.err = (job.err + d).slice(-600); }); child.stdin.on('error', () => {});

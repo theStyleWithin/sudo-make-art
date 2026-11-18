@@ -86,7 +86,7 @@ $('#vt-cancel').onclick = () => api.cancel();
 $('#vt-go').onclick = async () => {
   if (!info || busy) return; vid.pause(); busy = true; $('#vt-go').hidden = true; $('#vt-cancel').hidden = false; $('#vt-reveal').hidden = true; $('#vt-prog').value = 0; $('#vt-stat').textContent = 'Choose where to save…';
   try {
-    const r = await api.trim({ token: info.token, start, end, mode: mode(), mute: $('#vt-mute').checked });
+    const r = await api.trim({ token: info.token, start, end, mode: mode(), mute: $('#vt-mute').checked, stripMeta: $('#vt-meta').checked });
     if (r.cancelled) $('#vt-stat').textContent = 'Not saved.'; else { lastOut = r.path; $('#vt-stat').textContent = `Saved ${fmtBytes(r.size)}, ${fmt(r.duration)} long${r.mode === 'lossless' && Math.abs(r.startedAt - start) > 0.01 ? ` (it starts at ${fmt(r.startedAt)}, the keyframe before your start)` : ''}: ${r.path}`; $('#vt-reveal').hidden = false; }
   } catch (e) { $('#vt-stat').textContent = clean(e) === 'Cancelled' ? 'Cancelled. Nothing was saved.' : 'Could not trim: ' + clean(e); }
   finally { busy = false; $('#vt-go').hidden = false; $('#vt-cancel').hidden = true; $('#vt-prog').value = 0; }

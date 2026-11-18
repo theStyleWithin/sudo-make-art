@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const metaFlags = require('./metaflags');
 const { pathToFileURL } = require('url');
 const { ff, probe, ffmpegPath, VIDEO_EXT, fail } = require('./vconvert');
 
@@ -63,7 +64,7 @@ function trimArgs(spec, src, info, dest, seekTo, ext) {
   } else {
     a.push('-ss', sec(seekTo), '-i', src, '-t', sec(Math.max(0.05, spec.end - seekTo)), '-map', '0:v:0'); if (!spec.mute) a.push('-map', '0:a?'); if (spec.full) { a.push('-map', '0:s?'); a.push('-map_chapters', '0'); } else a.push('-map_chapters', '-1'); a.push('-map_metadata', '0', '-c', 'copy'); if (spec.mute) a.push('-an'); a.push('-avoid_negative_ts', 'make_zero'); if (ext === '.mp4' || ext === '.m4v' || ext === '.mov') a.push('-movflags', '+faststart');
   }
-  return [...a, '-progress', 'pipe:1', '-nostats', dest];
+  return [...metaFlags.apply([...a, dest], spec.stripMeta).slice(0, -1), '-progress', 'pipe:1', '-nostats', dest];
 }
 function runFf(args, onPct, total) {
   return new Promise((resolve, reject) => { const c = spawn(ffmpegPath(), args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); job.proc = c; let err = '', buf = '';
@@ -73,7 +74,7 @@ function runFf(args, onPct, total) {
 async function doTrim(e, raw) {
   if (job) throw new Error('A cut is already running.');
   const f = files.get(raw && raw.token); if (!f || f.temp) throw new Error('Open a video first.');
-  const spec = { token: raw.token, mode: raw.mode === 'exact' ? 'exact' : 'lossless', mute: !!raw.mute, start: clamp(raw.start, 0, f.info.duration, 0), end: clamp(raw.end, 0, f.info.duration + 0.5, f.info.duration) };
+  const spec = { token: raw.token, mode: raw.mode === 'exact' ? 'exact' : 'lossless', mute: !!raw.mute, stripMeta: !!raw.stripMeta, start: clamp(raw.start, 0, f.info.duration, 0), end: clamp(raw.end, 0, f.info.duration + 0.5, f.info.duration) };
   if (!(spec.end - spec.start >= 0.05)) throw new Error('The end must come after the start.');
   const srcExt = path.extname(f.path).toLowerCase(), exactExt = srcExt === '.mkv' ? '.mkv' : '.mp4', defExt = spec.mode === 'exact' ? exactExt : srcExt;
   const win = BrowserWindow.fromWebContents(e.sender), def = path.join(path.dirname(f.path), path.basename(f.path, srcExt) + ' (trimmed)' + defExt);
