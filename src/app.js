@@ -5,6 +5,8 @@ const $ = s => document.querySelector(s);
 const svg = $('#canvas');
 
 const PRESETS = {
+  'Default image size': [['Full HD 1920 × 1080', 1920, 1080], ['HD 1280 × 720', 1280, 720], ['4K UHD 3840 × 2160', 3840, 2160], ['QHD 2560 × 1440', 2560, 1440], ['XGA 1024 × 768', 1024, 768], ['SVGA 800 × 600', 800, 600], ['VGA 640 × 480', 640, 480],
+    ['Square 1024 × 1024', 1024, 1024], ['Square 512 × 512', 512, 512], ['Square 256 × 256', 256, 256], ['Icon 128 × 128', 128, 128], ['Icon 64 × 64', 64, 64], ['Icon 32 × 32', 32, 32], ['Portrait 1080 × 1920', 1080, 1920], ['Photo 3:2 (3000 × 2000)', 3000, 2000], ['Photo 4:3 (2048 × 1536)', 2048, 1536]],
   'Social media': [['Instagram Post (4:5)', 1080, 1350], ['Instagram Post (Square)', 1080, 1080], ['Instagram Story / Reel', 1080, 1920],
     ['Facebook Post', 1200, 630], ['Facebook Cover', 820, 312], ['Facebook Story', 1080, 1920], ['LinkedIn Post', 1200, 627],
     ['LinkedIn Cover', 1584, 396], ['Pinterest Pin (2:3)', 1000, 1500], ['TikTok Video / Cover', 1080, 1920], ['X / Twitter Post', 1600, 900],
@@ -529,7 +531,7 @@ function buildDialog() {
     PRESETS[cat].forEach(([n, w, h, dpi]) => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = `<b></b><small>${w} × ${h} px</small>`; b.firstChild.textContent = n; b.onclick = () => make(w, h, dpi); grid.append(b); });
   };
   [...Object.keys(PRESETS), ...Object.keys(OTHER_APPS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
-  show('Social media');
+  show('Default image size');
 }
 function make(w, h, dpi) { commit(); newDoc(w, h, dpi); dlg.close(); setMode('design'); fit(); }
 $('#new').onclick = () => dlg.showModal();

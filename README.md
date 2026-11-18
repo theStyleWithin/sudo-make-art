@@ -64,6 +64,9 @@ Exports leave out hidden personal details. Image conversions, the design export 
 ## Source folders
 The Sources panel (design editor) now has folders. Press **+ Folder**, name it, and drag any picture, video, audio file or font into it, or drop files from your computer straight onto a folder. Folders can hold folders, can be dragged into each other or onto the breadcrumb path (Library › Photos › Holiday) to move them, and can be renamed any time with the pencil button or by double-clicking the name. Deleting a folder moves what is inside up one level; nothing inside is deleted. The folder layout is saved on this device.
 
+## New design window
+The list on the left starts with **Default image size**: the sizes a standard PNG or photo usually opens at (Full HD, HD, 4K, 1024×768, square 1024 / 512 / 256, icons down to 32×32, 3:2 and 4:3 photos). Pick one to start a design at exactly that size.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 
