@@ -64,7 +64,7 @@ main{flex:1;display:flex;min-height:0}
 body.video-mode #videoview{display:flex}
 body.video-mode main,body.video-mode footer,body.video-mode .dz,body.home-mode .dz,body.home-mode .nm{display:none}
 body.home-mode main,body.home-mode footer,body.home-mode #pages{display:none}
-body.convert-mode main,body.convert-mode footer,body.convert-mode #pages,body.convert-mode #videoview,body.convert-mode .dz,body.convert-mode .nm,body.vconvert-mode main,body.vconvert-mode footer,body.vconvert-mode #pages,body.vconvert-mode #videoview,body.vconvert-mode .dz,body.vconvert-mode .nm{display:none}
+body.convert-mode main,body.convert-mode footer,body.convert-mode #pages,body.convert-mode #videoview,body.convert-mode .dz,body.convert-mode .nm,body.vtrim-mode main,body.vtrim-mode footer,body.vtrim-mode #pages,body.vtrim-mode #videoview,body.vtrim-mode .dz,body.vtrim-mode .nm,body.vconvert-mode main,body.vconvert-mode footer,body.vconvert-mode #pages,body.vconvert-mode #videoview,body.vconvert-mode .dz,body.vconvert-mode .nm{display:none}
 body.convert-mode #convertview{display:flex}
 body.pixels-mode #pixview{display:flex}
 body.tiles-mode #tilesview{display:flex}
@@ -75,6 +75,7 @@ body.vn-mode #vnview{display:flex}
 body.tcg-mode #tcgview{display:flex}
 body.write-mode #writeview{display:flex}
 body.vconvert-mode #vconvertview{display:flex}
+body.vtrim-mode #vtrimview{display:flex}
 .v-top{display:flex;gap:6px;align-items:center;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
 #v-time{font-variant-numeric:tabular-nums;min-width:120px}
 .zl{display:flex;gap:6px;align-items:center}
@@ -268,7 +269,7 @@ body.home-mode #home{display:flex}
 #soonview{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
 #soonview h1{margin:0;color:var(--acc)}#soonview p{margin:0;opacity:.75}#soonview ul{margin:8px 0;padding:0;list-style:none;opacity:.85;line-height:1.8}#soonview .hint{font-size:12px;opacity:.55}
 body.app-soon #soonview{display:flex}
-body.app-soon main,body.app-soon footer,body.app-soon #pages,body.app-soon #videoview,body.app-soon #pixview,body.app-soon #tilesview,body.app-soon #musicview,body.app-soon #gamesview,body.app-soon #mangaview,body.app-soon #vnview,body.app-soon #tcgview,body.app-soon #writeview,body.app-soon #convertview,body.app-soon #vconvertview,body.app-soon #home,body.app-soon .modes,body.app-soon .dz,body.app-soon .nm{display:none!important}
+body.app-soon main,body.app-soon footer,body.app-soon #pages,body.app-soon #videoview,body.app-soon #pixview,body.app-soon #tilesview,body.app-soon #musicview,body.app-soon #gamesview,body.app-soon #mangaview,body.app-soon #vnview,body.app-soon #vtrimview,body.app-soon #tcgview,body.app-soon #writeview,body.app-soon #convertview,body.app-soon #vconvertview,body.app-soon #home,body.app-soon .modes,body.app-soon .dz,body.app-soon .nm{display:none!important}
 
 #pixview{display:none;flex:1;flex-direction:column;min-height:0}
 body.pixels-mode main,body.pixels-mode footer,body.pixels-mode #pages,body.pixels-mode #videoview,body.pixels-mode .modes,body.pixels-mode .dz,body.pixels-mode .nm{display:none}
@@ -434,3 +435,21 @@ body.write-mode main,body.write-mode footer,body.write-mode #pages,body.write-mo
 body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-focus #wr-status{display:none}body.wr-focus #wr-scroll{padding:30px 0}
 .wr-imgbar{display:flex;gap:6px;align-items:center}
 .vc-ff{display:flex;flex-direction:column;gap:6px;font-size:12px}.vc-ff small{opacity:.8}
+
+#vtrimview{display:none;flex:1;flex-direction:column;min-height:0}
+#vt-bar{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}#vt-bar .sp{flex:1}#vt-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
+#vt-main{flex:1;display:flex;flex-direction:column;gap:10px;padding:12px 16px;min-height:0;overflow:auto}
+#vt-stage{position:relative;flex:1;min-height:200px;background:#000;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}#vt-video{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;display:none}#vt-stage.on #vt-video{display:block}
+#vt-empty{position:absolute;text-align:center;opacity:.7;line-height:1.7}#vt-stage.on #vt-empty{display:none}#vt-stage.drop{outline:3px dashed var(--acc);outline-offset:-8px}
+#vt-fallback{position:absolute;inset:0;background:rgba(0,0,0,.82);display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center;padding:20px}
+#vt-ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}#vt-ctl button{min-width:38px}#vt-time{font-variant-numeric:tabular-nums;margin:0 10px;opacity:.9}
+#vt-tl{position:relative;height:78px;background:#16181f;border-radius:8px;user-select:none;touch-action:none;cursor:pointer}#vt-strip{position:absolute;inset:0 0 12px 0;display:flex;overflow:hidden;border-radius:8px 8px 0 0}#vt-strip img{height:100%;flex:1;min-width:0;object-fit:cover;opacity:.85}
+#vt-kfc{position:absolute;left:0;right:0;bottom:0;width:100%;height:12px}
+#vt-dl,#vt-dr{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.62);pointer-events:none}#vt-dl{left:0}#vt-dr{right:0}
+#vt-snap{position:absolute;top:0;bottom:0;width:2px;background:#ffd24a;pointer-events:none;box-shadow:0 0 6px #ffd24a}
+.vt-h{position:absolute;top:-4px;bottom:-4px;width:14px;margin-left:-7px;background:var(--acc);border-radius:4px;cursor:ew-resize;box-shadow:0 0 0 2px #0006}.vt-h::after{content:'';position:absolute;left:5px;top:22px;bottom:22px;width:4px;border-left:1px solid #fff9;border-right:1px solid #fff9}
+#vt-ph{position:absolute;top:-6px;bottom:0;width:2px;margin-left:-1px;background:#fff;pointer-events:none;box-shadow:0 0 4px #000}
+#vt-ruler{position:relative;height:16px;font-size:11px;opacity:.7}#vt-ruler span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+#vt-sel{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#vt-sel label{display:flex;gap:6px;align-items:center}#vt-sel input{width:120px;font-variant-numeric:tabular-nums}#vt-len{margin-left:auto;font-weight:700}
+#vt-opts{display:flex;gap:6px 18px;align-items:center;flex-wrap:wrap}#vt-hint{flex-basis:100%;margin:2px 0 0}
+#vt-foot{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}#vt-prog{width:200px}#vt-stat{flex:1;font-size:13px}
