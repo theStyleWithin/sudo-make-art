@@ -47,6 +47,11 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 ## Privacy: metadata remover (on by default)
 Exports leave out hidden personal details. Image conversions, the design export (embedded photos in SVG), video conversions, the video trimmer and the video editor drop EXIF and GPS location, camera and phone details, dates, titles, comments, XMP, chapters and encoder stamps. The pixels are not touched, and the rotation flag of a photo is kept so it still shows the right way up. One "Remove metadata" checkbox appears in each tool and they share the setting; untick it to keep the details.
 
+## Design tools: pens, shapes and lines
+- **Pens**: pen, marker, felt tip, highlighter and a stroke eraser. Pick a color from the palette, the colors already in your design, or a custom one; set weight and transparency. Strokes stay editable after you draw them (move, resize, recolor, change brush).
+- **Shapes**: a searchable library of about 50 shapes (basic, stars and bursts, nature, symbols, arrows, callouts). Click to add, or Shift-click and drag on the page to size it as you place it.
+- **Lines**: drag on the page to draw one (Shift snaps the angle), then give it arrow, dot, diamond, square or bar ends and solid, dashed or dotted style.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 

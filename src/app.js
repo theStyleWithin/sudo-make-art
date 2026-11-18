@@ -81,7 +81,9 @@ function drawEl(e, parent) {
   const g = el('g', { 'data-id': e.id, transform: `translate(${e.x} ${e.y}) rotate(${e.rot} ${e.w / 2} ${e.h / 2})`, opacity: e.opacity }, parent);
   if (hasFl || hasSh) g.setAttribute('filter', `url(#${addFilter(e, g, hasFl, hasSh)})`);
   const paint = { fill: e.fill, stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw };
-  if (e.type === 'rect') el('rect', { width: e.w, height: e.h, rx: e.radius, ...paint }, g);
+  const X = window.SMA_EXT && SMA_EXT.types[e.type]; // new element kinds (pens, shapes, tables…) register here
+  if (X && X.draw) X.draw(e, g, el);
+  else if (e.type === 'rect') el('rect', { width: e.w, height: e.h, rx: e.radius, ...paint }, g);
   else if (e.type === 'ellipse') el('ellipse', { cx: e.w / 2, cy: e.h / 2, rx: e.w / 2, ry: e.h / 2, ...paint }, g);
   else if (e.type === 'star') el('polygon', { points: star(e.w, e.h), ...paint }, g);
   else if (e.type === 'line') el('line', { x1: 0, y1: 0, x2: e.w, y2: 0, stroke: e.stroke, 'stroke-width': Math.max(e.sw, 1), 'stroke-linecap': 'round' }, g);
@@ -283,6 +285,7 @@ function field(e, key, type = 'number', opts = {}) {
   if (opts.min !== undefined) i.min = opts.min;
   if (opts.max !== undefined) i.max = opts.max;
   if (opts.step !== undefined) i.step = opts.step;
+  i.value = e[key]; // after min/max so a range keeps its real value
   if (type === 'range') i.id = 'f-' + key;
   i.onfocus = () => { i._c = false; };
   i.oninput = () => { if (!i._c) { commit(); i._c = true; } e[key] = type === 'number' || type === 'range' ? +i.value : i.value; redrawKeepFocus(i); };
@@ -305,7 +308,9 @@ function renderProps() {
     hint.textContent = 'Click an element to edit it. Shift while resizing keeps aspect ratio; Shift while rotating snaps to 15°.';
     p.append(hint); return;
   }
-  h(e.type);
+  const X = window.SMA_EXT && SMA_EXT.types[e.type], noGen = !!(X && X.generic === false);
+  h(X && X.label || e.type);
+  if (X && X.props) X.props(e, p, { h, row, field, commit, render });
   if (e.type === 'text') {
     const t = document.createElement('textarea'); t.id = 'p-text'; t.value = e.text;
     t.oninput = () => { if (!t._c) { commit(); t._c = true; } e.text = t.value; redrawKeepFocus(t); };
@@ -318,10 +323,10 @@ function renderProps() {
     [['⇤', 'start'], ['↔', 'middle'], ['⇥', 'end']].forEach(([l, v]) => { const b = document.createElement('button'); b.textContent = l; b.style.opacity = e.align === v ? 1 : .5; b.onclick = () => { commit(); e.align = v; render(); }; r.append(b); });
     p.append(r);
   }
-  if (e.type !== 'image') p.append(row(e.type === 'line' ? 'Color' : 'Fill', e.type === 'line' ? field(e, 'stroke', 'color') : field(e, 'fill', 'color')));
-  if (e.type !== 'line' && e.type !== 'image') { h('Outline'); p.append(row('Color', field(e, 'stroke', 'color')), row('Width', field(e, 'sw', 'number', { min: 0 }))); }
-  if (e.type === 'line') p.append(row('Thickness', field(e, 'sw', 'number', { min: 1 })));
-  if (e.type === 'rect') p.append(row('Corner radius', field(e, 'radius', 'number', { min: 0 })));
+  if (!noGen) if (e.type !== 'image') p.append(row(e.type === 'line' ? 'Color' : 'Fill', e.type === 'line' ? field(e, 'stroke', 'color') : field(e, 'fill', 'color')));
+  if (!noGen) if (e.type !== 'line' && e.type !== 'image') { h('Outline'); p.append(row('Color', field(e, 'stroke', 'color')), row('Width', field(e, 'sw', 'number', { min: 0 }))); }
+  if (!noGen) if (e.type === 'line') p.append(row('Thickness', field(e, 'sw', 'number', { min: 1 })));
+  if (!noGen) if (e.type === 'rect') p.append(row('Corner radius', field(e, 'radius', 'number', { min: 0 })));
   if (e.type === 'image') { // snap the picture to the page
     h('Snap to page'); const bar = document.createElement('div'); bar.className = 'row';
     const fit = (mode) => { commit();       if (mode === 'fill') { const k = Math.max(doc.w / (e.nw || e.w), doc.h / (e.nh || e.h)); e.w = (e.nw || e.w) * k; e.h = (e.nh || e.h) * k; }
@@ -418,7 +423,7 @@ async function addSource(file, meta) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];

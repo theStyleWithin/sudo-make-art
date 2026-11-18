@@ -453,3 +453,28 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #vt-sel{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#vt-sel label{display:flex;gap:6px;align-items:center}#vt-sel input{width:120px;font-variant-numeric:tabular-nums}#vt-len{margin-left:auto;font-weight:700}
 #vt-opts{display:flex;gap:6px 18px;align-items:center;flex-wrap:wrap}#vt-hint{flex-basis:100%;margin:2px 0 0}
 #vt-foot{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}#vt-prog{width:200px}#vt-stat{flex:1;font-size:13px}
+
+/* art tools: pens + shapes flyouts */
+#tools{overflow-y:auto}
+#tools button.on{background:var(--accent,#8b5cf6);color:#fff}
+#flyout{position:fixed;left:72px;z-index:40;width:290px;max-height:calc(100vh - 90px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 8px 30px #000a}
+#flyout h4{margin:0 0 8px}
+#flyout .cap{font-size:11px;opacity:.7;margin:10px 0 4px}
+#flyout .brushes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#flyout .brush{display:flex;flex-direction:column;align-items:center;padding:4px}
+#flyout .brush.on,#flyout .chips button.on{outline:2px solid #8b5cf6}
+#flyout .sw{display:flex;flex-wrap:wrap;gap:4px}
+#flyout .swatch{width:24px;height:24px;border-radius:50%;border:1px solid #fff4;padding:0}
+#flyout .swatch.on{outline:2px solid #8b5cf6;outline-offset:1px}
+#flyout input[type=color]{width:28px;height:26px;padding:0}
+#flyout label.fs{display:block;margin-top:10px;font-size:12px}
+#flyout label.fs input{display:block;width:100%}
+#flyout .chips{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
+#flyout .chips button{padding:2px 8px;font-size:11px}
+#flyout input[type=search]{width:100%}
+#flyout .sgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;max-height:230px;overflow:auto}
+#flyout .sgrid button{padding:2px;background:#0003}
+#flyout .hint{font-size:11px;opacity:.65}
+#flyout .pri{width:100%;margin-top:10px}
+@media (max-width:700px){#flyout{left:8px;right:8px;width:auto;top:auto!important;bottom:70px}}
+#flyout,#tools{user-select:none}
