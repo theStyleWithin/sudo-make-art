@@ -44,7 +44,8 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
-  pinpoint: { start: () => ipcRenderer.invoke('pinpoint:start') },
+  pinpoint: { start: opts => ipcRenderer.invoke('pinpoint:start', opts) },
+  ocr: { read: dataUrl => ipcRenderer.invoke('ocr:read', dataUrl), copy: text => ipcRenderer.invoke('ocr:copy', text) },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
     info: () => ipcRenderer.invoke('live:info'),
