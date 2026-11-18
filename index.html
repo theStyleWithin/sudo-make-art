@@ -329,28 +329,27 @@
 </section>
 <section id="home">
   <div class="home-hero"><h1>Let’s make some art</h1><input id="h-search" placeholder="Search your projects"></div>
-  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-vtrim" hidden>Trim a video</button><button id="h-folder">Open projects folder</button></div>
+  <div class="home-actions"><button id="h-new" class="pri">+ New design</button><button id="h-newvideo">+ New video</button><button id="h-open">Open a file…</button><button id="h-convert" hidden>Convert images</button><button id="h-vconvert" hidden>Convert videos</button><button id="h-vtrim" hidden>Trim a video</button><button id="h-steam" hidden>Add to Steam</button><button id="h-folder">Open projects folder</button></div>
   <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option><option value="vn">Visual novels</option><option value="tcg">Card decks</option><option value="write">Documents</option></select></div>
   <div id="h-grid"></div>
 </section>
-<section id="liveview">
-  <div id="lv-bar">
-    <b>Sudo Make Live</b><span id="lv-state" class="hint">Not live</span><span class="sp"></span><span id="lv-stats" class="hint"></span>
-    <button id="lv-rec" title="Record to a file (works with or without streaming)">● Record</button>
-    <button id="lv-go" class="pri">Go Live</button>
+<section id="liveview" class="hc">
+  <div id="hc-chbar"><div class="hc-chname"><b>My Channel</b><button id="hc-chmenu" aria-label="Channel menu" title="Add channels">⋮</button></div><div id="hc-chlist"></div><button id="hc-chtoggle" aria-label="Hide the channel bar" title="Hide the channel bar">⌃</button></div>
+  <div id="hc-menubar" role="menubar"></div>
+  <div id="hc-body">
+    <div id="hc-main">
+      <div id="hc-preview"><div class="hc-pv" id="hc-pvbox"><div class="hc-lbl" hidden>Preview</div><div class="hc-stage" id="hc-stage-e"></div></div><div class="hc-pv" id="hc-pgbox"><div class="hc-lbl" hidden>Program</div><div class="hc-stage" id="lv-stage"><canvas id="lv-canvas" width="1280" height="720"></canvas><div id="lv-sel" hidden><i class="lv-h"></i></div></div></div></div>
+      <div id="hc-note" hidden></div>
+      <div id="hc-strip"><span id="hc-srclabel">No source selected</span><button id="hc-props" disabled>Properties</button><button id="hc-filters" disabled>Filters</button></div>
+      <div id="hc-docks">
+        <section class="hc-dock" id="hc-scenes"><header><b>Scenes</b><button class="hc-coll" id="hc-coll">Untitled <i>⌄</i></button><span class="sp"></span><button id="hc-addscene" title="Add a scene" aria-label="Add a scene"></button><button id="hc-trans" title="Transition" aria-label="Transition"></button><button id="hc-scmore" title="More" aria-label="More">⋮</button></header><div class="hc-list" id="lv-scenes"></div></section>
+        <section class="hc-dock" id="hc-sources"><header><b>Sources</b><span class="sp"></span><button id="hc-addsrc" title="Add a source" aria-label="Add a source"></button><button id="hc-srcmore" title="More" aria-label="More">⋮</button></header><div class="hc-list" id="lv-items"></div></section>
+        <section class="hc-dock" id="hc-mixer"><header><b>Audio Mixer</b><span class="sp"></span><button id="hc-muteall" title="Mute or unmute everything" aria-label="Mute everything"></button><button id="hc-mixset" title="Audio settings" aria-label="Audio settings"></button><button id="hc-mixmore" title="More" aria-label="More">⋮</button></header><div class="hc-list" id="lv-mixer"></div></section>
+      </div>
+    </div>
+    <nav id="hc-side" aria-label="Studio tools"></nav>
   </div>
-  <div id="lv-note" hidden></div>
-  <div id="lv-main">
-    <aside id="lv-left">
-      <div class="lv-box"><div class="shead"><b>Scenes</b><button id="lv-addscene" title="Add a scene">+</button></div><div id="lv-scenes"></div></div>
-      <div class="lv-box"><div class="shead"><b>Sources</b><span><button id="lv-addsrc">+ Add</button></span></div><div id="lv-items"></div></div>
-    </aside>
-    <div id="lv-center"><div id="lv-stage"><canvas id="lv-canvas" width="1280" height="720"></canvas><div id="lv-sel" hidden><i class="lv-h"></i></div></div><div id="lv-mixer"></div></div>
-    <aside id="lv-right">
-      <div class="lv-tabs"><button data-t="props" class="on">Selected</button><button data-t="chan">Channels</button><button data-t="set">Settings</button></div>
-      <div id="lv-pane"></div>
-    </aside>
-  </div>
+  <div id="hc-bottom"><span id="hc-res"></span><button id="hc-resgear" title="Output settings" aria-label="Output settings"></button><button id="hc-cpu" title="Performance"></button><span class="sp"></span><span id="hc-live">LIVE <i id="hc-time">00:00:00</i></span><button id="lv-go" class="hc-golive">Go Live</button><button id="lv-rec" class="hc-rec">Rec</button></div>
 </section>
 <section id="vtrimview">
   <div id="vt-bar"><button id="vt-open" class="pri">Open a video…</button><span id="vt-name"></span><span class="sp"></span><span id="vt-info" class="hint"></span></div>
@@ -553,6 +552,7 @@
 <script src="src/vconvert.js"></script>
 <script src="src/vtrim.js"></script>
 <script src="src/live.js"></script>
+<script src="src/steam.js"></script>
 <script src="src/pixels.js"></script>
 <script src="src/tiles.js"></script>
 <script src="src/chip.js"></script>

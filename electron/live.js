@@ -157,7 +157,29 @@ function finish(error) {
   S = null; for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('live:status', { live: false, error: error || '' });
 }
 
+// ---------- snapshots of settings (scenes and channels), so a bad edit or a corrupt file is never the end of them ----------
+const bkDir = () => path.join(dataDir(), 'live-backups');
+const bkNames = () => { try { return fs.readdirSync(bkDir()).filter(n => /^\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d(-\d+)?$/.test(n)).sort().reverse(); } catch (e) { return []; } };
+function backup(stateJson) {
+  const name = new Date().toISOString().slice(0, 19).replace(/:/g, '-'), d = path.join(bkDir(), name); fs.mkdirSync(d, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(path.join(d, 'state.json'), String(stateJson).slice(0, 20e6), { mode: 0o600 });
+  for (const f of ['live-channels.enc', 'live-prefs.json', 'secure-store.key']) { try { fs.copyFileSync(path.join(dataDir(), f), path.join(d, f)); fs.chmodSync(path.join(d, f), 0o600); } catch (e) {} } // the key file goes along: saved keys cannot be read without it
+  for (const old of bkNames().slice(10)) fs.rmSync(path.join(bkDir(), old), { recursive: true, force: true });
+  return { name };
+}
+function restore(name) {
+  if (!bkNames().includes(name)) throw new Error('No such backup'); const d = path.join(bkDir(), name);
+  for (const f of ['live-channels.enc', 'live-prefs.json', 'secure-store.key']) { try { fs.copyFileSync(path.join(d, f), path.join(dataDir(), f)); fs.chmodSync(path.join(dataDir(), f), 0o600); } catch (e) {} }
+  return fs.readFileSync(path.join(d, 'state.json'), 'utf8');
+}
+let cpuPrev = null;
+function cpuPercent() { const t = os.cpus().reduce((a, c) => { const x = Object.values(c.times); a.total += x.reduce((s, v) => s + v, 0); a.idle += c.times.idle; return a; }, { total: 0, idle: 0 }); let p = 0; if (cpuPrev && t.total > cpuPrev.total) p = 100 * (1 - (t.idle - cpuPrev.idle) / (t.total - cpuPrev.total)); cpuPrev = t; return Math.max(0, Math.min(100, p)); }
+
 function register() {
+  ipcMain.handle('live:cpu', () => cpuPercent());
+  ipcMain.handle('live:backup', (e, json) => backup(json));
+  ipcMain.handle('live:backups', () => bkNames().map(name => ({ name })));
+  ipcMain.handle('live:restore', (e, name) => restore(String(name)));
   ipcMain.handle('live:info', () => ({ nvenc: hasNvenc(), protocols: protocols().filter(p => ['rtmp', 'rtmps', 'srt', 'rist'].includes(p)), ffmpeg: path.basename(ff()), recordDir: recDir() }));
   ipcMain.handle('live:sources', async () => {
     const list = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 256, height: 144 }, fetchWindowIcons: false });

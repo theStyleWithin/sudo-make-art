@@ -44,8 +44,13 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
+  steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
     info: () => ipcRenderer.invoke('live:info'),
+    cpu: () => ipcRenderer.invoke('live:cpu'),
+    backup: j => ipcRenderer.invoke('live:backup', j),
+    backups: () => ipcRenderer.invoke('live:backups'),
+    restore: n => ipcRenderer.invoke('live:restore', n),
     sources: () => ipcRenderer.invoke('live:sources'),
     channels: () => ipcRenderer.invoke('live:channels'),
     saveChannels: l => ipcRenderer.invoke('live:channels:save', l),
