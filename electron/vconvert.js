@@ -13,17 +13,25 @@ const VIDEO_EXT = new Set(['.mp4', '.m4v', '.mkv', '.avi', '.mov', '.wmv', '.flv
 const MAX_ITEMS = 50000;
 const PRESETS = { // what each choice does; crf = [default, min, max]
   'mp4-h264': { ext: '.mp4', v: 'h264', crf: [23, 14, 35] },
-  'mp4-h265': { ext: '.mp4', v: 'hevc', crf: [28, 18, 40] },
+  'mp4-h265': { ext: '.mp4', v: 'hevc', crf: [26, 18, 40] },
+  'mp4-av1': { ext: '.mp4', v: 'av1', crf: [38, 20, 50] },
   'webm-vp9': { ext: '.webm', v: 'vp9', crf: [32, 20, 45] },
-  'webm-av1': { ext: '.webm', v: 'av1', crf: [34, 22, 50] },
-  'mkv-h265': { ext: '.mkv', v: 'hevc', crf: [28, 18, 40] },
+  'webm-av1': { ext: '.webm', v: 'av1', crf: [38, 20, 50] },
+  'mkv-h265': { ext: '.mkv', v: 'hevc', crf: [26, 18, 40] },
+  'mkv-av1': { ext: '.mkv', v: 'av1', crf: [38, 20, 50] },
   'mkv-remux': { ext: '.mkv', v: 'copy' },
   'mp4-remux': { ext: '.mp4', v: 'copy' },
   'audio-mp3': { ext: '.mp3', v: 'none' },
 };
 const approvedIn = new Set(), approvedOut = new Set();
 const clamp = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
-const ffmpegPath = () => process.env.SMA_FFMPEG || require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
+// Which FFmpeg runs: SMA_FFMPEG (for people who set it), else one you picked with "Use my own FFmpeg…", else the one bundled with the app.
+const settingsFile = () => path.join(app.getPath('userData'), 'vconvert.json');
+let saved = null; const readSaved = () => { if (saved) return saved; try { saved = JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) || {}; } catch (e) { saved = {}; } return saved; };
+const writeSaved = o => { saved = o; try { fs.writeFileSync(settingsFile(), JSON.stringify(o)); } catch (e) {} };
+const bundled = () => require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
+const ffmpegSource = () => (process.env.SMA_FFMPEG ? 'env' : (readSaved().ffmpeg && fs.existsSync(readSaved().ffmpeg) ? 'custom' : 'bundled'));
+const ffmpegPath = () => process.env.SMA_FFMPEG || (ffmpegSource() === 'custom' ? readSaved().ffmpeg : bundled());
 const winKey = p => (process.platform === 'win32' ? p.toLowerCase() : p);
 const badRel = r => typeof r !== 'string' || !r || path.isAbsolute(r) || r.split(/[\\/]/).includes('..');
 
@@ -49,15 +57,15 @@ function scan(paths) {
 }
 
 // ---------- running ffmpeg ----------
-function ff(args, job, { onLine, keepErr } = {}) {
+function ff(args, job, { onLine, keepErr, collect } = {}) {
   return new Promise((resolve, reject) => {
     if (job && job.cancelled) return reject(new Error('Cancelled'));
     const c = spawn(ffmpegPath(), args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); if (job) job.children.add(c);
-    let err = '', buf = '';
+    let err = '', buf = '', all = '';
     c.stderr.on('data', d => { err = (err + d).slice(keepErr ? -200000 : -1500); });
-    c.stdout.on('data', d => { if (!onLine) return; buf += d; const lines = buf.split('\n'); buf = lines.pop(); lines.forEach(onLine); });
+    c.stdout.on('data', d => { if (collect) { all = (all + d).slice(-400000); return; } if (!onLine) return; buf += d; const lines = buf.split('\n'); buf = lines.pop(); lines.forEach(onLine); });
     c.on('error', e => { if (job) job.children.delete(c); reject(e); });
-    c.on('close', code => { if (job) job.children.delete(c); if (job && job.cancelled) reject(new Error('Cancelled')); else resolve({ code, err }); });
+    c.on('close', code => { if (job) job.children.delete(c); if (job && job.cancelled) reject(new Error('Cancelled')); else resolve({ code, err, out: all }); });
   });
 }
 const fail = r => new Error(((r.err || '').trim().split('\n').filter(l => !/^\s*$/.test(l)).pop() || 'ffmpeg exit code ' + r.code).slice(0, 300));
@@ -76,7 +84,15 @@ async function hwInfo() {
   const test = async enc => { try { const r = await ff(['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=black:s=256x256:d=0.2', '-c:v', enc, '-f', 'null', '-'], null); return r.code === 0; } catch (e) { return false; } };
   hwCache = { nvenc: { h264: await test('h264_nvenc'), hevc: await test('hevc_nvenc') } }; return hwCache;
 }
-const toolInfo = async () => ({ ffmpeg: fs.existsSync(ffmpegPath()), cores: os.cpus().length, hw: await hwInfo() });
+// Which software encoders does this FFmpeg have? (SVT-AV1 is far faster than libaom, but only some builds include it.)
+let encCache = null;
+async function encInfo() {
+  if (encCache) return encCache;
+  let txt = ''; try { txt = (await ff(['-hide_banner', '-encoders'], null, { keepErr: false, collect: true })).out; } catch (e) {}
+  const has = n => new RegExp('\\b' + n + '\\b').test(txt); encCache = { x264: has('libx264'), x265: has('libx265'), svtav1: has('libsvtav1'), aom: has('libaom-av1'), vp9: has('libvpx-vp9') }; return encCache;
+}
+const resetCaches = () => { hwCache = null; encCache = null; };
+const toolInfo = async () => ({ ffmpeg: fs.existsSync(ffmpegPath()), source: ffmpegSource(), ffmpegName: path.basename(ffmpegPath()), cores: os.cpus().length, hw: await hwInfo(), enc: await encInfo() });
 
 // ---------- building the command ----------
 function buildArgs(spec, src, info, out, perJob) {
@@ -99,6 +115,7 @@ function buildArgs(spec, src, info, out, perJob) {
     else if (P.v === 'h264') a.push('-c:v', 'libx264', '-preset', ['veryfast', 'medium', 'slower'][slow], '-crf', String(crf), ...th);
     else if (P.v === 'hevc') a.push('-c:v', 'libx265', '-preset', ['veryfast', 'medium', 'slower'][slow], '-crf', String(crf), ...(P.ext === '.mp4' ? ['-tag:v', 'hvc1'] : []), '-x265-params', 'log-level=error', ...th);
     else if (P.v === 'vp9') a.push('-c:v', 'libvpx-vp9', '-crf', String(crf), '-b:v', '0', '-row-mt', '1', '-cpu-used', ['5', '3', '1'][slow], ...th);
+    else if (P.v === 'av1' && encCache && encCache.svtav1) a.push('-c:v', 'libsvtav1', '-crf', String(crf), '-preset', ['10', '6', '4'][slow], '-svtav1-params', 'lp=' + perJob);
     else if (P.v === 'av1') a.push('-c:v', 'libaom-av1', '-crf', String(crf), '-b:v', '0', '-row-mt', '1', '-cpu-used', ['7', '5', '3'][slow], ...th);
     a.push('-vf', vf.join(','));
   } else a.push('-c:v', 'copy');
@@ -188,6 +205,14 @@ function validate(raw) {
 function register() {
   const wnd = e => BrowserWindow.fromWebContents(e.sender);
   ipcMain.handle('vconvert:tools', () => toolInfo());
+  ipcMain.handle('vconvert:pick-ffmpeg', async e => {
+    const f = process.env.SMA_PICK_FFMPEG || (await dialog.showOpenDialog(wnd(e), { title: 'Choose an FFmpeg program (for example one that includes SVT-AV1)', properties: ['openFile'] })).filePaths[0];
+    if (!f) return toolInfo();
+    let r; try { r = await new Promise((res, rej) => { const c = spawn(f, ['-hide_banner', '-version'], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }); let o = ''; c.stdout.on('data', d => { o = (o + d).slice(0, 4000); }); c.on('error', rej); c.on('close', () => res(o)); setTimeout(() => { try { c.kill(); } catch (x) {} }, 8000); }); } catch (err) { r = ''; }
+    if (!/^ffmpeg version/m.test(r)) throw new Error('That file is not an FFmpeg program.');
+    writeSaved({ ...readSaved(), ffmpeg: f }); resetCaches(); return toolInfo();
+  });
+  ipcMain.handle('vconvert:reset-ffmpeg', () => { const o = { ...readSaved() }; delete o.ffmpeg; writeSaved(o); resetCaches(); return toolInfo(); });
   ipcMain.handle('vconvert:pick-files', async e => { const r = await dialog.showOpenDialog(wnd(e), { title: 'Add videos', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Videos', extensions: [...VIDEO_EXT].map(x => x.slice(1)) }] }); return r.canceled ? scan([]) : scan(r.filePaths); });
   ipcMain.handle('vconvert:pick-folder', async e => { const r = await dialog.showOpenDialog(wnd(e), { title: 'Add a folder of videos', properties: ['openDirectory', 'multiSelections'] }); return r.canceled ? scan([]) : scan(r.filePaths); });
   ipcMain.handle('vconvert:expand', (e, paths) => scan(Array.isArray(paths) ? paths.slice(0, 5000) : []));
@@ -198,7 +223,7 @@ function register() {
     const spec = validate(raw), sender = e.sender, id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
     const job = { id, seq: 0, cancelled: false, children: new Set(), claimed: new Set() }; jobs.set(id, job);
     const send = (ch, d) => { if (!sender.isDestroyed()) sender.send(ch, { jobId: id, ...d }); };
-    await hwInfo();
+    await hwInfo(); await encInfo();
     const sum = { done: 0, copied: 0, skipped: 0, failed: 0, inBytes: 0, outBytes: 0, others: 0 }; let next = 0;
     if (spec.outDir) for (const d of spec.dirs) { try { fs.mkdirSync(path.join(spec.outDir, d), { recursive: true }); } catch (err) {} } // the whole folder tree, empty folders included
     const worker = async () => {

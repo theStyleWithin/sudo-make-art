@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld('sma', {
   },
   vconvert: {
     tools: () => ipcRenderer.invoke('vconvert:tools'),
+    pickFfmpeg: () => ipcRenderer.invoke('vconvert:pick-ffmpeg'),
+    resetFfmpeg: () => ipcRenderer.invoke('vconvert:reset-ffmpeg'),
     pickFiles: () => ipcRenderer.invoke('vconvert:pick-files'),
     pickFolder: () => ipcRenderer.invoke('vconvert:pick-folder'),
     expand: paths => ipcRenderer.invoke('vconvert:expand', paths),
