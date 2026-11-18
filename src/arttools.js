@@ -189,8 +189,8 @@
     rail.addEventListener('click', ev => { const b = ev.target.closest('button'); if (b && !b.dataset.tool && b !== lineBtn) { setTool(null); closeFly(); } }, true);
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && (S.tool || fly)) { setTool(null); closeFly(); } });
     document.addEventListener('pointerdown', ev => { if (fly && !fly.contains(ev.target) && !ev.target.closest('#tools') && !(S.tool && S.tool.group === 'pen')) { closeFly(); } }, true);
-    window.SMA.render();
+    window.SMA.render(); document.dispatchEvent(new Event('sma-rail-ready'));
   }
-  window.SMA_ARTTOOLS = { state: S, setTool, init, BRUSHES };
+  window.SMA_ARTTOOLS = { state: S, setTool, init, BRUSHES, openFly, closeFly, mkBtn, swatches, el };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

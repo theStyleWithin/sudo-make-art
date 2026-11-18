@@ -52,6 +52,10 @@ Exports leave out hidden personal details. Image conversions, the design export 
 - **Shapes**: a searchable library of about 50 shapes (basic, stars and bursts, nature, symbols, arrows, callouts). Click to add, or Shift-click and drag on the page to size it as you place it.
 - **Lines**: drag on the page to draw one (Shift snaps the angle), then give it arrow, dot, diamond, square or bar ends and solid, dashed or dotted style.
 
+- **Sticky notes**: drop in a colored note and type on it.
+- **Tables**: pick a size from the grid or start from a sheet template (budget, invoice, grade book, weekly planner, habit tracker, task list). Cells accept formulas such as `=B2*C2`, `=SUM(B2:B6)`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `ROUND`. The formula engine is a small built-in parser, nothing is run as code.
+- **Signature maker**: type, draw or upload a signature (the paper becomes transparent) and drop it into your design. Saved signatures stay on this device.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 

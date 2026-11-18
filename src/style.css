@@ -478,3 +478,30 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #flyout .pri{width:100%;margin-top:10px}
 @media (max-width:700px){#flyout{left:8px;right:8px;width:auto;top:auto!important;bottom:70px}}
 #flyout,#tools{user-select:none}
+
+/* art tools part 2: tables, notes, signature */
+#props .tgrid{display:grid;gap:2px;font-size:11px;align-items:center;overflow-x:auto}
+#props .tgrid input{width:100%;min-width:0;padding:3px}
+#props .tgrid span{opacity:.6;text-align:center}
+#flyout .tpick{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+#flyout .tpick button{aspect-ratio:1;padding:0;min-width:0;background:#fff2;border-radius:2px}
+#flyout .tpick button.on{background:#8b5cf6}
+#flyout .tpl{display:block;width:100%;text-align:left;margin-top:4px}
+#sigdlg{position:fixed;inset:0;background:#000a;z-index:60;display:grid;place-items:center}
+#sigdlg .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;width:min(620px,94vw);max-height:92vh;overflow:auto}
+#sigdlg h3{margin:0 0 10px}
+#sigdlg .tabs{display:flex;gap:6px;margin-bottom:10px}
+#sigdlg .tabs .on{outline:2px solid #8b5cf6}
+#sigdlg input[type=text],#sigdlg #sig-name{width:100%;margin-bottom:8px}
+#sigdlg #sig-styles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#sigdlg #sig-styles button{padding:4px;background:#fff}
+#sigdlg #sig-styles button.on{outline:3px solid #8b5cf6}
+#sigdlg #sig-pad,#sigdlg #sig-up{width:100%;background:#fff;border-radius:8px;touch-action:none;display:block;margin-bottom:6px}
+#sigdlg .inks{display:flex;gap:6px;margin:10px 0}
+#sigdlg .inks .swatch{width:24px;height:24px;border-radius:50%;border:1px solid #fff4;padding:0}
+#sigdlg .inks .swatch.on{outline:2px solid #8b5cf6;outline-offset:1px}
+#sigdlg .mine #sig-saved{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;opacity:.9}
+#sigdlg .sv{position:relative;background:#fff;border-radius:6px;padding:4px}
+#sigdlg .sv img{height:44px;display:block;cursor:pointer}
+#sigdlg .sv button{position:absolute;top:-6px;right:-6px;padding:0 5px;border-radius:50%}
+#sigdlg .bar{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
