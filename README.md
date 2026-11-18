@@ -74,6 +74,10 @@ Anything past the white page is hidden while you work (a faint ghost shows the h
 - **Transitions** between clips: cross-fade, dip to black, wipes, slides and zoom. Picture and sound both cross over
 - Export to **WebM** everywhere (records the preview in real time), and **MP4 (H.264/AAC), fast** in the desktop app: every frame is rendered on its own and encoded by the bundled FFmpeg, which is quicker than real time on a typical PC (about 1.1x on a 4-core machine with no GPU). If your FFmpeg build has NVIDIA's encoder (set `SMA_FFMPEG` to its path), export uses the GPU automatically; the bundled build does not include it
 
+## Video: captions and animated stickers
+- **Captions**: ten caption styles (classic, boxed, yellow, pop caps, neon, comic, minimal, word-by-word highlight, highlighter, retro screen), a caption list where you set the words and timing, and import / save of `.srt` and `.vtt` files. Long lines wrap automatically. Everything is typed or imported by you; nothing is uploaded and no speech model is downloaded.
+- **Animated stickers**: emoji and built-in vector shapes that bounce, pulse, beat, spin, wiggle, shake, float or pop in. Drag them in the preview, change size, speed and animation in the panel.
+
 ## Local AI image generation (desktop only)
 Open the **AI** tool: generate an image from a prompt, or edit the selected image (img2img with a strength slider), then add the result to your design. Everything runs on your computer; nothing is sent anywhere.
 

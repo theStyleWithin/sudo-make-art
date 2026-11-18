@@ -507,3 +507,19 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #sigdlg .bar{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 #flyout .sgrid{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
 #flyout .sgrid.flat{max-height:none;overflow:visible}
+
+/* video: captions + stickers */
+.clip.k-sticker{background:#e8590c}
+#vtdlg{position:fixed;inset:0;background:#000a;z-index:60;display:grid;place-items:center}
+#vtdlg .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;width:min(760px,95vw);max-height:90vh;overflow:auto}
+#vtdlg h3{margin:0 0 10px}
+#vtdlg .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+#vtdlg .tabs .on{outline:2px solid #8b5cf6}
+#vtdlg .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+#vtdlg .cgrid button{padding:0;overflow:hidden;background:#1d1e26}
+#vtdlg .cgrid canvas{width:100%;display:block}
+#vtdlg .sgrid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px;margin:8px 0}
+#vtdlg .sgrid2 button{font-size:30px;padding:4px;line-height:1.1}
+#vtdlg .caprow{display:grid;grid-template-columns:90px 90px 1fr 30px;gap:6px;margin-bottom:4px}
+#vtdlg .bar{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+#vtdlg .hint{font-size:12px;opacity:.7}
