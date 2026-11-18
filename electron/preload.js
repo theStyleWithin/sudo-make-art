@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
+  pinpoint: { start: () => ipcRenderer.invoke('pinpoint:start') },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
     info: () => ipcRenderer.invoke('live:info'),

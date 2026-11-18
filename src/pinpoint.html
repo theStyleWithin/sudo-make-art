@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<title>Pinpoint screenshot</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:crosshair;font:13px system-ui,sans-serif;user-select:none}canvas{position:fixed;inset:0;width:100vw;height:100vh}
+#tip{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#161616ee;color:#fff;padding:8px 14px;border-radius:6px;pointer-events:none;border:1px solid #444}#tip b{color:#f4ff2b}</style></head>
+<body><canvas id="c"></canvas><div id="tip">Point at a picture and <b>click</b> to save it. <b>Scroll</b> for a bigger or smaller box. <b>Drag</b> to draw your own. <b>Space</b> takes the whole screen. <b>Esc</b> cancels.</div><script src="pinpoint.js"></script></body></html>
