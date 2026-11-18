@@ -56,6 +56,11 @@ Exports leave out hidden personal details. Image conversions, the design export 
 - **Tables**: pick a size from the grid or start from a sheet template (budget, invoice, grade book, weekly planner, habit tracker, task list). Cells accept formulas such as `=B2*C2`, `=SUM(B2:B6)`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `ROUND`. The formula engine is a small built-in parser, nothing is run as code.
 - **Signature maker**: type, draw or upload a signature (the paper becomes transparent) and drop it into your design. Saved signatures stay on this device.
 
+- **Frames**: drop a picture onto a frame and it snaps in, cropped to the shape. Shapes, letters and numbers, phone, laptop and browser windows, instant photos, film strip, retro TV and stamps. Zoom and move the picture inside the frame.
+- **Collage grids**: 11 layouts of empty frames with an adjustable gap; drag your pictures in.
+- **Forms**: text fields, checkboxes, radio buttons, switches, dropdowns, buttons, search bars, sliders, ratings, progress bars and tabs, for mock-ups.
+- **New design window**: more sizes (flyers, postcards, invitations, logos, web banners and ads), custom sizes in pixels, inches, millimetres or centimetres with a ratio lock, and Docs and Videos entries that open the writing app and the video editor.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 

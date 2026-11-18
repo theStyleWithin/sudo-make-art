@@ -505,3 +505,5 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #sigdlg .sv img{height:44px;display:block;cursor:pointer}
 #sigdlg .sv button{position:absolute;top:-6px;right:-6px;padding:0 5px;border-radius:50%}
 #sigdlg .bar{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+#flyout .sgrid{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
+#flyout .sgrid.flat{max-height:none;overflow:visible}

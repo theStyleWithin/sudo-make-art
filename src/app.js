@@ -11,8 +11,15 @@ const PRESETS = {
     ['WhatsApp Status', 1080, 1920], ['YouTube Thumbnail', 1280, 720], ['YouTube Banner', 2560, 1440], ['YouTube Profile Picture', 800, 800],
     ['YouTube Shorts', 1080, 1920]],
   'Presentation': [['Presentation 16:9', 1920, 1080], ['Presentation 4:3', 1600, 1200]],
-  'Print': [['A4 (150 dpi)', 1240, 1754, 150], ['A3 Poster (300 dpi)', 3508, 4961, 300], ['Letter (150 dpi)', 1275, 1650, 150], ['Business Card', 1050, 600, 300]],
+  'Print': [['A4 (150 dpi)', 1240, 1754, 150], ['A3 Poster (300 dpi)', 3508, 4961, 300], ['Letter (150 dpi)', 1275, 1650, 150], ['Business Card', 1050, 600, 300],
+    ['Flyer A5 (300 dpi)', 1748, 2480, 300], ['Postcard 6×4 in (300 dpi)', 1800, 1200, 300], ['Invitation 5×7 in (300 dpi)', 1500, 2100, 300], ['Greeting Card 5×7 in (300 dpi)', 1500, 2100, 300],
+    ['Certificate (Letter, landscape)', 1650, 1275, 150], ['Menu (A4 portrait)', 1240, 1754, 150], ['Poster 18×24 in (150 dpi)', 2700, 3600, 150]],
+  'Logos & cards': [['Logo', 500, 500], ['Name Tag', 1050, 750, 300], ['Sticker', 1000, 1000], ['Album Cover', 1400, 1400], ['Podcast Cover', 3000, 3000], ['Bookmark', 450, 1500, 300], ['Gift Tag', 600, 900, 300]],
+  'Web & ads': [['Website Banner', 1920, 600], ['Email Header', 1280, 400], ['Display Ad (Medium Rectangle)', 300, 250], ['Display Ad (Leaderboard)', 728, 90], ['Display Ad (Skyscraper)', 160, 600], ['Open Graph Image', 1200, 630], ['Favicon', 256, 256]],
 };
+// Docs open the writing app and Videos open the video editor; they are listed in the new-design window next to the sizes
+const OTHER_APPS = { 'Docs': { mode: 'write', blurb: 'Documents are written in the writing app (Sudo Write Stuff), with real page layout, tables, and export to DOCX, ODT and PDF.', items: ['Document', 'Letter', 'Resume', 'Report', 'Notes'] },
+  'Videos': { mode: 'video', blurb: 'Videos are made in the video editor: a timeline, text, pictures and sound.', items: ['Video 16:9 (1920×1080)', 'Vertical video 9:16 (1080×1920)', 'Square video (1080×1080)'] } };
 const FLAT = Object.values(PRESETS).flat();
 // a font name as CSS: quoted, except the generic families (sans-serif, serif, monospace, ...) which must stay bare
 const GENERIC = new Set(['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui']);
@@ -261,7 +268,7 @@ svg.addEventListener('pointermove', ev => {
   }
   render();
 });
-svg.addEventListener('pointerup', () => { const had = guides.length; drag = null; guides = []; if (had) render(); });
+svg.addEventListener('pointerup', () => { const had = guides.length, d = drag; drag = null; guides = []; if (d && d.kind === 'move' && window.SMA_EXT && SMA_EXT.onDrop && SMA_EXT.onDrop(d.e)) return; if (had) render(); });
 
 // two-finger pinch zooms the canvas (touch screens)
 const fingers = new Map(); let pinch = null;
@@ -465,14 +472,24 @@ function buildDialog() {
   const nav = $('#newcats'), grid = $('#newgrid');
   const show = cat => {
     nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat)); grid.textContent = '';
+    if (OTHER_APPS[cat]) { const o = OTHER_APPS[cat], p = document.createElement('p'); p.className = 'hint'; p.textContent = o.blurb; grid.append(p);
+      o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.mode === 'write' ? 'the writing app' : 'the video editor') + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); setMode(o.mode); }; grid.append(b); }); return; }
     if (cat === 'Custom size') {
-      grid.innerHTML = '<label>Width <input id="cw" type="number" value="1080" min="16"></label><label>Height <input id="ch" type="number" value="1080" min="16"></label><button id="cgo">Create</button>';
-      $('#cgo').onclick = () => make(Math.max(16, +$('#cw').value || 1080), Math.max(16, +$('#ch').value || 1080));
+      grid.innerHTML = '<div class="cust"><label>Width <input id="cw" type="number" value="1080" min="1" step="any"></label><button id="clock" type="button" title="Keep the shape (aspect ratio) when you change one side" aria-pressed="false">🔓</button><label>Height <input id="ch" type="number" value="1080" min="1" step="any"></label>' +
+        '<label>Units <select id="cu"><option value="px">pixels</option><option value="in">inches</option><option value="mm">millimetres</option><option value="cm">centimetres</option></select></label>' +
+        '<label id="cdpil" hidden>Resolution <select id="cdpi"><option>72</option><option>150</option><option selected>300</option></select> dpi</label><p id="cinfo" class="hint"></p><button id="cgo" class="pri">Create</button></div>';
+      let lock = false, ratio = 1; const W = $('#cw'), H = $('#ch'), U = $('#cu'), D = $('#cdpi'), perUnit = () => ({ px: 1, in: +D.value, mm: +D.value / 25.4, cm: +D.value / 2.54 })[U.value];
+      const info = () => { const k = perUnit(); $('#cinfo').textContent = `${Math.round(Math.max(1, +W.value) * k)} × ${Math.round(Math.max(1, +H.value) * k)} px` + (U.value === 'px' ? '' : ' at ' + D.value + ' dpi'); };
+      $('#clock').onclick = () => { lock = !lock; ratio = (+W.value || 1) / (+H.value || 1); $('#clock').textContent = lock ? '🔒' : '🔓'; $('#clock').setAttribute('aria-pressed', lock); };
+      W.oninput = () => { if (lock) H.value = +(W.value / ratio).toFixed(3); info(); }; H.oninput = () => { if (lock) W.value = +(H.value * ratio).toFixed(3); info(); };
+      U.onchange = () => { const old = U.dataset.u || 'px', kOld = { px: 1, in: +D.value, mm: +D.value / 25.4, cm: +D.value / 2.54 }[old], kNew = perUnit(); W.value = +(W.value * kOld / kNew).toFixed(2); H.value = +(H.value * kOld / kNew).toFixed(2); U.dataset.u = U.value; $('#cdpil').hidden = U.value === 'px'; info(); };
+      D.onchange = info; info();
+      $('#cgo').onclick = () => { const k = perUnit(), w = Math.min(8000, Math.max(16, Math.round(+W.value * k) || 1080)), h = Math.min(8000, Math.max(16, Math.round(+H.value * k) || 1080)); make(w, h, U.value === 'px' ? undefined : +D.value); };
       return;
     }
     PRESETS[cat].forEach(([n, w, h, dpi]) => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = `<b></b><small>${w} × ${h} px</small>`; b.firstChild.textContent = n; b.onclick = () => make(w, h, dpi); grid.append(b); });
   };
-  [...Object.keys(PRESETS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
+  [...Object.keys(PRESETS), ...Object.keys(OTHER_APPS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
   show('Social media');
 }
 function make(w, h, dpi) { commit(); newDoc(w, h, dpi); dlg.close(); setMode('design'); fit(); }

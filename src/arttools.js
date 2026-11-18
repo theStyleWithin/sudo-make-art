@@ -139,7 +139,7 @@
   function closeFly() { if (fly) fly.remove(); fly = null; flyFor = null; }
   function openFly(btn, build) {
     if (flyFor === btn) { closeFly(); return; } closeFly(); fly = document.createElement('div'); fly.id = 'flyout'; flyFor = btn;
-    const r = btn.getBoundingClientRect(); fly.style.top = Math.max(60, Math.min(r.top, innerHeight - 420)) + 'px'; build(fly); document.body.append(fly);
+    const r = btn.getBoundingClientRect(); const top = Math.max(60, Math.min(r.top, innerHeight - 360)); fly.style.top = top + 'px'; fly.style.maxHeight = (innerHeight - top - 14) + 'px'; build(fly); document.body.append(fly);
   }
   const docColors = () => { const out = []; for (const e of api().doc().els) for (const c of [e.fill, e.sw && e.stroke, e.type === 'path' && e.stroke, e.type === 'line' && e.stroke]) if (typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) && !out.includes(c.toLowerCase())) out.push(c.toLowerCase()); return out.slice(0, 12); };
   function swatches(parent, current, onPick) {
