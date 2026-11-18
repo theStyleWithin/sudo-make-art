@@ -6,12 +6,12 @@ if (!api) return;
 $('#mode-vconvert').hidden = false; $('#h-vconvert').hidden = false; $('#h-vconvert').onclick = () => window.SMA.setMode('vconvert');
 
 // quality range per format: [default, min, max] (lower = better picture)
-const CRF = { 'mp4-h264': [23, 14, 35], 'mp4-h265': [26, 18, 40], 'mkv-h265': [26, 18, 40], 'mp4-av1': [38, 20, 50], 'mkv-av1': [38, 20, 50], 'webm-vp9': [32, 20, 45], 'webm-av1': [38, 20, 50] };
+const CRF = { 'mp4-h264': [23, 14, 35], 'mp4-h265': [26, 18, 40], 'mkv-h265': [26, 18, 40], 'mp4-av1': [38, 20, 50], 'mkv-av1': [38, 20, 50], 'webm-vp9': [32, 20, 45], 'webm-av1': [38, 20, 50], 'mpg-mpeg2': [4, 2, 12] };
 // The named choices: [quality number (CRF), speed] for each codec. "Balanced" is also what a fresh format starts on.
-const QUALITY = { h264: { small: [28, 2], balanced: [23, 1], high: [18, 1] }, hevc: { small: [30, 2], balanced: [26, 1], high: [22, 1] }, vp9: { small: [38, 2], balanced: [32, 1], high: [26, 1] }, av1: { small: [46, 2], balanced: [38, 1], high: [30, 1] } };
+const QUALITY = { h264: { small: [28, 2], balanced: [23, 1], high: [18, 1] }, hevc: { small: [30, 2], balanced: [26, 1], high: [22, 1] }, vp9: { small: [38, 2], balanced: [32, 1], high: [26, 1] }, mpeg2: { small: [8, 1], balanced: [4, 1], high: [2, 1] }, av1: { small: [46, 2], balanced: [38, 1], high: [30, 1] } };
 // AV1 numbers run about 10 higher than H.265 for the same look (measured with SSIM on test clips): AV1 38 is about H.265 26.
-const CODEC = { h264: 'H.264', hevc: 'H.265', vp9: 'VP9', av1: 'AV1' }, SPEED = ['fast', 'medium', 'slow'];
-const famOf = p => (p.includes('h264') ? 'h264' : p.includes('h265') ? 'hevc' : p.includes('vp9') ? 'vp9' : p.includes('av1') ? 'av1' : null);
+const CODEC = { h264: 'H.264', hevc: 'H.265', vp9: 'VP9', av1: 'AV1', mpeg2: 'MPEG-2' }, SPEED = ['fast', 'medium', 'slow'];
+const famOf = p => (p.includes('h264') ? 'h264' : p.includes('h265') ? 'hevc' : p.includes('vp9') ? 'vp9' : p.includes('av1') ? 'av1' : p.includes('mpeg2') ? 'mpeg2' : null);
 function applyQ(name) { const f = famOf($('#vc-preset').value), q = f && QUALITY[f][name]; if (!q) return; const r = CRF[$('#vc-preset').value]; $('#vc-crf').value = Math.min(r[2], Math.max(r[1], q[0])); $('#vc-effort').value = q[1]; }
 function matchQ() { const f = famOf($('#vc-preset').value); let m = 'custom'; if (f) for (const [k, q] of Object.entries(QUALITY[f])) if (+$('#vc-crf').value === q[0] && +$('#vc-effort').value === q[1]) m = k; $('#vc-qpreset').value = m; }
 let items = [], others = [], dirs = [], outDir = null, running = false, started = 0, seq = 0, tools = null;
@@ -27,9 +27,9 @@ function setCrfRange(reset) { const r = CRF[$('#vc-preset').value]; if (!r) retu
 
 function sync() {
   const p = $('#vc-preset').value, remux = p.endsWith('remux'), audioOnly = p === 'audio-mp3', enc = !remux && !audioOnly;
-  $('#vc-qrow').hidden = !enc; $('#vc-erow').hidden = !enc; $('#vc-hrow').hidden = !enc; $('#vc-arow').hidden = remux || p.startsWith('webm') || audioOnly;
+  $('#vc-qrow').hidden = !enc; $('#vc-erow').hidden = !enc || p.startsWith('mpg'); $('#vc-hrow').hidden = !enc; $('#vc-arow').hidden = remux || p.startsWith('webm') || p.startsWith('mpg') || audioOnly;
   $('#vc-hwrow').hidden = !(enc && tools && (p.includes('h264') || p.includes('h265')) && tools.hw.nvenc[p.includes('h264') ? 'h264' : 'hevc']);
-  const fam = famOf(p); $('#vc-prow').hidden = !enc; matchQ(); $('#vc-qinfo').textContent = fam ? `${CODEC[fam]} · quality ${$('#vc-crf').value} · ${SPEED[+$('#vc-effort').value]} speed` : '';
+  const fam = famOf(p); $('#vc-prow').hidden = !enc; matchQ(); $('#vc-qinfo').textContent = fam ? `${CODEC[fam]} · quality ${$('#vc-crf').value}` + (fam === 'mpeg2' ? '' : ` · ${SPEED[+$('#vc-effort').value]} speed`) : '';
   const av1 = p.includes('av1'), svt = !!(tools && tools.enc && tools.enc.svtav1); $('#vc-ffrow').hidden = !av1 || !tools; if (tools) { $('#vc-ffname').textContent = !av1 ? '' : svt ? `AV1 encoder: SVT-AV1 (fast), from ${tools.source === 'bundled' ? 'the built-in FFmpeg' : tools.ffmpegName}` : 'AV1 encoder: libaom (very slow) in the built-in FFmpeg'; $('#vc-ffreset').hidden = tools.source !== 'custom'; }
   $('#vc-qout').textContent = $('#vc-crf').value;
   $('#vc-outbtn').textContent = outDir ? outDir : ($('#vc-inplace').checked ? 'Next to the originals' : 'Ask me when I start'); $('#vc-outclear').hidden = !outDir; $('#vc-outbtn').disabled = $('#vc-inplace').checked;
@@ -38,6 +38,7 @@ function sync() {
   $('#vc-count').textContent = items.length ? `${items.length} video${items.length === 1 ? '' : 's'}, ${fmt(items.reduce((s, i) => s + i.size, 0))}` + (oc && $('#vc-others').checked && !$('#vc-inplace').checked ? ` + ${oc} other file${oc === 1 ? '' : 's'}` : '') : '';
   const svtOk = !!(tools && tools.enc && tools.enc.svtav1), hints = [];
   if (p.startsWith('mp4') && !remux) hints.push('MP4 keeps the video and audio but leaves out embedded subtitles. Use MKV to keep them (or tick “Copy subtitles…” for .srt files that sit next to the video).');
+  if (p.startsWith('mpg')) hints.push('MPG uses MPEG-2 video and MP2 audio, the format of older players, DVD tools and some editors. Files are much larger than MP4, and there are no subtitles or chapters.');
   if (p.includes('av1')) hints.push('AV1 gives the smallest files (often 20 to 30% under H.265 at the same look)' + (svtOk ? '.' : ', but the built-in encoder is slow: a long film can take many hours. Choose an FFmpeg that includes SVT-AV1 below to make it far faster.'));
   $('#vc-hint').textContent = hints.join(' ');
   $('#vc-go').disabled = running || !items.length;
