@@ -44,6 +44,12 @@ Flathub/AUR drafts for other people to submit are in `packaging/`.
 - **Sources**: a persistent local library (images, video, audio) that is still there next time you open the app
 - Undo/redo, zoom, autosave, save/open project files, export PNG/JPG/SVG
 
+## Privacy: metadata remover (on by default)
+Exports leave out hidden personal details. Image conversions, the design export (embedded photos in SVG), video conversions, the video trimmer and the video editor drop EXIF and GPS location, camera and phone details, dates, titles, comments, XMP, chapters and encoder stamps. The pixels are not touched, and the rotation flag of a photo is kept so it still shows the right way up. One "Remove metadata" checkbox appears in each tool and they share the setting; untick it to keep the details.
+
+## Design editor page edges
+Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
+
 ## Video editor (Video tab)
 - Timeline with video/image, audio and text lanes; drag clips, drag edges to trim, **split** at the playhead
 - **Detach audio** onto its own track, trim/split/move it separately, or **replace the visuals** and keep the audio
