@@ -67,6 +67,9 @@ The Sources panel (design editor) now has folders. Press **+ Folder**, name it, 
 ## New design window
 The list on the left starts with **Default image size**: the sizes a standard PNG or photo usually opens at (Full HD, HD, 4K, 1024×768, square 1024 / 512 / 256, icons down to 32×32, 3:2 and 4:3 photos). Pick one to start a design at exactly that size.
 
+## Channel icons and banners
+A **Channel icons & banners** section in the New design window lists icon and banner sizes for Kick, blaze.stream, Rumble and Odysee first, then Twitch, YouTube, Kamtape, Discord, X / Twitter and Facebook. Rumble's banner (3600×600) and Odysee's ratios (1:1 icon, 6.25:1 cover) come from their own help pages. Kick, blaze.stream and Kamtape do not publish exact sizes, so those entries are marked *(typical)*: they are sizes that scale down cleanly, so check the site's upload screen if it shows a different number.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 

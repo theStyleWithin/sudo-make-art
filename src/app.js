@@ -7,6 +7,19 @@ const svg = $('#canvas');
 const PRESETS = {
   'Default image size': [['Full HD 1920 × 1080', 1920, 1080], ['HD 1280 × 720', 1280, 720], ['4K UHD 3840 × 2160', 3840, 2160], ['QHD 2560 × 1440', 2560, 1440], ['XGA 1024 × 768', 1024, 768], ['SVGA 800 × 600', 800, 600], ['VGA 640 × 480', 640, 480],
     ['Square 1024 × 1024', 1024, 1024], ['Square 512 × 512', 512, 512], ['Square 256 × 256', 256, 256], ['Icon 128 × 128', 128, 128], ['Icon 64 × 64', 64, 64], ['Icon 32 × 32', 32, 32], ['Portrait 1080 × 1920', 1080, 1920], ['Photo 3:2 (3000 × 2000)', 3000, 2000], ['Photo 4:3 (2048 × 1536)', 2048, 1536]],
+  // Channel art. Rumble's banner and Odysee's ratios are from their own help pages; Twitch, YouTube, Discord, X and Facebook are the usual published sizes.
+  // Kick, blaze.stream and Kamtape do not publish exact sizes, so those are "typical" sizes that scale down cleanly: check the upload screen.
+  'Channel icons & banners': [
+    ['Kick · Channel icon (typical)', 800, 800], ['Kick · Channel banner (typical)', 1280, 700], ['Kick · Offline banner (typical)', 1920, 1080],
+    ['blaze.stream · Channel icon (typical)', 800, 800], ['blaze.stream · Channel banner (typical)', 1920, 480],
+    ['Rumble · Channel icon (typical)', 800, 800], ['Rumble · Channel banner (backsplash)', 3600, 600],
+    ['Odysee · Channel icon (1:1)', 600, 600], ['Odysee · Channel cover (6.25:1)', 2500, 400],
+    ['Twitch · Channel icon', 256, 256], ['Twitch · Channel banner', 1200, 480], ['Twitch · Offline screen', 1920, 1080],
+    ['YouTube · Channel icon', 800, 800], ['YouTube · Channel banner', 2560, 1440],
+    ['Kamtape · Channel icon (typical)', 800, 800], ['Kamtape · Channel banner (typical)', 2048, 512],
+    ['Discord · Profile picture', 512, 512], ['Discord · Profile banner', 600, 240], ['Discord · Server icon', 512, 512], ['Discord · Server banner', 960, 540],
+    ['X / Twitter · Profile picture', 400, 400], ['X / Twitter · Header', 1500, 500],
+    ['Facebook · Profile picture', 320, 320], ['Facebook · Cover', 820, 312]],
   'Social media': [['Instagram Post (4:5)', 1080, 1350], ['Instagram Post (Square)', 1080, 1080], ['Instagram Story / Reel', 1080, 1920],
     ['Facebook Post', 1200, 630], ['Facebook Cover', 820, 312], ['Facebook Story', 1080, 1920], ['LinkedIn Post', 1200, 627],
     ['LinkedIn Cover', 1584, 396], ['Pinterest Pin (2:3)', 1000, 1500], ['TikTok Video / Cover', 1080, 1920], ['X / Twitter Post', 1600, 900],
