@@ -8,6 +8,7 @@ const projects = require('./projects');
 const convert = require('./convert');
 const vconvert = require('./vconvert');
 const vtrim = require('./vtrim');
+const live = require('./live');
 const gamepack = require('./gamepack');
 const vnpack = require('./vnpack');
 const savefiles = require('./savefiles');
@@ -26,7 +27,7 @@ function createWindow() {
     icon: path.join(root, 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, nodeIntegration: false, sandbox: true,
+      contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false, // a live stream must keep its frame rate while the window is behind another
     },
   });
   win.once('ready-to-show', () => win.show());
@@ -110,6 +111,7 @@ projects.register();
 convert.register();
 vconvert.register();
 vtrim.register();
+live.register();
 gamepack.register();
 vnpack.register();
 savefiles.register();
@@ -120,8 +122,10 @@ app.setName('Sudo Make Art');
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
   // The page may only ask for one thing: the list of installed fonts (for the font picker). Everything else is refused.
-  session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => cb(permission === 'local-fonts'));
-  session.defaultSession.setPermissionCheckHandler((wc, permission) => permission === 'local-fonts');
+  // ...plus the camera and microphone, only for the app's own page, and only when a live scene asks for them.
+  const own = u => typeof u === 'string' && u.startsWith('file://');
+  session.defaultSession.setPermissionRequestHandler((wc, permission, cb, details) => cb(permission === 'local-fonts' || (permission === 'media' && own(details && details.requestingUrl))));
+  session.defaultSession.setPermissionCheckHandler((wc, permission, origin) => permission === 'local-fonts' || (permission === 'media' && own(origin)));
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

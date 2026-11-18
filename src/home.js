@@ -38,7 +38,7 @@ const nameBox = $('#docname');
 nameBox.oninput = () => { api(mode()).setName(nameBox.value || 'Untitled'); document.dispatchEvent(new Event('sma-edit')); };
 document.addEventListener('sma-mode', async ev => {
   if (ev.detail === 'home') { if (timer) await saveNow(); await render(); return; }
-  if (ev.detail === 'convert' || ev.detail === 'vconvert' || ev.detail === 'vtrim' || ev.detail === 'pixels' || ev.detail === 'tiles' || ev.detail === 'music' || ev.detail === 'games' || ev.detail === 'manga' || ev.detail === 'vn' || ev.detail === 'tcg' || ev.detail === 'write') return;
+  if (ev.detail === 'convert' || ev.detail === 'vconvert' || ev.detail === 'vtrim' || ev.detail === 'live' || ev.detail === 'pixels' || ev.detail === 'tiles' || ev.detail === 'music' || ev.detail === 'games' || ev.detail === 'manga' || ev.detail === 'vn' || ev.detail === 'tcg' || ev.detail === 'write') return;
   nameBox.value = api(ev.detail).getName();
 });
 

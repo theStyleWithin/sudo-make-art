@@ -10,7 +10,7 @@
 <body>
 <header id="top">
   <span class="appsw-wrap"><button id="appsw" class="logo" aria-haspopup="menu" aria-expanded="false" title="Switch app"><span id="appname">Sudo Make Art</span> <i>▾</i></button><div id="appmenu" role="menu" hidden></div></span>
-  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button><button id="mode-vconvert" hidden>Convert videos</button><button id="mode-vtrim" hidden>Trim video</button></span>
+  <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button><button id="mode-vconvert" hidden>Convert videos</button><button id="mode-vtrim" hidden>Trim video</button><button id="mode-live" hidden>Live</button></span>
   <input id="docname" class="nm" placeholder="Untitled" maxlength="120">
   <button class="dz" id="new">+ New design</button>
   <select class="dz" id="size" title="Resize page"></select>
@@ -333,6 +333,25 @@
   <div class="home-bar"><h2>Recents</h2><select id="h-type"><option value="">All</option><option value="design">Designs</option><option value="video">Videos</option><option value="pixel">Pixel art</option><option value="tiles">Tilesets</option><option value="music">Songs</option><option value="game">Games</option><option value="manga">Manga</option><option value="vn">Visual novels</option><option value="tcg">Card decks</option><option value="write">Documents</option></select></div>
   <div id="h-grid"></div>
 </section>
+<section id="liveview">
+  <div id="lv-bar">
+    <b>Sudo Make Live</b><span id="lv-state" class="hint">Not live</span><span class="sp"></span><span id="lv-stats" class="hint"></span>
+    <button id="lv-rec" title="Record to a file (works with or without streaming)">● Record</button>
+    <button id="lv-go" class="pri">Go Live</button>
+  </div>
+  <div id="lv-note" hidden></div>
+  <div id="lv-main">
+    <aside id="lv-left">
+      <div class="lv-box"><div class="shead"><b>Scenes</b><button id="lv-addscene" title="Add a scene">+</button></div><div id="lv-scenes"></div></div>
+      <div class="lv-box"><div class="shead"><b>Sources</b><span><button id="lv-addsrc">+ Add</button></span></div><div id="lv-items"></div></div>
+    </aside>
+    <div id="lv-center"><div id="lv-stage"><canvas id="lv-canvas" width="1280" height="720"></canvas><div id="lv-sel" hidden><i class="lv-h"></i></div></div><div id="lv-mixer"></div></div>
+    <aside id="lv-right">
+      <div class="lv-tabs"><button data-t="props" class="on">Selected</button><button data-t="chan">Channels</button><button data-t="set">Settings</button></div>
+      <div id="lv-pane"></div>
+    </aside>
+  </div>
+</section>
 <section id="vtrimview">
   <div id="vt-bar"><button id="vt-open" class="pri">Open a video…</button><span id="vt-name"></span><span class="sp"></span><span id="vt-info" class="hint"></span></div>
   <div id="vt-main">
@@ -533,6 +552,7 @@
 <script src="src/convert.js"></script>
 <script src="src/vconvert.js"></script>
 <script src="src/vtrim.js"></script>
+<script src="src/live.js"></script>
 <script src="src/pixels.js"></script>
 <script src="src/tiles.js"></script>
 <script src="src/chip.js"></script>
