@@ -79,6 +79,9 @@ A livestreaming and recording studio inside Sudo Make Art, shaped after the auth
 - Not included (yet): dual (horizontal and vertical) output and a virtual camera. Sound from the screen itself is not captured by the screen source: add a monitor or loopback audio input.
 - HopCast is GPL-2.0 (it is built from PRISM Live Studio and OBS Studio). Sudo Make Live copies how it looks and works, not its code: everything here is new code, so Sudo Make Art stays 0BSD.
 
+## System tray
+A tray icon (modelled on HopCast's) with a menu: Show or Hide, Go Live or Stop streaming, Start or Stop recording, Sudo Take Screenshot, Open (Home, Design, Video, Live, Trim video, Convert videos, Convert images), New design, and Quit. Options live in **Sudo Make Live > Settings > General > System Tray**: show the icon, minimize to the tray instead of the task bar, start minimized to the tray, keep running in the tray when you close the window while live or recording (so closing it by mistake does not end your stream), always send the close button to the tray, and a desktop message when a channel drops ("Disconnected. Reconnecting...") and when it is back. Quit from the tray menu. On some Linux desktops (GNOME) the icon needs the AppIndicator extension; KDE and most others show it as is.
+
 ## Sudo Take Screenshot
 The **Sudo Take Screenshot** button (home screen, Sources, and the camera icon in Sudo Make Live) freezes your screen. Point at a picture and the whole picture under the pointer is outlined, pixel exact, so no cropping is needed; click to save it as a PNG in Pictures/Sudo Make Art (it is also copied to the clipboard and added to Sources). Scroll for a bigger or smaller box (a picture, then its caption, then the whole card), drag to draw your own, Space takes the whole screen, Esc cancels.
 
