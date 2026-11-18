@@ -447,7 +447,11 @@ function readImage(file) {
   r.readAsDataURL(file);
 }
 // ---------- sources (persistent local library, like OBS sources) ----------
-const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|woff2?)$/i.test(f.name) ? 'font' : null;
+const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|ttc|woff2?)$/i.test(f.name) ? 'font' : null;
+// Some systems hand over font files with no extension or as "application/octet-stream": recognise them by their first bytes instead
+const FONT_ACCEPT = '.ttf,.otf,.ttc,.woff,.woff2,font/*,application/font-sfnt,application/font-woff,application/x-font-ttf,application/x-font-otf,application/x-font-truetype,application/x-font-opentype,application/octet-stream';
+async function sniffFont(f) { try { const b = new Uint8Array(await f.slice(0, 4).arrayBuffer()), t = String.fromCharCode(...b);
+  if ((b[0] === 0 && b[1] === 1 && b[2] === 0 && b[3] === 0) || t === 'true') return '.ttf'; if (t === 'OTTO') return '.otf'; if (t === 'ttcf') return '.ttc'; if (t === 'wOFF') return '.woff'; if (t === 'wOF2') return '.woff2'; } catch (e) {} return null; }
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('sudo-make-art', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('sources', { keyPath: 'id' });
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -463,7 +467,7 @@ async function addSource(file, meta, folder = null) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 // ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
 let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
 let curFolder = null, renamingFolder = null;
@@ -480,6 +484,17 @@ function deleteFolder(id) { const f = folderOf(id); if (!f) return; const n = so
   folders.filter(x => x.parent === id).forEach(x => { x.parent = f.parent; }); sources.filter(s => s.folder === id).forEach(s => { s.folder = f.parent; dbDo('readwrite', st => st.put(s)).catch(() => {}); });
   folders = folders.filter(x => x.id !== id); if (curFolder === id || inside(curFolder, id)) curFolder = f.parent; saveFolders(); renderSources(); }
 function paintPicked() { document.querySelectorAll('#srclist [data-key]').forEach(n => n.classList.toggle('picked', picked.has(n.dataset.key))); const c = $('#srcsel'); if (c) { c.hidden = !picked.size; c.textContent = picked.size ? picked.size + ' selected. Drag any of them into a folder. Esc clears.' : ''; } }
+(() => { // hold the left button on empty space in Sources and drag a box over tiles to select them (Ctrl/Shift adds to the selection)
+  const list = $('#srclist'); let m = null;
+  list.addEventListener('pointerdown', ev => { if (ev.button !== 0 || ev.target.closest('.src') || ev.target.closest('input,button')) return;
+    m = { x0: ev.clientX, y0: ev.clientY, add: ev.ctrlKey || ev.metaKey || ev.shiftKey, base: new Set(picked), box: document.createElement('div') }; m.box.className = 'marquee'; document.body.append(m.box);
+    list.setPointerCapture(ev.pointerId); if (!m.add) picked.clear(); paintPicked(); ev.preventDefault(); });
+  list.addEventListener('pointermove', ev => { if (!m) return; const L = Math.min(m.x0, ev.clientX), T = Math.min(m.y0, ev.clientY), R = Math.max(m.x0, ev.clientX), B = Math.max(m.y0, ev.clientY);
+    Object.assign(m.box.style, { left: L + 'px', top: T + 'px', width: R - L + 'px', height: B - T + 'px' });
+    list.querySelectorAll('[data-key]').forEach(n => { const b = n.getBoundingClientRect(), k = n.dataset.key; if (b.left < R && b.right > L && b.top < B && b.bottom > T) picked.add(k); else if (!m.base.has(k)) picked.delete(k); });
+    paintPicked(); const pr = list.parentElement.getBoundingClientRect(); if (ev.clientY > pr.bottom - 24) list.parentElement.scrollTop += 12; else if (ev.clientY < pr.top + 24) list.parentElement.scrollTop -= 12; });
+  const end = () => { if (m) { m.box.remove(); m = null; } }; list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
+})();
 function pickTile(key, ev) { // true when the click was a selection click (Ctrl/Cmd toggles, Shift selects a range)
   if (ev.ctrlKey || ev.metaKey) { if (picked.has(key)) picked.delete(key); else picked.add(key); lastPick = key; paintPicked(); return true; }
   if (ev.shiftKey && lastPick && visibleKeys.includes(lastPick)) { const a = visibleKeys.indexOf(lastPick), b = visibleKeys.indexOf(key); visibleKeys.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(k => picked.add(k)); paintPicked(); return true; }
@@ -541,12 +556,12 @@ function renderSources() {
 }
 function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
 async function ingest(files, place, meta, folder = curFolder) {
-  for (const f of files) { if (!kindOf(f)) continue; const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
+  for (let f of files) { if (!kindOf(f)) { const x = await sniffFont(f); if (!x) continue; f = new File([f], f.name.replace(/\.[^.]*$/, '') + x, { type: f.type }); } const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
 }
 document.querySelector('[data-panel=sources]').onclick = () => { const p = $('#sources'); p.hidden = !p.hidden; };
 $('#srcnew').onclick = newFolder;
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && picked.size) { picked.clear(); paintPicked(); } });
-$('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,.ttf,.otf,.woff,.woff2'; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
+$('#srcadd').onclick = () => { const f = $('#file'); f.accept = 'image/*,video/*,audio/*,' + FONT_ACCEPT; f.multiple = true; f.value = ''; f.onchange = () => { ingest([...f.files], false); f.multiple = false; }; f.click(); };
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   e.preventDefault();

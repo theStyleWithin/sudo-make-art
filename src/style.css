@@ -22,7 +22,8 @@ main{flex:1;display:flex;min-height:0}
 #props .row{display:flex;gap:4px;flex-wrap:wrap}
 #sources{width:220px;background:var(--panel);border-right:1px solid var(--line);padding:10px;overflow:auto}
 #sources[hidden]{display:none}
-.shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.shead>span{display:flex;gap:6px;flex-wrap:wrap}
 #srclist{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 #srclist .hint{grid-column:1/-1;opacity:.6}
 .src{position:relative;background:#32343f;border:1px solid var(--line);border-radius:6px;padding:4px;cursor:pointer;overflow:hidden}
@@ -543,3 +544,5 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #ctxmenu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
 #srcsel{font-size:11px;margin:-4px 0 6px;color:#c4b5fd}
 .src.picked{outline:2px solid #8b5cf6;background:#8b5cf633}
+.marquee{position:fixed;z-index:60;border:1px solid #8b5cf6;background:#8b5cf633;pointer-events:none}
+#srclist{align-content:start;min-height:calc(100vh - 230px)}
