@@ -1,5 +1,5 @@
 'use strict';
-// Pinpoint screenshot (the idea comes from HopCast's HopShots): take a picture of the screen, freeze it, and let the user
+// Sudo Take Screenshot: take a picture of the screen, freeze it, and let the user
 // point at one picture or block on it; the overlay page outlines it pixel exact. Click to save a PNG to
 // <Pictures>/Sudo Make Art (it also goes on the clipboard and into the Sources library). Scroll picks a bigger or smaller
 // box, dragging draws your own, Esc cancels. Only screen pixels are used; nothing is sent anywhere.

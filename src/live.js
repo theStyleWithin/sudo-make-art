@@ -433,7 +433,7 @@ function sidebar() {
   btn('studio', 'Studio mode: set up the next scene before it goes out', st.studio, toggleStudio);
   btn('music', 'Music: play files from Sources into the mix', music.el && !music.el.paused, () => musicDialog());
   btn('pen', 'Draw on the picture (Esc stops, right-click clears)', pen.on, () => { pen.on = !pen.on; if (pen.on) colo().sel = null; sidebar(); list(); if (pen.on) flash('Drawing is on. Drag on the picture. Esc stops; right-click clears.'); });
-  if (window.sma.pinpoint) btn('camera', 'Pinpoint screenshot of your screen', false, pinpointShot);
+  if (window.sma.pinpoint) btn('camera', 'Sudo Take Screenshot: freeze the screen and point at a picture', false, pinpointShot);
   bar.append(el('span', { className: 'hc-sp' })); btn('gear', 'Settings', false, () => settingsDialog('General')); bar.append(el('span', { className: 'hc-grow' }));
   btn('bell', 'Notifications', false, notifDialog, unread);
 }

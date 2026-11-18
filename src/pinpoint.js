@@ -1,4 +1,4 @@
-// Pinpoint screenshot, the overlay page. Finds the picture or block under the pointer on a frozen picture of the screen.
+// Sudo Take Screenshot, the overlay page. Finds the picture or block under the pointer on a frozen picture of the screen.
 // Method (original): a pixel is "busy" where its colour differs from its right or lower neighbour (a picture's pixels, its
 // edge against the page, text) and "quiet" on flat background. Busy pixels are grouped into blocks; busy blocks that sit
 // close together form one region. Four closeness settings give a small box (one picture) up to a big one (the picture with
