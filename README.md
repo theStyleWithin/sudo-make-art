@@ -17,7 +17,7 @@ Downloads (AppImage, Windows installer and portable exe, Android APK) are on the
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
 ## Desktop audio in Sudo Make Live
-**Desktop Audio** (Sources, + then Audio) puts what the computer is playing into your stream and recording: games, music, a browser. On Linux it records your sound card's monitor with `parec` (package `pulseaudio-utils`, also works on PipeWire) or `pw-record` (package `pipewire-bin`), and you can pick the default output or a specific one. If neither tool is installed the source says so and how to fix it. On Windows it uses system loopback sound. It goes into the Audio Mixer with its own volume, mute and meter, and, like other inputs, opens when you go live or record.
+**Desktop Audio** (Sources, + then Audio) puts what the computer is playing into your stream and recording: games, music, a browser. On Linux it records your sound card's monitor with `parec` (package `pulseaudio-utils`, also works on PipeWire) or `pw-record` (package `pipewire-bin`), and you can pick the default output (it follows the system's default output if that changes, for example when you plug in headphones) or a specific output such as speakers or HDMI. It reconnects by itself if the sound server restarts. If neither tool is installed the source says so and how to fix it. On Windows it uses system loopback sound. It goes into the Audio Mixer with its own volume, mute and meter, and, like other inputs, opens when you go live or record.
 
 ## What works now
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
