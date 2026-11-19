@@ -61,8 +61,20 @@ sizeCanvas(false);
 // ---------- audio ----------
 let actx = null, mixDest = null; const inputs = new Map(); // audio input id -> { stream, gain, an }
 const ensureAudio = () => { if (!actx) { actx = new AudioContext({ sampleRate: 48000 }); mixDest = actx.createMediaStreamDestination(); } if (actx.state === 'suspended') actx.resume(); return actx; };
+let deskReady = null, deskHooked = false;
+async function openDesk(a) { // desktop audio: on Linux raw sound from the main process, on Windows system loopback from the screen-capture API
+  const api = window.sma && window.sma.deskaudio, gain = actx.createGain(), an = actx.createAnalyser(); an.fftSize = 512; gain.gain.value = a.mute ? 0 : a.vol; gain.connect(an); gain.connect(mixDest);
+  if (!api) throw new Error('Desktop audio needs the desktop app');
+  const info = await api.list(); if (!info.ok) throw new Error(info.why || 'Desktop audio is not available here');
+  if (info.mode === 'loopback') { const s = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }); s.getVideoTracks().forEach(t => t.stop()); if (!s.getAudioTracks().length) throw new Error('No system sound was offered'); actx.createMediaStreamSource(new MediaStream(s.getAudioTracks())).connect(gain); inputs.set(a.id, { stream: s, gain, an }); return; }
+  if (!deskReady) deskReady = actx.audioWorklet.addModule('src/deskaudio-worklet.js'); await deskReady;
+  const node = new AudioWorkletNode(actx, 'sma-desk', { numberOfInputs: 0, outputChannelCount: [2] }); node.connect(gain);
+  if (!deskHooked) { deskHooked = true; api.onData((id, buf) => { const i = inputs.get(id); if (i && i.node) i.node.port.postMessage(buf, [buf]); }); api.onEnded((id, code, err) => { const x = st.audio.find(q => q.id === id); if (x && inputs.has(id)) { closeInput(id); x.err = 'Desktop audio stopped. ' + (err || ''); mixer(); } }); }
+  inputs.set(a.id, { stream: { getTracks: () => [] }, gain, an, node, stop: () => api.stop(a.id) }); await api.start(a.id, a.source || '');
+}
 async function openInput(a) {
   ensureAudio(); closeInput(a.id);
+  if (a.kind === 'desk') { try { await openDesk(a); a.err = ''; } catch (e) { closeInput(a.id); a.err = clean(e); } mixer(); return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: a.device ? { exact: a.device } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
     const src = actx.createMediaStreamSource(stream), gain = actx.createGain(), an = actx.createAnalyser(); an.fftSize = 512; gain.gain.value = a.mute ? 0 : a.vol; src.connect(gain); gain.connect(an); gain.connect(mixDest);
@@ -70,7 +82,7 @@ async function openInput(a) {
   } catch (e) { a.err = 'No access to this input'; }
   mixer();
 }
-function closeInput(id) { const i = inputs.get(id); if (i) { i.stream.getTracks().forEach(t => t.stop()); try { i.gain.disconnect(); } catch (e) {} inputs.delete(id); } }
+function closeInput(id) { const i = inputs.get(id); if (i) { if (i.stop) i.stop(); if (i.node) try { i.node.disconnect(); } catch (e) {} i.stream.getTracks().forEach(t => t.stop()); try { i.gain.disconnect(); } catch (e) {} inputs.delete(id); } }
 const levelOf = an => { const b = new Uint8Array(an.fftSize); an.getByteTimeDomainData(b); let m = 0; for (const v of b) m = Math.max(m, Math.abs(v - 128)); return m / 128; };
 async function audioDevices(kind = 'audioinput') { try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); } catch (e) {} return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === kind); }
 let allMuted = false;
@@ -216,6 +228,7 @@ $('#hc-chtoggle').onclick = () => { st.chbar = !st.chbar; save(); chbar(); };
 
 // ---------- dialogs (HopCast style: dark, title strip, buttons at the bottom) ----------
 function dlg({ title, body, buttons, wide }) {
+  if (document.visibilityState === 'hidden' && window.sma.tray) window.sma.tray.show(); // a question needs the window: bring it back from the tray
   document.getElementById('hcdlg')?.remove(); const back = el('div', { id: 'hcdlg' }), box = el('div', { className: 'hc-box' + (wide ? ' wide' : '') }); const close = () => back.remove();
   const x = el('button', { className: 'hc-x', textContent: '✕', title: 'Close' }); x.onclick = close; box.append(el('div', { className: 'hc-strip2' }), x);
   const inner = el('div', { className: 'hc-inner' }); if (title) inner.append(el('h2', { textContent: title })); const content = el('div', { className: 'hc-content' }); inner.append(content); box.append(inner);
@@ -273,7 +286,7 @@ const SRC_TYPES = [
   { cat: 'Camera · Video', id: 'camera', name: 'Video Capture Device', sub: 'Camera', icon: 'cam', blurb: 'Shows a camera or capture card.' },
   { cat: 'Camera · Video', id: 'screen', name: 'Screen or Window Capture', sub: 'Screen', icon: 'screen', blurb: 'Shows your whole screen, or one window.' },
   { cat: 'Audio · Music', id: 'mic', name: 'Audio Input Capture', sub: 'Mic · Audio', icon: 'mic', blurb: 'A microphone or any audio input, added to the Audio Mixer.' },
-  { cat: 'Audio · Music', id: 'sys', name: 'Audio Output Capture', sub: 'System Sound', icon: 'speaker', blurb: 'What the computer plays. Pick a "monitor" or loopback input (on Linux, "Monitor of …"). It is added to the Audio Mixer.' },
+  { cat: 'Audio · Music', id: 'sys', name: 'Desktop Audio', sub: 'System Sound', icon: 'speaker', blurb: 'What the computer is playing: games, music, a browser. It is added to the Audio Mixer. On Linux this needs parec (pulseaudio-utils) or pw-record (pipewire).' },
   { cat: 'Image · Video Playback', id: 'image', name: 'Image', sub: 'Picture', icon: 'img', blurb: 'A picture from your Sources library.' },
   { cat: 'Image · Video Playback', id: 'media', name: 'Media Source', sub: 'Video, sound', icon: 'media', blurb: 'A video or sound file from your Sources library. Its sound goes to the mix.' },
   { cat: 'Text · Color', id: 'text', name: 'Text', sub: 'Words', icon: 'text', blurb: 'Words on the picture.' },
@@ -287,12 +300,14 @@ function addDialog() {
     const showRight = () => { right.textContent = ''; if (!pick) { right.append(el('h3', { textContent: 'Add a source' }), el('p', { className: 'hc-hint', textContent: 'Choose a source on the left to see what it does.' })); return; }
       right.append(el('h3', { textContent: pick.name }), el('p', { className: 'hc-hint', textContent: pick.blurb })); extra = {}; const nm = el('input', { value: pick.name.replace(' Capture Device', '').replace(' Capture', '') }); extra.name = () => nm.value.trim() || pick.name; right.append(field('Name', nm));
       if (pick.id === 'camera') { const s = el('select'); s.add(new Option('Loading cameras…', '')); right.append(field('Device', s)); navigator.mediaDevices.getUserMedia({ video: true }).then(t => { t.getTracks().forEach(x => x.stop()); return navigator.mediaDevices.enumerateDevices(); }).then(ds => { s.textContent = ''; const cams = ds.filter(x => x.kind === 'videoinput'); if (!cams.length) s.add(new Option('No camera found', '')); cams.forEach(c => s.add(new Option(c.label || 'Camera', c.deviceId))); }).catch(() => { s.textContent = ''; s.add(new Option('No access to a camera', '')); }); extra.device = () => s.value; }
-      if (pick.id === 'mic' || pick.id === 'sys') { const s = el('select'); s.add(new Option('Default', '')); right.append(field('Device', s)); audioDevices().then(ds => { s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); if (pick.id === 'sys') { const m = [...s.options].find(o => /monitor|loopback|stereo mix/i.test(o.text)); if (m) s.value = m.value; } }); extra.device = () => s.value; }
+      if (pick.id === 'sys') { const s = el('select'), msg = el('p', { className: 'hc-bad' }); s.add(new Option('Looking for outputs…', '')); right.append(field('Capture', s), msg); const api = window.sma && window.sma.deskaudio; extra.device = () => s.value;
+        (api ? api.list() : Promise.resolve({ ok: false, why: 'Desktop audio needs the desktop app.' })).then(i => { s.textContent = ''; if (!i.ok) { s.add(new Option('Not available', '')); msg.textContent = i.why || ''; d.buttons.OK.disabled = true; return; } i.sources.forEach(x => s.add(new Option(x.label, x.name))); d.buttons.OK.disabled = false; }); d.buttons.OK.disabled = true; }
+      if (pick.id === 'mic') { const s = el('select'); s.add(new Option('Default', '')); right.append(field('Device', s)); audioDevices().then(ds => { s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); if (pick.id === 'sys') { const m = [...s.options].find(o => /monitor|loopback|stereo mix/i.test(o.text)); if (m) s.value = m.value; } }); extra.device = () => s.value; }
       if (pick.id === 'screen') { const bt = el('button', { textContent: 'Choose a screen or window…', className: 'hc-mini' }); bt.onclick = () => screenPicker(s => { extra.src = s; bt.textContent = s.name.slice(0, 40); nm.value = s.name.slice(0, 40); d.buttons.OK.disabled = false; }); right.append(field('Capture', bt)); d.buttons.OK.disabled = true; }
       if (pick.id === 'image' || pick.id === 'media') { const bt = el('button', { textContent: 'Choose from Sources…', className: 'hc-mini' }); bt.onclick = () => libraryPicker(pick.id, s => { extra.src = s; bt.textContent = s.name; d.buttons.OK.disabled = false; }); right.append(field('File', bt)); d.buttons.OK.disabled = true; }
       if (pick.id === 'text') { const t = el('textarea', { value: 'Your text' }); extra.text = () => t.value; right.append(field('Text', t)); }
       if (pick.id === 'color') { const c = el('input', { type: 'color', value: '#1b1b2f' }); extra.color = () => c.value; right.append(field('Color', c)); }
-      if (!['screen', 'image', 'media'].includes(pick.id)) d.buttons.OK.disabled = false; };
+      if (!['screen', 'image', 'media', 'sys'].includes(pick.id)) d.buttons.OK.disabled = false; };
     const paintList = () => { lst.textContent = ''; const term = q.value.trim().toLowerCase(); let cat = ''; SRC_TYPES.filter(t => !term || (t.name + t.sub + t.cat).toLowerCase().includes(term)).forEach(t => { if (t.cat !== cat) { cat = t.cat; lst.append(el('div', { className: 'hc-cat', textContent: cat })); }
       const b = el('button', { className: 'hc-src' + (pick === t ? ' on' : '') }); b.innerHTML = `<span class="hc-sic">${ICON[t.icon]}</span>`; const tx = el('span'); tx.append(el('b', { textContent: t.name }), el('small', { textContent: t.sub })); b.append(tx); b.onclick = () => { pick = t; paintList(); showRight(); }; lst.append(b); }); };
     q.oninput = paintList; paintList(); showRight();
@@ -309,7 +324,7 @@ function commitAdd(t, x) {
   const name = x.name();
   if (t.id === 'camera') addItem({ kind: 'camera', name, device: x.device() });
   else if (t.id === 'screen') addItem({ kind: 'screen', name, sourceId: x.src.id });
-  else if (t.id === 'mic' || t.id === 'sys') { const a = { id: uid(), name, device: x.device(), vol: 1, mute: false }; st.audio.push(a); save(); mixer(); if (status.live) openInput(a); }
+  else if (t.id === 'mic' || t.id === 'sys') { const a = t.id === 'sys' ? { id: uid(), name, kind: 'desk', source: x.device(), vol: 1, mute: false } : { id: uid(), name, device: x.device(), vol: 1, mute: false }; st.audio.push(a); save(); mixer(); if (status.live) openInput(a); }
   else if (t.id === 'image') { const s = x.src, u = URL.createObjectURL(s.blob), im = new Image(); im.onload = () => { const it = addItem({ kind: 'image', name, src: s.id }); fitItem(it, im.naturalWidth, im.naturalHeight); URL.revokeObjectURL(u); }; im.src = u; }
   else if (t.id === 'media') { const it = addItem({ kind: 'media', name, src: x.src.id, loop: true, vol: 1 }); const tm = setInterval(() => { const r = rt.get(it.id); if (r && r.el && r.el.videoWidth) { fitItem(it, r.el.videoWidth, r.el.videoHeight); clearInterval(tm); } else if (r && r.err) clearInterval(tm); }, 200); }
   else if (t.id === 'text') addItem({ kind: 'text', name, text: x.text(), size: Math.round(canvas.height / 10), color: '#ffffff', font: 'Arial', bold: true, stroke: true, x: canvas.width * 0.1, y: canvas.height * 0.4 });
@@ -389,7 +404,7 @@ function menus(name) {
   if (name === 'Docks') return ['scenes', 'sources', 'mixer'].map(k => ({ label: (st.docks[k] !== false ? '✓ ' : '') + ({ scenes: 'Scenes', sources: 'Sources', mixer: 'Audio Mixer' })[k], fn: () => { st.docks[k] = st.docks[k] === false; save(); layout(); } }));
   if (name === 'Profile') return [...Object.keys(st.profiles).map(n => ({ label: 'Load: ' + n, fn: () => { Object.assign(st.set, st.profiles[n]); sizeCanvas(true); loop(); save(); render(); notify('Loaded the profile "' + n + '".'); } })), ...(Object.keys(st.profiles).length ? ['sep'] : []),
     { label: 'Save the current output settings as…', fn: profileSave }, ...Object.keys(st.profiles).map(n => ({ label: 'Delete: ' + n, danger: true, fn: () => { delete st.profiles[n]; save(); } }))];
-  if (name === 'Tools') return [{ label: 'Back up settings now', fn: backupNow }, { label: 'Restore settings from a backup…', fn: restoreDialog }, 'sep', { label: 'Stream key storage…', fn: keyInfo }];
+  if (name === 'Tools') return [{ label: 'Import from HopCast…', fn: () => window.SMA_profile && SMA_profile.importHopcast() }, { label: 'Import a Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.importProfile() }, { label: 'Export my Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.exportProfile() }, 'sep', { label: 'Back up settings now', fn: backupNow }, { label: 'Restore settings from a backup…', fn: restoreDialog }, 'sep', { label: 'Stream key storage…', fn: keyInfo }];
   if (name === 'Help') return [{ label: 'How Sudo Make Live works', fn: helpDialog }, { label: 'Mouse and keyboard tips', fn: tipsDialog }];
   return [];
 }
@@ -409,10 +424,16 @@ function settingsDialog(startTab) {
     const nf = (k, min, max) => { const i = el('input', { type: 'number', value: S[k], min, max }); i.oninput = () => { S[k] = Math.max(min, Math.min(max, +i.value || min)); save(); }; return i; };
     const draw = () => { nav.textContent = ''; tabs.forEach(t => { const b = el('button', { textContent: t, className: t === cur ? 'on' : '' }); b.onclick = () => { cur = t; draw(); }; nav.append(b); }); page.textContent = '';
       if (cur === 'General') { page.append(el('h2', { textContent: 'Source Alignment Snapping' }), check('Enable', st.snap.on, v => { st.snap.on = v; save(); }), field('Snap Sensitivity', (() => { const i = el('input', { type: 'number', value: st.snap.sens, min: 1, max: 50 }); i.oninput = () => { st.snap.sens = +i.value || 10; save(); }; return i; })()), check('Snap Sources to edge of screen', st.snap.edge, v => { st.snap.edge = v; save(); }), check('Snap Sources to other sources', st.snap.other, v => { st.snap.other = v; save(); }), check('Snap Sources to horizontal and vertical center', st.snap.center, v => { st.snap.center = v; save(); }));
-        page.append(el('h2', { textContent: 'Output' }), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); })); }
+        page.append(el('h2', { textContent: 'Output' }), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); }));
+        const tr = window.sma.tray; if (tr) { const box = el('div'); page.append(el('h2', { textContent: 'System Tray' }), box);
+          tr.prefs().then(tp => { const set = (k, v) => { tp[k] = v; tr.set({ [k]: v }).then(n => Object.assign(tp, n)); };
+            box.append(check('Show a tray icon', tp.enabled, v => set('enabled', v), 'Right-click it for Go Live, Record, Sudo Take Screenshot, and quick access to every mode. On some Linux desktops (GNOME) the icon needs the AppIndicator extension.'),
+              check('Minimize to the system tray instead of the task bar', tp.minToTray, v => set('minToTray', v)), check('Start minimized to the system tray', tp.startInTray, v => set('startInTray', v)),
+              check('Keep running in the tray when I close the window while live or recording', tp.keepRunning, v => set('keepRunning', v), 'So closing the window by mistake does not end your stream. Quit from the tray menu.'),
+              check('Always send the close button to the tray', tp.closeToTray, v => set('closeToTray', v)), check('Show a message when a channel drops and when it is back', tp.notify, v => set('notify', v))); }); } }
       if (cur === 'Output') page.append(el('h2', { textContent: 'Streaming' }), field('Video Bitrate (kbps)', nf('vbr', 300, 60000)), field('Audio Bitrate (kbps)', nf('abr', 32, 512)), field('Encoder', sel('encoder', [['x264', 'x264 (software)'], ...(info.nvenc ? [['nvenc', 'NVIDIA NVENC']] : [])])), field('x264 speed', sel('preset', [['ultrafast', 'Fastest'], ['superfast', 'Very fast'], ['veryfast', 'Fast (default)'], ['faster', 'Balanced'], ['fast', 'Better quality']])),
         el('p', { className: 'hc-hint', textContent: 'The picture is encoded once and shared by every channel, so more channels do not add CPU load, only upload. Sending over ' + info.protocols.map(x => x.toUpperCase()).join(', ') + ' (FFmpeg: ' + (info.ffmpeg || '?') + ').' }));
-      if (cur === 'Audio') { page.append(el('h2', { textContent: 'Audio inputs' })); st.audio.forEach(a => { const s = el('select'); s.add(new Option(a.device ? 'Chosen input' : 'Default', a.device || '')); s.value = a.device || ''; s.onfocus = async () => { const ds = await audioDevices(); s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); s.value = a.device || ''; }; s.onchange = () => { a.device = s.value; save(); if (status.live) openInput(a); }; page.append(field(a.name, s)); }); page.append(el('p', { className: 'hc-hint', textContent: 'Inputs are opened when you go live or record, not before. Add more with + in Sources (Audio Input Capture or Audio Output Capture).' })); }
+      if (cur === 'Audio') { page.append(el('h2', { textContent: 'Audio inputs' })); st.audio.forEach(a => { if (a.kind === 'desk') { page.append(field(a.name, el('span', { textContent: a.source ? a.source : 'Everything you hear (default output)' }))); return; } const s = el('select'); s.add(new Option(a.device ? 'Chosen input' : 'Default', a.device || '')); s.value = a.device || ''; s.onfocus = async () => { const ds = await audioDevices(); s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); s.value = a.device || ''; }; s.onchange = () => { a.device = s.value; save(); if (status.live) openInput(a); }; page.append(field(a.name, s)); }); page.append(el('p', { className: 'hc-hint', textContent: 'Inputs are opened when you go live or record, not before. Add more with + in Sources (Audio Input Capture or Audio Output Capture).' })); }
       if (cur === 'Video') page.append(el('h2', { textContent: 'Video' }), field('Base (Canvas) Resolution', sel('res', Object.keys(RES).map(k => [k, k.replace('x', ' × ') + (RES[k][1] > RES[k][0] ? ' (vertical)' : '')]))), field('Common FPS Values', sel('fps', [[24, '24'], [30, '30'], [60, '60']])), el('p', { className: 'hc-hint', textContent: 'Changes apply the next time you go live. Sources are scaled to the new size.' }));
       if (cur === 'Recording') { const dir = el('button', { textContent: info.recordDir || 'Choose…', className: 'hc-mini' }); dir.onclick = async () => { const p = await api.pickDir(); if (p) { info.recordDir = p; dir.textContent = p; } }; page.append(el('h2', { textContent: 'Recording' }), field('Recording Path', dir), field('Recording Format', sel('recFormat', [['mkv', 'MKV (safe if the app closes)'], ['mp4', 'MP4']])), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); })); } };
     draw(); } });
@@ -464,7 +485,8 @@ function startRecorder() {
   recorder.ondataavailable = e => { if (e.data && e.data.size) q = q.then(() => e.data.arrayBuffer()).then(b => api.chunk(b)); }; recorder.start(250);
 }
 function stopRecorder() { if (recorder && recorder.state !== 'inactive') recorder.stop(); recorder = null; }
-async function begin() { flash(''); await Promise.all(st.audio.map(a => inputs.has(a.id) ? 0 : openInput(a))); ensureAudio(); await api.start({ ...st.set, w: canvas.width, h: canvas.height }); startRecorder(); }
+async function begin() { flash(''); if (!timer) loop(); // started from the tray without opening this screen: start drawing
+  await Promise.all(st.audio.map(a => inputs.has(a.id) ? 0 : openInput(a))); ensureAudio(); await api.start({ ...st.set, w: canvas.width, h: canvas.height }); startRecorder(); }
 function yesNo(text, yes) { dlg({ buttons: [{ label: 'Yes', fn: yes }, { label: 'No' }], body: box => box.append(el('p', { className: 'hc-hint big center', textContent: text })) }); }
 async function goLive(force) {
   try {
@@ -500,6 +522,49 @@ document.addEventListener('sma-mode', ev => {
   else if (!status.live) { clearInterval(timer); [...rt.keys()].forEach(dropRuntime); } // leaving without streaming: let go of the screen and camera
 });
 async function dailyBackup() { try { const last = +localStorage.getItem('sma-live-backup') || 0; if (Date.now() - last > 864e5) { await api.backup(JSON.stringify(st, (k, v) => (k[0] === '_' ? undefined : v))); localStorage.setItem('sma-live-backup', String(Date.now())); } } catch (e) {} }
-window.SMA_live = { state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
+// ---------- importing a HopCast profile (see electron/profile.js and src/profile.js) ----------
+const PRESETS = ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast'];
+async function importHopcast(sel) { // sel: { profile, collections: [...], channels: [...], audio: bool, global: bool, recordDir: bool }
+  const pr = window.sma.profile, done = { settings: 0, collections: 0, items: 0, channels: 0, audio: 0 }, skipped = [];
+  if (sel.profile) { const p = sel.profile, [rw, rh] = [p.width, p.height]; let best = '1280x720', d0 = 1e12; for (const [k, [w, h]] of Object.entries(RES)) { const d = Math.abs(w - rw) + Math.abs(h - rh); if (d < d0) { d0 = d; best = k; } }
+    st.set.res = best; st.set.fps = [24, 30, 60].reduce((a, b) => (Math.abs(b - p.fps) < Math.abs(a - p.fps) ? b : a), 30); st.set.vbr = Math.max(300, Math.min(60000, Math.round(p.vbr))); st.set.abr = Math.max(32, Math.min(512, Math.round(p.abr)));
+    st.set.encoder = p.nvenc && info.nvenc ? 'nvenc' : 'x264'; if (PRESETS.includes(p.preset)) st.set.preset = p.preset; st.set.recFormat = p.recFormat; sizeCanvas(true); loop(); done.settings = 1;
+    if (sel.recordDir && p.recordDir) { try { info.recordDir = await api.setDir(p.recordDir); } catch (e) { skipped.push('The recording folder (' + p.recordDir + ') does not exist on this computer.'); } } }
+  const [cw, ch] = RES[st.set.res];
+  for (const col of sel.collections || []) {
+    const k = cw / (col.baseW || (sel.profile && sel.profile.baseW) || 1920), scenes = [];
+    for (const sc of col.scenes) {
+      const items = [];
+      for (const it of sc.items) {
+        const base = { id: uid(), name: it.name, visible: it.visible, lock: it.lock, x: it.x * k, y: it.y * k, w: 0, h: 0 };
+        try {
+          if (it.kind === 'image' || it.kind === 'media') {
+            const f = await pr.readFile(it.file), file = new File([f.bytes], f.name, { type: it.kind === 'image' ? 'image/' + (f.name.split('.').pop() || 'png').toLowerCase().replace('jpg', 'jpeg') : '' });
+            const rec = await window.SMA.addSourceRec(file); if (!rec) { skipped.push(`"${it.name}": the file type is not supported.`); continue; }
+            let nw = 0, nh = 0; if (it.kind === 'image') { const u = URL.createObjectURL(file), im = new Image(); im.src = u; try { await im.decode(); nw = im.naturalWidth; nh = im.naturalHeight; } catch (e) {} URL.revokeObjectURL(u); }
+            else { const u = URL.createObjectURL(file), v = el('video', { src: u, preload: 'metadata' }); await new Promise(r => { v.onloadedmetadata = r; v.onerror = r; setTimeout(r, 4000); }); nw = v.videoWidth; nh = v.videoHeight; URL.revokeObjectURL(u); }
+            Object.assign(base, { kind: it.kind, src: rec.id, loop: !!it.loop, vol: 1, w: it.bw ? it.bw * k : (nw || 640) * it.sx * k, h: it.bh ? it.bh * k : (nh || 360) * it.sy * k });
+          } else if (it.kind === 'text') Object.assign(base, { kind: 'text', text: it.text, size: Math.max(8, Math.round(it.size * k)), color: it.color, font: it.face || 'Arial', bold: it.bold, stroke: false });
+          else if (it.kind === 'color') Object.assign(base, { kind: 'color', color: it.color, w: it.bw ? it.bw * k : (it.w0 || col.baseW || 1920) * it.sx * k, h: it.bh ? it.bh * k : (it.h0 || col.baseH || 1080) * it.sy * k });
+          else if (it.kind === 'camera' || it.kind === 'screen') Object.assign(base, { kind: it.kind, device: '', sourceId: '', w: it.bw ? it.bw * k : 1280 * it.sx * k, h: it.bh ? it.bh * k : 720 * it.sy * k });
+          else continue;
+          items.push(base); done.items++;
+        } catch (e) { skipped.push(`"${it.name}": ${clean(e)}`); }
+      }
+      scenes.push({ id: uid(), name: sc.name, items });
+    }
+    if (!scenes.length) scenes.push({ id: uid(), name: 'Scene 1', items: [] });
+    let name = col.name; while (st.cols.some(c => c.name === name)) name += ' (HopCast)';
+    st.cols.push({ id: uid(), name, scenes, cur: 0, sel: null }); st.col = st.cols.length - 1; progId = null; done.collections++;
+    if (col.transition) st.trans = { type: col.transition, ms: Math.max(100, Math.min(2000, col.transitionMs || 300)) };
+    for (const a of col.audio || []) if (sel.audio && !st.audio.some(x => x.name === a.name)) { st.audio.push({ id: uid(), name: a.name, device: '', vol: a.vol, mute: a.mute }); done.audio++; }
+  }
+  if (sel.global && sel.globalData) { if (sel.globalData.snap) st.snap = { ...st.snap, ...sel.globalData.snap }; if (sel.globalData.tray && window.sma.tray) { try { await window.sma.tray.set(sel.globalData.tray); } catch (e) {} } }
+  for (const c of sel.channels || []) { if (channels.some(x => x.url === c.url && x.key === c.key)) { skipped.push(`Channel "${c.name}" is already here.`); continue; } channels.push({ id: uid(), ...c, enabled: false }); done.channels++; }
+  if (done.channels) await persistChannels();
+  save(); render(); chbar(); return { done, skipped };
+}
+function liveReloadFromStorage() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j) { Object.keys(st).forEach(k => delete st[k]); Object.assign(st, j); } } catch (e) {} }
+window.SMA_live = { audio: { open: a => openInput(a), levels: () => st.audio.map(a => { const i = inputs.get(a.id); return { name: a.name, err: a.err || '', level: i ? levelOf(i.an) : -1 }; }), add: a => { st.audio.push(a); save(); mixer(); return a; } }, ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
 icons(); menubar(); bottom(); render();
 })();

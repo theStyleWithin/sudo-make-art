@@ -9,7 +9,7 @@
 </head>
 <body>
 <header id="top">
-  <span class="appsw-wrap"><button id="appsw" class="logo" aria-haspopup="menu" aria-expanded="false" title="Switch app"><span id="appname">Sudo Make Art</span> <i>▾</i></button><div id="appmenu" role="menu" hidden></div></span>
+  <span class="appsw-wrap"><button id="appsw" class="logo" aria-haspopup="menu" aria-expanded="false" title="Switch app"><img class="applogo" src="build/icon.png" alt="" width="20" height="20"><span id="appname">Sudo Make Art</span> <i>▾</i></button><div id="appmenu" role="menu" hidden></div></span>
   <span class="modes"><button id="mode-home" class="on">Home</button><button id="mode-design">Design</button><button id="mode-video">Video</button><button id="mode-convert" hidden>Convert</button><button id="mode-vconvert" hidden>Convert videos</button><button id="mode-vtrim" hidden>Trim video</button><button id="mode-live" hidden>Live</button></span>
   <input id="docname" class="nm" placeholder="Untitled" maxlength="120">
   <button class="dz" id="new">+ New design</button>
@@ -20,7 +20,7 @@
   <select class="dz" id="tpl" title="Templates"><option value="">Templates…</option></select>
   <button class="dz" id="open">Open</button>
   <button class="dz" id="save">Save</button>
-  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option><option value="pdf">pdf (all pages)</option></select>
+  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option><option value="pdf">pdf (all pages)</option><option value="ico">ico (Windows icon, 16 to 256)</option><option value="icons">icon set (zip: PNG sizes + SVG)</option></select>
   <label class="dz" title="Takes camera, GPS, date and other hidden details out of photos in your exports"><input type="checkbox" data-meta> Remove metadata</label>
 </header>
 <main>
@@ -534,6 +534,7 @@
 <script src="src/stripmeta.js"></script>
 <script src="src/ctxmenu.js"></script>
 <script src="src/guard.js"></script>
+<script src="src/pcicons.js"></script>
 <script src="src/filters.js"></script>
 <script src="src/imgedit.js"></script>
 <script src="src/app.js"></script>
@@ -552,8 +553,11 @@
 <script src="src/vconvert.js"></script>
 <script src="src/vtrim.js"></script>
 <script src="src/live.js"></script>
+<script src="src/profile.js"></script>
 <script src="src/steam.js"></script>
 <script src="src/shot.js"></script>
+<script src="src/textgrab.js"></script>
+<script src="src/tray.js"></script>
 <script src="src/pixels.js"></script>
 <script src="src/tiles.js"></script>
 <script src="src/chip.js"></script>

@@ -49,7 +49,7 @@ async function render() {
   try { items = await Store.list(); } catch (e) { items = []; }
   const q = $('#h-search').value.trim().toLowerCase(), ty = $('#h-type').value, grid = $('#h-grid');
   const list = items.filter(i => (!ty || i.type === ty) && (!q || (i.name || '').toLowerCase().includes(q)));
-  grid.textContent = '';
+  grid.textContent = ''; renderAssets();
   if (!list.length) grid.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: items.length ? 'No projects match.' : 'Nothing here yet. Start a new design or video and it will appear here.' }));
   list.forEach(i => {
     const c = document.createElement('div'); c.className = 'card2';
@@ -65,6 +65,31 @@ async function open(id) {
   const r = await Store.get(id); if (!r) return;
   api(r.type).load(r.data); api(r.type).setPid(r.id); if (r.type === 'pixel') window.SMA_apps.choose('pixels'); else if (r.type === 'tiles') window.SMA_apps.choose('tiles'); else if (r.type === 'music') window.SMA_apps.choose('music'); else if (r.type === 'game') window.SMA_apps.choose('games'); else if (r.type === 'manga') window.SMA_apps.choose('manga'); else if (r.type === 'vn') window.SMA_apps.choose('vn'); else if (r.type === 'tcg') window.SMA_apps.choose('tcg'); else if (r.type === 'write') window.SMA_apps.choose('write'); else if (r.type === 'avatar') window.SMA_apps.choose('avatar'); else SMA.setMode(r.type);
 }
+// ----- assets: everything kept in Sources for later (pictures, video, sound, fonts, text grabbed from the screen) -----
+const abar = document.createElement('div'); abar.className = 'home-bar'; abar.id = 'h-abar';
+abar.innerHTML = '<h2>Assets</h2><select id="h-atype"><option value="">All</option><option value="image">Pictures</option><option value="video">Video</option><option value="audio">Sound</option><option value="font">Fonts</option><option value="text">Text</option></select>';
+const agrid = document.createElement('div'); agrid.id = 'h-assets'; $('#h-grid').after(abar, agrid);
+const akind = { image: 'Picture', video: 'Video', audio: 'Sound', font: 'Font', text: 'Text' };
+let aurls = [];
+function renderAssets() {
+  aurls.forEach(u => URL.revokeObjectURL(u)); aurls = []; agrid.textContent = '';
+  const q = $('#h-search').value.trim().toLowerCase(), ty = $('#h-atype').value;
+  const list = SMA.getSources().filter(a => (!ty || a.kind === ty) && (!q || (a.name || '').toLowerCase().includes(q))).sort((a, b) => b.added - a.added);
+  if (!list.length) { agrid.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: SMA.getSources().length ? 'No assets match.' : 'Nothing saved yet. Pictures, video, sound and fonts you add to Sources, and text you save with Text Grab, show up here for later.' })); return; }
+  list.forEach(a => {
+    const c = document.createElement('div'); c.className = 'card2'; const t = document.createElement('div'); t.className = 'thumb';
+    if (a.kind === 'image' || a.kind === 'video') { const u = URL.createObjectURL(a.blob); aurls.push(u); const m = document.createElement(a.kind === 'image' ? 'img' : 'video'); m.src = u + (a.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; t.append(m); }
+    else if (a.kind === 'text') { t.className += ' txt'; t.textContent = '📝'; a.blob.slice(0, 400).text().then(x => { const p = document.createElement('div'); p.className = 'atxt'; p.textContent = x.trim().slice(0, 160); t.textContent = ''; t.append(p); }).catch(() => {}); }
+    else t.textContent = a.kind === 'font' ? 'Aa' : '♪';
+    const n = Object.assign(document.createElement('b'), { textContent: a.name || 'Untitled' });
+    const m = Object.assign(document.createElement('small'), { textContent: (akind[a.kind] || 'File') + ' · ' + ago(a.added) });
+    const x = Object.assign(document.createElement('button'), { className: 'x', textContent: '🗑', title: 'Remove from assets' });
+    x.onclick = async ev => { ev.stopPropagation(); if (confirm(`Remove "${a.name}" from your assets?`)) SMA.delSource(a.id); };
+    c.onclick = () => { if (a.kind === 'image') SMA.setMode('design'); SMA.useSource(a); }; c.append(t, n, m, x); agrid.append(c);
+  });
+}
+SMA.subscribe(() => { if (document.body.classList.contains('home-mode')) renderAssets(); });
+$('#h-atype').onchange = renderAssets; $('#h-search').addEventListener('input', renderAssets);
 $('#h-search').oninput = $('#h-type').onchange = render;
 $('#h-new').onclick = () => $('#new').click();
 $('#h-newvideo').onclick = () => { window.SMA_video.reset(); SMA.setMode('video'); };

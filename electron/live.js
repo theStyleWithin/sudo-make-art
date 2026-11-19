@@ -110,7 +110,7 @@ let lastPush = 0;
 function snapshot() {
   return S && { live: true, since: S.since, stats: S.stats, dests: [...S.dests.values()].map(d => ({ id: d.id, kind: d.kind, name: d.label, state: d.state, error: d.error, since: d.since, dropped: d.dropped, file: d.file })) };
 }
-function push(force) { const now = Date.now(); if (!force && now - lastPush < 250) return; lastPush = now; for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('live:status', snapshot() || { live: false }); }
+function push(force) { const now = Date.now(); if (!force && now - lastPush < 250) return; lastPush = now; const snap = snapshot() || { live: false }; try { require('./tray').onLive(snap); } catch (e) {} for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('live:status', snap); }
 
 function startSession(settings) {
   if (S) throw new Error('Already running');
@@ -154,7 +154,7 @@ function startSession(settings) {
 function finish(error) {
   const cur = S; if (!cur) return; cur.stopping = true; for (const d of cur.dests.values()) d.stop();
   try { cur.enc.stdin.end(); } catch (e) {} setTimeout(() => { try { cur.enc.kill('SIGKILL'); } catch (e) {} }, 2500);
-  S = null; for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('live:status', { live: false, error: error || '' });
+  S = null; try { require('./tray').onLive({ live: false, dests: [] }); } catch (e) {} for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('live:status', { live: false, error: error || '' });
 }
 
 // ---------- snapshots of settings (scenes and channels), so a bad edit or a corrupt file is never the end of them ----------
@@ -187,6 +187,7 @@ function register() {
   });
   ipcMain.handle('live:channels', () => loadChannels());
   ipcMain.handle('live:channels:save', (e, list) => saveChannels(list));
+  ipcMain.handle('live:set-dir', (e, d) => { d = String(d || ''); if (!d || !path.isAbsolute(d) || !fs.existsSync(d) || !fs.statSync(d).isDirectory()) throw new Error('That folder does not exist here'); fs.writeFileSync(prefFile(), JSON.stringify({ ...readPrefs(), recordDir: d }), { mode: 0o600 }); return d; }); // used when importing a profile
   ipcMain.handle('live:pick-dir', async e => { const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), { title: 'Where should recordings go?', properties: ['openDirectory', 'createDirectory'], defaultPath: recDir() });
     if (r.canceled || !r.filePaths[0]) return null; fs.writeFileSync(prefFile(), JSON.stringify({ ...readPrefs(), recordDir: r.filePaths[0] }), { mode: 0o600 }); return r.filePaths[0]; });
   ipcMain.handle('live:start', (e, settings) => { startSession(settings || {}); push(true); return true; });
