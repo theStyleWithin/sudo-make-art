@@ -29,6 +29,10 @@
   const plaque = (w, h) => { const r = Math.min(w, h) * 0.16; return `M${f(r)} 0H${f(w - r)}A${f(r)} ${f(r)} 0 0 0 ${f(w)} ${f(r)}V${f(h - r)}A${f(r)} ${f(r)} 0 0 0 ${f(w - r)} ${f(h)}H${f(r)}A${f(r)} ${f(r)} 0 0 0 0 ${f(h - r)}V${f(r)}A${f(r)} ${f(r)} 0 0 0 ${f(r)} 0Z`; };
   const frame = (w, h) => P([[0, 0], [1, 0], [1, 1], [0, 1]], w, h) + P([[0.12, 0.12], [0.12, 0.88], [0.88, 0.88], [0.88, 0.12]], w, h);
   const blob = (w, h) => `M${f(w * 0.5)} ${f(h * 0.02)}C${f(w * 0.8)} ${f(h * -0.02)} ${f(w * 1.02)} ${f(h * 0.3)} ${f(w * 0.97)} ${f(h * 0.55)}C${f(w * 0.93)} ${f(h * 0.85)} ${f(w * 0.7)} ${f(h * 1.02)} ${f(w * 0.45)} ${f(h * 0.97)}C${f(w * 0.15)} ${f(h * 0.93)} ${f(w * -0.03)} ${f(h * 0.65)} ${f(w * 0.05)} ${f(h * 0.35)}C${f(w * 0.1)} ${f(h * 0.12)} ${f(w * 0.3)} ${f(h * 0.05)} ${f(w * 0.5)} ${f(h * 0.02)}Z`;
+  const folderBack = (w, h) => { const r = Math.min(w, h) * 0.06, t = h * 0.1; return `M${f(r)} ${f(t)}H${f(w * 0.38)}L${f(w * 0.46)} ${f(h * 0.2)}H${f(w - r)}Q${f(w)} ${f(h * 0.2)} ${f(w)} ${f(h * 0.2 + r)}V${f(h - r)}Q${f(w)} ${f(h)} ${f(w - r)} ${f(h)}H${f(r)}Q0 ${f(h)} 0 ${f(h - r)}V${f(t + r)}Q0 ${f(t)} ${f(r)} ${f(t)}Z`; };
+  const folderFront = (w, h) => { const r = Math.min(w, h) * 0.06, t = h * 0.3; return `M${f(r)} ${f(t)}H${f(w - r)}Q${f(w)} ${f(t)} ${f(w)} ${f(t + r)}V${f(h - r)}Q${f(w)} ${f(h)} ${f(w - r)} ${f(h)}H${f(r)}Q0 ${f(h)} 0 ${f(h - r)}V${f(t + r)}Q0 ${f(t)} ${f(r)} ${f(t)}Z`; };
+  const sdcard = (w, h) => { const r = w * 0.05; return `M${f(r)} 0H${f(w * 0.74)}L${f(w)} ${f(h * 0.16)}V${f(h - r)}Q${f(w)} ${f(h)} ${f(w - r)} ${f(h)}H${f(r)}Q0 ${f(h)} 0 ${f(h - r)}V${f(r)}Q0 0 ${f(r)} 0Z`; };
+  const disc = (w, h) => { const hr = 0.075; return ell(w, h) + `M${f(w * (0.5 - hr))} ${f(h / 2)}A${f(w * hr)} ${f(h * hr)} 0 1 0 ${f(w * (0.5 + hr))} ${f(h / 2)}A${f(w * hr)} ${f(h * hr)} 0 1 0 ${f(w * (0.5 - hr))} ${f(h / 2)}Z`; };
   const L = [
     ['rect', 'Rectangle', 'basic', 'box rect', (w, h) => P([[0, 0], [1, 0], [1, 1], [0, 1]], w, h), 1.5],
     ['ellipse', 'Ellipse', 'basic', 'oval circle round', ell, 1.5],
@@ -82,9 +86,13 @@
     ['ticket', 'Ticket', 'callouts', 'coupon', ticket],
     ['folder', 'Folder', 'callouts', 'tab file', folder],
     ['plaque', 'Plaque', 'callouts', 'label scoreboard', plaque],
+    ['folderback', 'Folder (back)', 'icons', 'folder icon tab', folderBack],
+    ['folderfront', 'Folder (front)', 'icons', 'folder icon', folderFront],
+    ['sdcard', 'SD card', 'icons', 'memory storage', sdcard],
+    ['disc', 'Disc', 'icons', 'cd dvd bluray', disc],
   ];
   const byId = {}; const list = L.map(([id, name, cat, tags, d, ar]) => (byId[id] = { id, name, cat, tags, d, ar: ar || 1 }));
-  const cats = ['basic', 'stars', 'nature', 'symbols', 'arrows', 'callouts'];
+  const cats = ['basic', 'stars', 'nature', 'symbols', 'arrows', 'callouts', 'icons'];
   const search = q => { q = (q || '').trim().toLowerCase(); return q ? list.filter(s => (s.name + ' ' + s.cat + ' ' + s.tags).toLowerCase().includes(q)) : list; };
   window.SMA_SHAPES = { list, byId, cats, search };
 })();

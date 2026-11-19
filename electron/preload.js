@@ -44,6 +44,12 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
+  profile: {
+    hopcastFind: () => ipcRenderer.invoke('profile:hopcast-find'), hopcastPick: () => ipcRenderer.invoke('profile:hopcast-pick'), hopcastRead: r => ipcRenderer.invoke('profile:hopcast-read', r),
+    hopcastKey: () => ipcRenderer.invoke('profile:hopcast-key'), readFile: f => ipcRenderer.invoke('profile:read-file', f), fileSize: f => ipcRenderer.invoke('profile:file-size', f),
+    seal: (t, p) => ipcRenderer.invoke('profile:seal', t, p), unseal: (b, p) => ipcRenderer.invoke('profile:unseal', b, p), save: (n, d) => ipcRenderer.invoke('profile:save', n, d), open: () => ipcRenderer.invoke('profile:open'),
+  },
+  tray: { prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
   pinpoint: { start: () => ipcRenderer.invoke('pinpoint:start') },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
@@ -55,7 +61,7 @@ contextBridge.exposeInMainWorld('sma', {
     sources: () => ipcRenderer.invoke('live:sources'),
     channels: () => ipcRenderer.invoke('live:channels'),
     saveChannels: l => ipcRenderer.invoke('live:channels:save', l),
-    pickDir: () => ipcRenderer.invoke('live:pick-dir'),
+    pickDir: () => ipcRenderer.invoke('live:pick-dir'), setDir: d => ipcRenderer.invoke('live:set-dir', d),
     start: s => ipcRenderer.invoke('live:start', s),
     chunk: buf => ipcRenderer.send('live:chunk', buf),
     destStart: id => ipcRenderer.invoke('live:dest-start', id),

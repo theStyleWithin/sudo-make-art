@@ -197,10 +197,12 @@ function drawText(e, g) {
   }
   el('rect', { width: e.w, height: e.h, fill: 'transparent' }, g); // hit area
 }
+const bgCss = () => (doc.bg === 'transparent' ? 'repeating-conic-gradient(#d4d4d4 0% 25%, #ffffff 0% 50%) 0 0 / 28px 28px' : doc.bg); // transparent pages show a checkerboard
+const bgFill = () => (doc.bg === 'transparent' ? '#ffffff' : doc.bg); // for formats that cannot be see-through (JPG, PDF)
 function render() {
   svg.setAttribute('viewBox', `0 0 ${doc.w} ${doc.h}`);
   svg.setAttribute('width', doc.w * zoom); svg.setAttribute('height', doc.h * zoom);
-  svg.style.background = doc.bg;
+  svg.style.background = bgCss();
   svg.textContent = '';
   // Anything past the page edge is hidden (like a real page); it is not deleted, so moving or resizing brings it back.
   const defs = el('defs', {}, svg); el('rect', { width: doc.w, height: doc.h }, el('clipPath', { id: 'pageclip' }, defs));
@@ -323,10 +325,11 @@ function renderProps() {
   const h = t => { const x = document.createElement('h4'); x.textContent = t; p.append(x); };
   if (!e) {
     h('Page');
-    const bg = document.createElement('input'); bg.type = 'color'; bg.value = doc.bg;
-    bg.oninput = () => { doc.bg = bg.value; svg.style.background = doc.bg; autosave(); };
+    const bg = document.createElement('input'); bg.type = 'color'; bg.value = /^#[0-9a-f]{6}$/i.test(doc.bg) ? doc.bg : '#ffffff';
+    bg.oninput = () => { doc.bg = bg.value; svg.style.background = bgCss(); autosave(); };
     bg.onchange = () => { }; bg.onfocus = () => commit();
     p.append(row('Background', bg));
+    const tr = document.createElement('input'); tr.type = 'checkbox'; tr.checked = doc.bg === 'transparent'; tr.onchange = () => { commit(); doc.bg = tr.checked ? 'transparent' : (bg.value || '#ffffff'); render(); }; p.append(row('Transparent (PNG, SVG, ICO keep it)', tr));
     const hint = document.createElement('p'); hint.style.opacity = .6;
     hint.textContent = 'Click an element to edit it. Shift while resizing keeps aspect ratio; Shift while rotating snaps to 15°.';
     p.append(hint); return;
@@ -467,7 +470,7 @@ async function addSource(file, meta, folder = null) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 // ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
 let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
 let curFolder = null, renamingFolder = null;
@@ -585,6 +588,15 @@ function buildDialog() {
     nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat)); grid.textContent = '';
     if (OTHER_APPS[cat]) { const o = OTHER_APPS[cat], p = document.createElement('p'); p.className = 'hint'; p.textContent = o.blurb; grid.append(p);
       o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.mode === 'write' ? 'the writing app' : 'the video editor') + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); setMode(o.mode); }; grid.append(b); }); return; }
+    const TC = window.SMA_NEWCATS && window.SMA_NEWCATS[cat];
+    if (TC) { // template categories: pick one and it opens as a design you can edit
+      TC.groups.forEach(gp => { grid.append(Object.assign(document.createElement('h4'), { className: 'tgroup', textContent: gp.name }));
+        gp.items.forEach(t => { const b = document.createElement('button'); b.className = 'card tpl'; const d = t.make(), sv = document.createElementNS(NS, 'svg'); sv.setAttribute('viewBox', `0 0 ${d.w} ${d.h}`); sv.setAttribute('class', 'tplprev');
+          if (d.bg !== 'transparent') { const r = document.createElementNS(NS, 'rect'); r.setAttribute('width', d.w); r.setAttribute('height', d.h); r.setAttribute('fill', d.bg); sv.append(r); }
+          const g = document.createElementNS(NS, 'g'); sv.append(g); try { d.els.forEach(e => drawEl(e, g)); } catch (er) {} b.append(sv, Object.assign(document.createElement('b'), { textContent: t.name }), Object.assign(document.createElement('small'), { textContent: t.note || '' }));
+          b.onclick = () => { const m = t.make(); commit(); adopt({ w: m.w, h: m.h, dpi: m.dpi, name: t.name, pages: [{ bg: m.bg, els: m.els }], cur: 0 }); sel = null; dlg.close(); setMode('design'); fit(); }; grid.append(b); }); });
+      return;
+    }
     if (cat === 'Custom size') {
       grid.innerHTML = '<div class="cust"><label>Width <input id="cw" type="number" value="1080" min="1" step="any"></label><button id="clock" type="button" title="Keep the shape (aspect ratio) when you change one side" aria-pressed="false">🔓</button><label>Height <input id="ch" type="number" value="1080" min="1" step="any"></label>' +
         '<label>Units <select id="cu"><option value="px">pixels</option><option value="in">inches</option><option value="mm">millimetres</option><option value="cm">centimetres</option></select></label>' +
@@ -600,7 +612,8 @@ function buildDialog() {
     }
     PRESETS[cat].forEach(([n, w, h, dpi]) => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = `<b></b><small>${w} × ${h} px</small>`; b.firstChild.textContent = n; b.onclick = () => make(w, h, dpi); grid.append(b); });
   };
-  [...Object.keys(PRESETS), ...Object.keys(OTHER_APPS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
+  const cats = Object.keys(PRESETS), at = cats.indexOf('Channel icons & banners') + 1; cats.splice(at, 0, ...Object.keys(window.SMA_NEWCATS || {}));
+  [...cats, ...Object.keys(OTHER_APPS), 'Custom size'].forEach(c => { const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c; b.onclick = () => show(c); nav.append(b); });
   show('Default image size');
 }
 function make(w, h, dpi) { commit(); newDoc(w, h, dpi); dlg.close(); setMode('design'); fit(); }
@@ -640,22 +653,50 @@ $('#open').onclick = () => pick(f => f.text().then(t => { try { const d = JSON.p
 function cleanSVG() {
   const c = svg.cloneNode(true); c.querySelector('#ui')?.remove();
   c.setAttribute('width', doc.w); c.setAttribute('height', doc.h); c.style.background = '';
-  const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', doc.w); bg.setAttribute('height', doc.h); bg.setAttribute('fill', doc.bg);
-  c.insertBefore(bg, c.firstChild); c.setAttribute('xmlns', NS);
+  if (doc.bg !== 'transparent') { const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', doc.w); bg.setAttribute('height', doc.h); bg.setAttribute('fill', doc.bg); c.insertBefore(bg, c.firstChild); } c.setAttribute('xmlns', NS);
   const fontCss = window.SMA_FONTS ? window.SMA_FONTS.embedCSS(doc.els.filter(e => e.type === 'text').map(e => e.font)) : ''; // added fonts travel inside the file, so exports look the same
   if (fontCss) { const st = document.createElementNS(NS, 'style'); st.textContent = fontCss; c.insertBefore(st, c.firstChild); }
   if (window.SMA_META && SMA_META.get()) c.querySelectorAll('image').forEach(im => { const h = im.getAttribute('href'); if (h && h.startsWith('data:image/')) im.setAttribute('href', SMA_META.dataUrl(h)); }); // photos keep their pixels, lose their EXIF / GPS
   return new XMLSerializer().serializeToString(c);
 }
+// ---------- icon exports: a Windows .ico, or a zip of PNG sizes in an icon-theme folder layout (plus the SVG) ----------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function makeZip(files) { // stored (no compression), which is fine for PNG
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const f of files) { const name = enc.encode(f.name), crc = crc32(f.data), h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(h.buffer), name, f.data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, f.data.length, true); c.setUint32(24, f.data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true); central.push(new Uint8Array(c.buffer), name);
+    off += 30 + name.length + f.data.length; }
+  const cdSize = central.reduce((n, a) => n + a.length, 0), end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+function makeIco(pngs) { // pngs: [{ size, data }]; PNG-inside-ICO is understood by every modern system
+  const n = pngs.length, head = new DataView(new ArrayBuffer(6 + 16 * n)); head.setUint16(2, 1, true); head.setUint16(4, n, true); let off = 6 + 16 * n;
+  pngs.forEach((p, i) => { const o = 6 + 16 * i; head.setUint8(o, p.size >= 256 ? 0 : p.size); head.setUint8(o + 1, p.size >= 256 ? 0 : p.size); head.setUint16(o + 4, 1, true); head.setUint16(o + 6, 32, true); head.setUint32(o + 8, p.data.length, true); head.setUint32(o + 12, off, true); off += p.data.length; });
+  return new Blob([head, ...pngs.map(p => p.data)], { type: 'image/x-icon' });
+}
+async function pngAt(img, size) { // the design fitted (not stretched) into a size x size square
+  const cv = document.createElement('canvas'); cv.width = cv.height = size; const k = Math.min(size / doc.w, size / doc.h), w = doc.w * k, h = doc.h * k, c = cv.getContext('2d'); c.imageSmoothingQuality = 'high'; c.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  return new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/png'))).arrayBuffer());
+}
+async function exportIcons(kind, xml) {
+  const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
+  const slug = ((doc.name || 'icon').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')) || 'icon';
+  if (kind === 'ico') { const sizes = [16, 24, 32, 48, 64, 128, 256], pngs = []; for (const s of sizes) pngs.push({ size: s, data: await pngAt(img, s) }); return download(slug + '.ico', makeIco(pngs)); }
+  const files = []; for (const s of [16, 22, 24, 32, 48, 64, 96, 128, 192, 256, 512]) files.push({ name: `icon-theme/${s}x${s}/apps/${slug}.png`, data: await pngAt(img, s) });
+  files.push({ name: `icon-theme/scalable/apps/${slug}.svg`, data: new TextEncoder().encode(xml) }); download(slug + '-icons.zip', makeZip(files));
+}
 $('#export').onchange = ev => {
   const fmt = ev.target.value; ev.target.value = ''; if (!fmt) return;
   if (fmt === 'pdf') return exportPDF();
+  if (fmt === 'ico' || fmt === 'icons') return exportIcons(fmt, cleanSVG()).catch(e => alert('Could not export: ' + e.message));
   const xml = cleanSVG();
   if (fmt === 'svg') return download('design.svg', new Blob([xml], { type: 'image/svg+xml' }));
   const img = new Image();
   img.onload = () => {
     const cv = document.createElement('canvas'); cv.width = doc.w; cv.height = doc.h;
-    const ctx = cv.getContext('2d'); if (fmt === 'jpg') { ctx.fillStyle = doc.bg; ctx.fillRect(0, 0, doc.w, doc.h); }
+    const ctx = cv.getContext('2d'); if (fmt === 'jpg') { ctx.fillStyle = bgFill(); ctx.fillRect(0, 0, doc.w, doc.h); }
     ctx.drawImage(img, 0, 0, doc.w, doc.h);
     cv.toBlob(b => download('design.' + fmt, b), fmt === 'jpg' ? 'image/jpeg' : 'image/png', 0.95);
   };
@@ -696,7 +737,7 @@ async function exportPDF() {
   for (let i = 0; i < doc.pages.length; i++) {
     goPage(i); const xml = cleanSVG();
     const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
-    const cv = document.createElement('canvas'); cv.width = doc.w; cv.height = doc.h; const cx = cv.getContext('2d'); cx.fillStyle = doc.bg; cx.fillRect(0, 0, doc.w, doc.h); cx.drawImage(img, 0, 0, doc.w, doc.h);
+    const cv = document.createElement('canvas'); cv.width = doc.w; cv.height = doc.h; const cx = cv.getContext('2d'); cx.fillStyle = bgFill(); cx.fillRect(0, 0, doc.w, doc.h); cx.drawImage(img, 0, 0, doc.w, doc.h);
     const b = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
     out.push({ w: doc.w, h: doc.h, pw: +(doc.w * 72 / dpi).toFixed(2), ph: +(doc.h * 72 / dpi).toFixed(2), jpeg: new Uint8Array(await b.arrayBuffer()) });
   }
@@ -741,7 +782,7 @@ async function designThumb() {
   const xml = cleanSVG();
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
   const k = 320 / Math.max(doc.w, doc.h), cv = document.createElement('canvas'); cv.width = Math.round(doc.w * k); cv.height = Math.round(doc.h * k);
-  const cx = cv.getContext('2d'); cx.fillStyle = doc.bg; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL('image/jpeg', 0.7);
+  const cx = cv.getContext('2d'); cx.fillStyle = bgFill(); cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL('image/jpeg', 0.7);
 }
 window.SMA.design = {
   serialize, thumb: designThumb, getPid: () => doc.pid, setPid: p => { doc.pid = p; }, getName: () => doc.name || 'Untitled design', setName: n => { doc.name = n; },
