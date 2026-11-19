@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('sma', {
     onFinished: cb => on('convert:finished', cb),
   },
   pinpoint: { start: () => ipcRenderer.invoke('pinpoint:start') },
+  vtuber: { status: () => ipcRenderer.invoke('vtuber:model-status'), download: () => ipcRenderer.invoke('vtuber:model-download'), cancel: () => ipcRenderer.invoke('vtuber:model-cancel'), read: () => ipcRenderer.invoke('vtuber:model-read'), remove: () => ipcRenderer.invoke('vtuber:model-remove'), onProgress: fn => { const h = (e, d) => fn(d); ipcRenderer.on('vtuber:progress', h); return () => ipcRenderer.removeListener('vtuber:progress', h); } },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
     info: () => ipcRenderer.invoke('live:info'),

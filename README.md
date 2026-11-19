@@ -16,6 +16,17 @@ npm run dist:win     # Windows installer + portable exe (build on Windows; CI do
 Downloads (AppImage, Windows installer and portable exe, Android APK) are on the [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). To publish a new one: GitHub → Actions → build → Run workflow, tick *publish* (bump `version` in `package.json` first).
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
+## Sudo Make VTuber (beta)
+Pick **Sudo Make VTuber** from the logo menu to be a VTuber with your own VRM model (VRoid Studio makes them). The pages down the left:
+- **Model**: import `.vrm` files into a library (kept on this computer), pick one, unload it, filter the list, and turn on **Model lock** so it cannot change by accident.
+- **Camera**: face tracking drives the head, eyes, eyebrows, mouth and smile. Choose the camera, tracking quality (fast, good, best), an FPS limit, what the model does when tracking is lost (go back to the default pose or stay put), automatic or manual parameter calculation (with a calibrate button), whether blinking is linked (never, always, when the head is turned), mirroring, and the sensitivity of blinking, eye opening, mouth, smile and eyebrows, each with a reset.
+- **Microphone**: the mouth follows your voice. Set the device, volume gain, volume cutoff and frequency gain, and choose volume lip sync or vowels (A, I, U, E, O) with a short calibration for each vowel.
+- **Mouse & idle**: the head can follow the mouse pointer, and the avatar blinks, breathes and sways a little so it never looks frozen.
+- **Display**: app FPS (60, 30, 24, 15), picture size (including portrait and square), transparent or solid-colour background, zoom and position, outline and style.
+- **Output**: **Add to Sudo Make Live** puts your VTuber into the current Live scene as a source. It runs its own camera tracking and microphone, has a see-through background, and can be moved, resized and given effects like any other source. Its Properties let you switch tracking on or off or reload your studio settings.
+
+Camera tracking needs one download, only if you press the button for it: MediaPipe's Face Landmarker model (about 3.8 MB, Apache-2.0), which the app checks against a fixed size and checksum before keeping it. Everything else, including the tracking code, ships inside the app, and your camera picture and microphone sound are never recorded or sent anywhere. Not built yet: Live2D models, virtual webcam, Spout and NDI output, and recording animations.
+
 ## Sudo Make Avatar Pose (beta)
 Pick **Sudo Make Avatar Pose** from the logo menu to pose VRM characters (from VRoid Studio and others). Open a `.vrm` or drop one on the window, then:
 - **Turn the camera**: drag to orbit, scroll to zoom, Shift-drag to move, or pick an angle (front, three-quarter, side, back, above, below, waist up, bust, face).
