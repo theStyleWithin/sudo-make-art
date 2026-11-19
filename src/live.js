@@ -216,6 +216,7 @@ $('#hc-chtoggle').onclick = () => { st.chbar = !st.chbar; save(); chbar(); };
 
 // ---------- dialogs (HopCast style: dark, title strip, buttons at the bottom) ----------
 function dlg({ title, body, buttons, wide }) {
+  if (document.visibilityState === 'hidden' && window.sma.tray) window.sma.tray.show(); // a question needs the window: bring it back from the tray
   document.getElementById('hcdlg')?.remove(); const back = el('div', { id: 'hcdlg' }), box = el('div', { className: 'hc-box' + (wide ? ' wide' : '') }); const close = () => back.remove();
   const x = el('button', { className: 'hc-x', textContent: '✕', title: 'Close' }); x.onclick = close; box.append(el('div', { className: 'hc-strip2' }), x);
   const inner = el('div', { className: 'hc-inner' }); if (title) inner.append(el('h2', { textContent: title })); const content = el('div', { className: 'hc-content' }); inner.append(content); box.append(inner);
@@ -409,7 +410,13 @@ function settingsDialog(startTab) {
     const nf = (k, min, max) => { const i = el('input', { type: 'number', value: S[k], min, max }); i.oninput = () => { S[k] = Math.max(min, Math.min(max, +i.value || min)); save(); }; return i; };
     const draw = () => { nav.textContent = ''; tabs.forEach(t => { const b = el('button', { textContent: t, className: t === cur ? 'on' : '' }); b.onclick = () => { cur = t; draw(); }; nav.append(b); }); page.textContent = '';
       if (cur === 'General') { page.append(el('h2', { textContent: 'Source Alignment Snapping' }), check('Enable', st.snap.on, v => { st.snap.on = v; save(); }), field('Snap Sensitivity', (() => { const i = el('input', { type: 'number', value: st.snap.sens, min: 1, max: 50 }); i.oninput = () => { st.snap.sens = +i.value || 10; save(); }; return i; })()), check('Snap Sources to edge of screen', st.snap.edge, v => { st.snap.edge = v; save(); }), check('Snap Sources to other sources', st.snap.other, v => { st.snap.other = v; save(); }), check('Snap Sources to horizontal and vertical center', st.snap.center, v => { st.snap.center = v; save(); }));
-        page.append(el('h2', { textContent: 'Output' }), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); })); }
+        page.append(el('h2', { textContent: 'Output' }), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); }));
+        const tr = window.sma.tray; if (tr) { const box = el('div'); page.append(el('h2', { textContent: 'System Tray' }), box);
+          tr.prefs().then(tp => { const set = (k, v) => { tp[k] = v; tr.set({ [k]: v }).then(n => Object.assign(tp, n)); };
+            box.append(check('Show a tray icon', tp.enabled, v => set('enabled', v), 'Right-click it for Go Live, Record, Sudo Take Screenshot, and quick access to every mode. On some Linux desktops (GNOME) the icon needs the AppIndicator extension.'),
+              check('Minimize to the system tray instead of the task bar', tp.minToTray, v => set('minToTray', v)), check('Start minimized to the system tray', tp.startInTray, v => set('startInTray', v)),
+              check('Keep running in the tray when I close the window while live or recording', tp.keepRunning, v => set('keepRunning', v), 'So closing the window by mistake does not end your stream. Quit from the tray menu.'),
+              check('Always send the close button to the tray', tp.closeToTray, v => set('closeToTray', v)), check('Show a message when a channel drops and when it is back', tp.notify, v => set('notify', v))); }); } }
       if (cur === 'Output') page.append(el('h2', { textContent: 'Streaming' }), field('Video Bitrate (kbps)', nf('vbr', 300, 60000)), field('Audio Bitrate (kbps)', nf('abr', 32, 512)), field('Encoder', sel('encoder', [['x264', 'x264 (software)'], ...(info.nvenc ? [['nvenc', 'NVIDIA NVENC']] : [])])), field('x264 speed', sel('preset', [['ultrafast', 'Fastest'], ['superfast', 'Very fast'], ['veryfast', 'Fast (default)'], ['faster', 'Balanced'], ['fast', 'Better quality']])),
         el('p', { className: 'hc-hint', textContent: 'The picture is encoded once and shared by every channel, so more channels do not add CPU load, only upload. Sending over ' + info.protocols.map(x => x.toUpperCase()).join(', ') + ' (FFmpeg: ' + (info.ffmpeg || '?') + ').' }));
       if (cur === 'Audio') { page.append(el('h2', { textContent: 'Audio inputs' })); st.audio.forEach(a => { const s = el('select'); s.add(new Option(a.device ? 'Chosen input' : 'Default', a.device || '')); s.value = a.device || ''; s.onfocus = async () => { const ds = await audioDevices(); s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); s.value = a.device || ''; }; s.onchange = () => { a.device = s.value; save(); if (status.live) openInput(a); }; page.append(field(a.name, s)); }); page.append(el('p', { className: 'hc-hint', textContent: 'Inputs are opened when you go live or record, not before. Add more with + in Sources (Audio Input Capture or Audio Output Capture).' })); }
@@ -464,7 +471,8 @@ function startRecorder() {
   recorder.ondataavailable = e => { if (e.data && e.data.size) q = q.then(() => e.data.arrayBuffer()).then(b => api.chunk(b)); }; recorder.start(250);
 }
 function stopRecorder() { if (recorder && recorder.state !== 'inactive') recorder.stop(); recorder = null; }
-async function begin() { flash(''); await Promise.all(st.audio.map(a => inputs.has(a.id) ? 0 : openInput(a))); ensureAudio(); await api.start({ ...st.set, w: canvas.width, h: canvas.height }); startRecorder(); }
+async function begin() { flash(''); if (!timer) loop(); // started from the tray without opening this screen: start drawing
+  await Promise.all(st.audio.map(a => inputs.has(a.id) ? 0 : openInput(a))); ensureAudio(); await api.start({ ...st.set, w: canvas.width, h: canvas.height }); startRecorder(); }
 function yesNo(text, yes) { dlg({ buttons: [{ label: 'Yes', fn: yes }, { label: 'No' }], body: box => box.append(el('p', { className: 'hc-hint big center', textContent: text })) }); }
 async function goLive(force) {
   try {
@@ -500,6 +508,6 @@ document.addEventListener('sma-mode', ev => {
   else if (!status.live) { clearInterval(timer); [...rt.keys()].forEach(dropRuntime); } // leaving without streaming: let go of the screen and camera
 });
 async function dailyBackup() { try { const last = +localStorage.getItem('sma-live-backup') || 0; if (Date.now() - last > 864e5) { await api.backup(JSON.stringify(st, (k, v) => (k[0] === '_' ? undefined : v))); localStorage.setItem('sma-live-backup', String(Date.now())); } } catch (e) {} }
-window.SMA_live = { state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
+window.SMA_live = { goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
 icons(); menubar(); bottom(); render();
 })();
