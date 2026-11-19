@@ -51,5 +51,21 @@ function overlay(disp, img, textMode) {
     win.once('ready-to-show', () => { win.show(); win.focus(); }); win.loadFile(path.join(__dirname, '..', 'src', 'pinpoint.html'));
   });
 }
-function register() { ipcMain.handle('pinpoint:start', (e, opts) => start(e.sender, opts)); }
-module.exports = { register };
+const stamp = () => { const t = new Date(), p2 = n => String(n).padStart(2, '0'); return `${t.getFullYear()}${p2(t.getMonth() + 1)}${p2(t.getDate())}-${p2(t.getHours())}${p2(t.getMinutes())}${p2(t.getSeconds())}`; };
+function writePng(png, prefix) { const dir = path.join(app.getPath('pictures'), 'Sudo Make Art'); fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, `${prefix}-${stamp()}.png`); fs.writeFileSync(file, png); try { clipboard.writeImage(nativeImage.createFromBuffer(png)); } catch (e) {} return file; }
+// A picture of the whole screen the window is on (or the main screen), saved to Pictures/Sudo Make Art and put on the clipboard. The app's own window is moved out of the way first.
+async function desktopShot(sender, hideFn, showFn) {
+  const parent = sender ? BrowserWindow.fromWebContents(sender) : BrowserWindow.getAllWindows()[0], disp = parent && !parent.isDestroyed() ? screen.getDisplayMatching(parent.getBounds()) : screen.getPrimaryDisplay();
+  const wasShown = parent && !parent.isDestroyed() && parent.isVisible() && !parent.isMinimized(); if (wasShown) { (hideFn || (() => parent.hide()))(); await wait(450); }
+  try {
+    const w = Math.round(disp.size.width * disp.scaleFactor), h = Math.round(disp.size.height * disp.scaleFactor);
+    const list = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: w, height: h } }), src = list.find(s => s.display_id === String(disp.id)) || list[0], img = src && src.thumbnail;
+    if (!img || img.isEmpty()) throw new Error('Could not take a picture of the screen. On Wayland your system may need to allow it.');
+    return { path: writePng(img.toPNG(), 'Screen') };
+  } finally { if (wasShown && parent && !parent.isDestroyed()) (showFn || (() => { parent.show(); }))(); }
+}
+function register() {
+  ipcMain.handle('pinpoint:start', (e, opts) => start(e.sender, opts));
+  ipcMain.handle('pinpoint:save', (e, dataUrl, prefix) => { const m = /^data:image\/png;base64,(.+)$/.exec(String(dataUrl || '')); if (!m || m[1].length > 80e6) throw new Error('No picture to save.'); return { path: writePng(Buffer.from(m[1], 'base64'), /^[A-Za-z]{2,12}$/.test(prefix) ? prefix : 'Picture') }; });
+}
+module.exports = { register, desktopShot, writePng };

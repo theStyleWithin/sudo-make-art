@@ -48,24 +48,37 @@ function icon() {
   const img = nativeImage.createFromPath(path.join(__dirname, '..', 'build', 'icon.png'));
   return img.isEmpty() ? img : img.resize({ width: process.platform === 'win32' ? 16 : 22, height: process.platform === 'win32' ? 16 : 22 });
 }
+// The menu follows HopCast's tray menu, item for item and in the same order (Show/Hide, streaming, recording, virtual camera,
+// the three screenshots, Settings, Exit). HopCast's preview projectors and replay buffer have no counterpart here. After
+// HopCast's items come Sudo Make Art's own (Text Grab and the modes), then Reset tray settings, then Exit.
 function menu() {
-  const visible = alive() && win.isVisible() && !win.isMinimized(), live = busy(), rec = recording(), streaming = liveState.dests.some(d => d.kind === 'channel');
-  const modes = [['home', 'Home'], ['design', 'Design'], ['video', 'Video'], ['live', 'Live'], ['vtrim', 'Trim video'], ['vconvert', 'Convert videos'], ['convert', 'Convert images']];
+  const visible = alive() && win.isVisible() && !win.isMinimized(), live = busy(), rec = recording(), streaming = liveState.dests.some(d => d.kind === 'channel'), vcamOn = (() => { try { return require('./vcam').running(); } catch (e) { return false; } })();
+  const modes = [['home', 'Home'], ['design', 'Design'], ['video', 'Video'], ['live', 'Live'], ['vtrim', 'Trim video'], ['vconvert', 'Convert videos'], ['convert', 'Convert images'], ['vtuber', 'VTuber'], ['avatar', 'Avatar Pose']];
   return Menu.buildFromTemplate([
-    { label: live ? (streaming ? '● Live' : '● Running') + (rec ? ' · recording' : '') : 'Sudo Make Art', enabled: false },
-    { type: 'separator' },
     { label: visible ? 'Hide' : 'Show', click: toggleWindow },
     { type: 'separator' },
-    { label: streaming ? 'Stop streaming' : 'Go Live', click: () => send('golive') },
-    { label: rec ? 'Stop recording' : 'Start recording', click: () => send('record') },
-    { label: 'Sudo Take Screenshot', click: () => send('screenshot') },
-    { label: 'Text Grab (copy text from the screen)', click: () => send('textgrab') },
+    { label: streaming ? 'Stop Streaming' : 'Start Streaming', click: () => send('golive') },
+    { label: rec ? 'Stop Recording' : 'Start Recording', click: () => send('record') },
+    { label: vcamOn ? 'Stop Virtual Camera' : 'Start Virtual Camera', click: () => send('vcam') },
     { type: 'separator' },
+    { label: 'Screenshot of my screen', click: () => desktopShot() },
+    { label: 'Screenshot of one picture (pinpoint)', click: () => send('screenshot') },
+    { label: 'Screenshot of the stream preview', click: () => send('streamshot') },
+    { type: 'separator' },
+    { label: 'Settings', click: () => { showWindow(); send('settings'); } },
+    { type: 'separator' },
+    { label: 'Text Grab (copy text from the screen)', click: () => send('textgrab') },
     { label: 'Open', submenu: modes.map(([m, l]) => ({ label: l, click: () => { showWindow(); send('mode', { mode: m }); } })) },
     { label: 'New design…', click: () => { showWindow(); send('newdesign'); } },
     { type: 'separator' },
-    { label: 'Quit', click: () => { quitting = true; app.quit(); } },
+    { label: 'Reset tray settings', click: () => { resetPrefs(); toast('Sudo Make Art', 'Tray settings were reset.'); } },
+    { label: 'Exit', click: () => { quitting = true; app.quit(); } },
   ]);
+}
+function resetPrefs() { prefs = { ...DEFAULTS }; savePrefs(); ensureTray(); refresh(); showWindow(); return { ...prefs }; }
+async function desktopShot() {
+  try { const r = await require('./pinpoint').desktopShot(win && !win.isDestroyed() ? win.webContents : null, tuck, showWindow); toast('Sudo Take Screenshot', 'Screenshot saved: ' + r.path + ' (also copied)'); }
+  catch (e) { toast('Sudo Take Screenshot', String(e && e.message || e)); }
 }
 function refresh() {
   if (!tray) return; tray.setContextMenu(menu());
@@ -101,8 +114,10 @@ function register() {
   ipcMain.handle('tray:prefs', () => ({ ...prefs, supported: hostOk }));
   ipcMain.handle('tray:set', (e, p) => { for (const k of Object.keys(DEFAULTS)) if (p && typeof p[k] === 'boolean') prefs[k] = p[k]; savePrefs(); ensureTray(); refresh(); return { ...prefs }; });
   ipcMain.handle('tray:show', () => { showWindow(); return true; });
-  ipcMain.handle('tray:reset', () => { prefs = { ...DEFAULTS }; savePrefs(); ensureTray(); refresh(); return { ...prefs }; });
+  ipcMain.handle('tray:reset', () => resetPrefs());
+  ipcMain.handle('tray:desktopshot', () => desktopShot());
+  ipcMain.handle('tray:toast', (e, t, b) => { toast(String(t || 'Sudo Make Art').slice(0, 80), String(b || '').slice(0, 300)); return true; });
   app.on('before-quit', () => { quitting = true; });
 }
-module.exports = { register, attach, onLive, toast, showWindow, isHidden: () => !alive() || !win.isVisible() };
+module.exports = { register, attach, onLive, toast, showWindow, refreshMenu: () => refresh(), isHidden: () => !alive() || !win.isVisible() };
 if (process.env.SMA_TEST) global.__smaTray = { state: () => ({ hasTray: !!tray, prefs: { ...prefs }, visible: alive() && win.isVisible(), destroyed: !alive() }), cmd: send, onLive, menuLabels: () => (tray ? menu().items.map(i => i.label) : []), click: label => { const it = menu().items.find(i => i.label === label); if (it && it.click) { it.click(); return true; } return false; }, toggle: () => toggleWindow(), show: () => showWindow(), winState: () => (alive() ? { visible: win.isVisible(), minimized: win.isMinimized(), focused: win.isFocused(), fullscreen: win.isFullScreen() } : null) }; // for the automated tests only
