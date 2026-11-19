@@ -61,8 +61,20 @@ sizeCanvas(false);
 // ---------- audio ----------
 let actx = null, mixDest = null; const inputs = new Map(); // audio input id -> { stream, gain, an }
 const ensureAudio = () => { if (!actx) { actx = new AudioContext({ sampleRate: 48000 }); mixDest = actx.createMediaStreamDestination(); } if (actx.state === 'suspended') actx.resume(); return actx; };
+let deskReady = null, deskHooked = false;
+async function openDesk(a) { // desktop audio: on Linux raw sound from the main process, on Windows system loopback from the screen-capture API
+  const api = window.sma && window.sma.deskaudio, gain = actx.createGain(), an = actx.createAnalyser(); an.fftSize = 512; gain.gain.value = a.mute ? 0 : a.vol; gain.connect(an); gain.connect(mixDest);
+  if (!api) throw new Error('Desktop audio needs the desktop app');
+  const info = await api.list(); if (!info.ok) throw new Error(info.why || 'Desktop audio is not available here');
+  if (info.mode === 'loopback') { const s = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }); s.getVideoTracks().forEach(t => t.stop()); if (!s.getAudioTracks().length) throw new Error('No system sound was offered'); actx.createMediaStreamSource(new MediaStream(s.getAudioTracks())).connect(gain); inputs.set(a.id, { stream: s, gain, an }); return; }
+  if (!deskReady) deskReady = actx.audioWorklet.addModule('src/deskaudio-worklet.js'); await deskReady;
+  const node = new AudioWorkletNode(actx, 'sma-desk', { numberOfInputs: 0, outputChannelCount: [2] }); node.connect(gain);
+  if (!deskHooked) { deskHooked = true; api.onData((id, buf) => { const i = inputs.get(id); if (i && i.node) i.node.port.postMessage(buf, [buf]); }); api.onEnded((id, code, err) => { const x = st.audio.find(q => q.id === id); if (x && inputs.has(id)) { closeInput(id); x.err = 'Desktop audio stopped. ' + (err || ''); mixer(); } }); }
+  inputs.set(a.id, { stream: { getTracks: () => [] }, gain, an, node, stop: () => api.stop(a.id) }); await api.start(a.id, a.source || '');
+}
 async function openInput(a) {
   ensureAudio(); closeInput(a.id);
+  if (a.kind === 'desk') { try { await openDesk(a); a.err = ''; } catch (e) { closeInput(a.id); a.err = clean(e); } mixer(); return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: a.device ? { exact: a.device } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
     const src = actx.createMediaStreamSource(stream), gain = actx.createGain(), an = actx.createAnalyser(); an.fftSize = 512; gain.gain.value = a.mute ? 0 : a.vol; src.connect(gain); gain.connect(an); gain.connect(mixDest);
@@ -70,7 +82,7 @@ async function openInput(a) {
   } catch (e) { a.err = 'No access to this input'; }
   mixer();
 }
-function closeInput(id) { const i = inputs.get(id); if (i) { i.stream.getTracks().forEach(t => t.stop()); try { i.gain.disconnect(); } catch (e) {} inputs.delete(id); } }
+function closeInput(id) { const i = inputs.get(id); if (i) { if (i.stop) i.stop(); if (i.node) try { i.node.disconnect(); } catch (e) {} i.stream.getTracks().forEach(t => t.stop()); try { i.gain.disconnect(); } catch (e) {} inputs.delete(id); } }
 const levelOf = an => { const b = new Uint8Array(an.fftSize); an.getByteTimeDomainData(b); let m = 0; for (const v of b) m = Math.max(m, Math.abs(v - 128)); return m / 128; };
 async function audioDevices(kind = 'audioinput') { try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); } catch (e) {} return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === kind); }
 let allMuted = false;
@@ -274,7 +286,7 @@ const SRC_TYPES = [
   { cat: 'Camera · Video', id: 'camera', name: 'Video Capture Device', sub: 'Camera', icon: 'cam', blurb: 'Shows a camera or capture card.' },
   { cat: 'Camera · Video', id: 'screen', name: 'Screen or Window Capture', sub: 'Screen', icon: 'screen', blurb: 'Shows your whole screen, or one window.' },
   { cat: 'Audio · Music', id: 'mic', name: 'Audio Input Capture', sub: 'Mic · Audio', icon: 'mic', blurb: 'A microphone or any audio input, added to the Audio Mixer.' },
-  { cat: 'Audio · Music', id: 'sys', name: 'Audio Output Capture', sub: 'System Sound', icon: 'speaker', blurb: 'What the computer plays. Pick a "monitor" or loopback input (on Linux, "Monitor of …"). It is added to the Audio Mixer.' },
+  { cat: 'Audio · Music', id: 'sys', name: 'Desktop Audio', sub: 'System Sound', icon: 'speaker', blurb: 'What the computer is playing: games, music, a browser. It is added to the Audio Mixer. On Linux this needs parec (pulseaudio-utils) or pw-record (pipewire).' },
   { cat: 'Image · Video Playback', id: 'image', name: 'Image', sub: 'Picture', icon: 'img', blurb: 'A picture from your Sources library.' },
   { cat: 'Image · Video Playback', id: 'media', name: 'Media Source', sub: 'Video, sound', icon: 'media', blurb: 'A video or sound file from your Sources library. Its sound goes to the mix.' },
   { cat: 'Text · Color', id: 'text', name: 'Text', sub: 'Words', icon: 'text', blurb: 'Words on the picture.' },
@@ -288,12 +300,14 @@ function addDialog() {
     const showRight = () => { right.textContent = ''; if (!pick) { right.append(el('h3', { textContent: 'Add a source' }), el('p', { className: 'hc-hint', textContent: 'Choose a source on the left to see what it does.' })); return; }
       right.append(el('h3', { textContent: pick.name }), el('p', { className: 'hc-hint', textContent: pick.blurb })); extra = {}; const nm = el('input', { value: pick.name.replace(' Capture Device', '').replace(' Capture', '') }); extra.name = () => nm.value.trim() || pick.name; right.append(field('Name', nm));
       if (pick.id === 'camera') { const s = el('select'); s.add(new Option('Loading cameras…', '')); right.append(field('Device', s)); navigator.mediaDevices.getUserMedia({ video: true }).then(t => { t.getTracks().forEach(x => x.stop()); return navigator.mediaDevices.enumerateDevices(); }).then(ds => { s.textContent = ''; const cams = ds.filter(x => x.kind === 'videoinput'); if (!cams.length) s.add(new Option('No camera found', '')); cams.forEach(c => s.add(new Option(c.label || 'Camera', c.deviceId))); }).catch(() => { s.textContent = ''; s.add(new Option('No access to a camera', '')); }); extra.device = () => s.value; }
-      if (pick.id === 'mic' || pick.id === 'sys') { const s = el('select'); s.add(new Option('Default', '')); right.append(field('Device', s)); audioDevices().then(ds => { s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); if (pick.id === 'sys') { const m = [...s.options].find(o => /monitor|loopback|stereo mix/i.test(o.text)); if (m) s.value = m.value; } }); extra.device = () => s.value; }
+      if (pick.id === 'sys') { const s = el('select'), msg = el('p', { className: 'hc-bad' }); s.add(new Option('Looking for outputs…', '')); right.append(field('Capture', s), msg); const api = window.sma && window.sma.deskaudio; extra.device = () => s.value;
+        (api ? api.list() : Promise.resolve({ ok: false, why: 'Desktop audio needs the desktop app.' })).then(i => { s.textContent = ''; if (!i.ok) { s.add(new Option('Not available', '')); msg.textContent = i.why || ''; d.buttons.OK.disabled = true; return; } i.sources.forEach(x => s.add(new Option(x.label, x.name))); d.buttons.OK.disabled = false; }); d.buttons.OK.disabled = true; }
+      if (pick.id === 'mic') { const s = el('select'); s.add(new Option('Default', '')); right.append(field('Device', s)); audioDevices().then(ds => { s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); if (pick.id === 'sys') { const m = [...s.options].find(o => /monitor|loopback|stereo mix/i.test(o.text)); if (m) s.value = m.value; } }); extra.device = () => s.value; }
       if (pick.id === 'screen') { const bt = el('button', { textContent: 'Choose a screen or window…', className: 'hc-mini' }); bt.onclick = () => screenPicker(s => { extra.src = s; bt.textContent = s.name.slice(0, 40); nm.value = s.name.slice(0, 40); d.buttons.OK.disabled = false; }); right.append(field('Capture', bt)); d.buttons.OK.disabled = true; }
       if (pick.id === 'image' || pick.id === 'media') { const bt = el('button', { textContent: 'Choose from Sources…', className: 'hc-mini' }); bt.onclick = () => libraryPicker(pick.id, s => { extra.src = s; bt.textContent = s.name; d.buttons.OK.disabled = false; }); right.append(field('File', bt)); d.buttons.OK.disabled = true; }
       if (pick.id === 'text') { const t = el('textarea', { value: 'Your text' }); extra.text = () => t.value; right.append(field('Text', t)); }
       if (pick.id === 'color') { const c = el('input', { type: 'color', value: '#1b1b2f' }); extra.color = () => c.value; right.append(field('Color', c)); }
-      if (!['screen', 'image', 'media'].includes(pick.id)) d.buttons.OK.disabled = false; };
+      if (!['screen', 'image', 'media', 'sys'].includes(pick.id)) d.buttons.OK.disabled = false; };
     const paintList = () => { lst.textContent = ''; const term = q.value.trim().toLowerCase(); let cat = ''; SRC_TYPES.filter(t => !term || (t.name + t.sub + t.cat).toLowerCase().includes(term)).forEach(t => { if (t.cat !== cat) { cat = t.cat; lst.append(el('div', { className: 'hc-cat', textContent: cat })); }
       const b = el('button', { className: 'hc-src' + (pick === t ? ' on' : '') }); b.innerHTML = `<span class="hc-sic">${ICON[t.icon]}</span>`; const tx = el('span'); tx.append(el('b', { textContent: t.name }), el('small', { textContent: t.sub })); b.append(tx); b.onclick = () => { pick = t; paintList(); showRight(); }; lst.append(b); }); };
     q.oninput = paintList; paintList(); showRight();
@@ -310,7 +324,7 @@ function commitAdd(t, x) {
   const name = x.name();
   if (t.id === 'camera') addItem({ kind: 'camera', name, device: x.device() });
   else if (t.id === 'screen') addItem({ kind: 'screen', name, sourceId: x.src.id });
-  else if (t.id === 'mic' || t.id === 'sys') { const a = { id: uid(), name, device: x.device(), vol: 1, mute: false }; st.audio.push(a); save(); mixer(); if (status.live) openInput(a); }
+  else if (t.id === 'mic' || t.id === 'sys') { const a = t.id === 'sys' ? { id: uid(), name, kind: 'desk', source: x.device(), vol: 1, mute: false } : { id: uid(), name, device: x.device(), vol: 1, mute: false }; st.audio.push(a); save(); mixer(); if (status.live) openInput(a); }
   else if (t.id === 'image') { const s = x.src, u = URL.createObjectURL(s.blob), im = new Image(); im.onload = () => { const it = addItem({ kind: 'image', name, src: s.id }); fitItem(it, im.naturalWidth, im.naturalHeight); URL.revokeObjectURL(u); }; im.src = u; }
   else if (t.id === 'media') { const it = addItem({ kind: 'media', name, src: x.src.id, loop: true, vol: 1 }); const tm = setInterval(() => { const r = rt.get(it.id); if (r && r.el && r.el.videoWidth) { fitItem(it, r.el.videoWidth, r.el.videoHeight); clearInterval(tm); } else if (r && r.err) clearInterval(tm); }, 200); }
   else if (t.id === 'text') addItem({ kind: 'text', name, text: x.text(), size: Math.round(canvas.height / 10), color: '#ffffff', font: 'Arial', bold: true, stroke: true, x: canvas.width * 0.1, y: canvas.height * 0.4 });
@@ -419,7 +433,7 @@ function settingsDialog(startTab) {
               check('Always send the close button to the tray', tp.closeToTray, v => set('closeToTray', v)), check('Show a message when a channel drops and when it is back', tp.notify, v => set('notify', v))); }); } }
       if (cur === 'Output') page.append(el('h2', { textContent: 'Streaming' }), field('Video Bitrate (kbps)', nf('vbr', 300, 60000)), field('Audio Bitrate (kbps)', nf('abr', 32, 512)), field('Encoder', sel('encoder', [['x264', 'x264 (software)'], ...(info.nvenc ? [['nvenc', 'NVIDIA NVENC']] : [])])), field('x264 speed', sel('preset', [['ultrafast', 'Fastest'], ['superfast', 'Very fast'], ['veryfast', 'Fast (default)'], ['faster', 'Balanced'], ['fast', 'Better quality']])),
         el('p', { className: 'hc-hint', textContent: 'The picture is encoded once and shared by every channel, so more channels do not add CPU load, only upload. Sending over ' + info.protocols.map(x => x.toUpperCase()).join(', ') + ' (FFmpeg: ' + (info.ffmpeg || '?') + ').' }));
-      if (cur === 'Audio') { page.append(el('h2', { textContent: 'Audio inputs' })); st.audio.forEach(a => { const s = el('select'); s.add(new Option(a.device ? 'Chosen input' : 'Default', a.device || '')); s.value = a.device || ''; s.onfocus = async () => { const ds = await audioDevices(); s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); s.value = a.device || ''; }; s.onchange = () => { a.device = s.value; save(); if (status.live) openInput(a); }; page.append(field(a.name, s)); }); page.append(el('p', { className: 'hc-hint', textContent: 'Inputs are opened when you go live or record, not before. Add more with + in Sources (Audio Input Capture or Audio Output Capture).' })); }
+      if (cur === 'Audio') { page.append(el('h2', { textContent: 'Audio inputs' })); st.audio.forEach(a => { if (a.kind === 'desk') { page.append(field(a.name, el('span', { textContent: a.source ? a.source : 'Everything you hear (default output)' }))); return; } const s = el('select'); s.add(new Option(a.device ? 'Chosen input' : 'Default', a.device || '')); s.value = a.device || ''; s.onfocus = async () => { const ds = await audioDevices(); s.textContent = ''; s.add(new Option('Default', '')); ds.forEach(x => s.add(new Option(x.label || 'Input', x.deviceId))); s.value = a.device || ''; }; s.onchange = () => { a.device = s.value; save(); if (status.live) openInput(a); }; page.append(field(a.name, s)); }); page.append(el('p', { className: 'hc-hint', textContent: 'Inputs are opened when you go live or record, not before. Add more with + in Sources (Audio Input Capture or Audio Output Capture).' })); }
       if (cur === 'Video') page.append(el('h2', { textContent: 'Video' }), field('Base (Canvas) Resolution', sel('res', Object.keys(RES).map(k => [k, k.replace('x', ' × ') + (RES[k][1] > RES[k][0] ? ' (vertical)' : '')]))), field('Common FPS Values', sel('fps', [[24, '24'], [30, '30'], [60, '60']])), el('p', { className: 'hc-hint', textContent: 'Changes apply the next time you go live. Sources are scaled to the new size.' }));
       if (cur === 'Recording') { const dir = el('button', { textContent: info.recordDir || 'Choose…', className: 'hc-mini' }); dir.onclick = async () => { const p = await api.pickDir(); if (p) { info.recordDir = p; dir.textContent = p; } }; page.append(el('h2', { textContent: 'Recording' }), field('Recording Path', dir), field('Recording Format', sel('recFormat', [['mkv', 'MKV (safe if the app closes)'], ['mp4', 'MP4']])), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); })); } };
     draw(); } });
@@ -551,6 +565,6 @@ async function importHopcast(sel) { // sel: { profile, collections: [...], chann
   save(); render(); chbar(); return { done, skipped };
 }
 function liveReloadFromStorage() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j) { Object.keys(st).forEach(k => delete st[k]); Object.assign(st, j); } } catch (e) {} }
-window.SMA_live = { ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
+window.SMA_live = { audio: { open: a => openInput(a), levels: () => st.audio.map(a => { const i = inputs.get(a.id); return { name: a.name, err: a.err || '', level: i ? levelOf(i.an) : -1 }; }), add: a => { st.audio.push(a); save(); mixer(); return a; } }, ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
 icons(); menubar(); bottom(); render();
 })();

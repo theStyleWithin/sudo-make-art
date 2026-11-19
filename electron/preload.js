@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
+  deskaudio: { list: () => ipcRenderer.invoke('deskaudio:list'), start: (id, src) => ipcRenderer.invoke('deskaudio:start', id, src), stop: id => ipcRenderer.invoke('deskaudio:stop', id), onData: fn => { const h = (e, id, buf) => fn(id, buf); ipcRenderer.on('deskaudio:data', h); return () => ipcRenderer.removeListener('deskaudio:data', h); }, onEnded: fn => { const h = (e, id, code, err) => fn(id, code, err); ipcRenderer.on('deskaudio:ended', h); return () => ipcRenderer.removeListener('deskaudio:ended', h); } },
   profile: {
     hopcastFind: () => ipcRenderer.invoke('profile:hopcast-find'), hopcastPick: () => ipcRenderer.invoke('profile:hopcast-pick'), hopcastRead: r => ipcRenderer.invoke('profile:hopcast-read', r),
     hopcastKey: () => ipcRenderer.invoke('profile:hopcast-key'), readFile: f => ipcRenderer.invoke('profile:read-file', f), fileSize: f => ipcRenderer.invoke('profile:file-size', f),
