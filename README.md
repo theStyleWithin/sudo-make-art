@@ -37,6 +37,14 @@ Pick **Sudo Make Avatar Pose** from the logo menu to pose VRM characters (from V
 - **Save picture** gives a PNG with a see-through background; **Copy picture** puts it on the clipboard. Projects are saved automatically and show on the home screen.
 
 Models stay on your computer and carry their own licence: check it before publishing pictures.
+## Text Grab and Assets
+**Text Grab** (home screen, the 🔤 button in Sources, and **Grab text** in the Write Stuff toolbar) freezes your screen like Sudo Take Screenshot. Drag over any text, or point at a block and click, and it is read on this computer: nothing is uploaded and no model is downloaded (English is bundled, using tesseract.js, Apache-2.0). Light-on-dark text such as dark mode or a terminal is handled too. The result opens in a window where you can fix it, **Copy** it, **Save to Assets**, or use **Send to Write Stuff ▾**: choose *New document* or any document you already have from the list, and the text is added to the end of it. In Write Stuff, **Grab text** adds the text straight to the page you are on.
+
+The home screen now has an **Assets** section under your projects. It shows everything kept in Sources (pictures, video, sound, fonts) plus text you saved with Text Grab. Click a picture to use it in a design, or a text asset to edit, copy or send it to Write Stuff. It follows the search box and has a type filter.
+## Logo
+The icon is a terminal prompt (`>_`) next to a paintbrush. The source is `build/icon.svg`; the PNG, Android launcher, adaptive icon and splash screens are rendered from it.
+## Desktop audio in Sudo Make Live
+**Desktop Audio** (Sources, + then Audio) puts what the computer is playing into your stream and recording: games, music, a browser. On Linux it records your sound card's monitor with `parec` (package `pulseaudio-utils`, also works on PipeWire) or `pw-record` (package `pipewire-bin`), and you can pick the default output (it follows the system's default output if that changes, for example when you plug in headphones) or a specific output such as speakers or HDMI. It reconnects by itself if the sound server restarts. If neither tool is installed the source says so and how to fix it. On Windows it uses system loopback sound. It goes into the Audio Mixer with its own volume, mute and meter, and, like other inputs, opens when you go live or record.
 
 ## What works now
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
@@ -101,17 +109,30 @@ A livestreaming and recording studio inside Sudo Make Art, shaped after the auth
 - Not included (yet): dual (horizontal and vertical) output and a virtual camera. Sound from the screen itself is not captured by the screen source: add a monitor or loopback audio input.
 - HopCast is GPL-2.0 (it is built from PRISM Live Studio and OBS Studio). Sudo Make Live copies how it looks and works, not its code: everything here is new code, so Sudo Make Art stays 0BSD.
 
+## System tray
+A tray icon (modelled on HopCast's) with a menu: Show or Hide, Go Live or Stop streaming, Start or Stop recording, Sudo Take Screenshot, Open (Home, Design, Video, Live, Trim video, Convert videos, Convert images), New design, and Quit. Options live in **Sudo Make Live > Settings > General > System Tray**: show the icon, minimize to the tray instead of the task bar, start minimized to the tray, keep running in the tray when you close the window while live or recording (so closing it by mistake does not end your stream), always send the close button to the tray, and a desktop message when a channel drops ("Disconnected. Reconnecting...") and when it is back. Quit from the tray menu. On some Linux desktops (GNOME) the icon needs the AppIndicator extension; KDE and most others show it as is.
+
 ## Sudo Take Screenshot
 The **Sudo Take Screenshot** button (home screen, Sources, and the camera icon in Sudo Make Live) freezes your screen. Point at a picture and the whole picture under the pointer is outlined, pixel exact, so no cropping is needed; click to save it as a PNG in Pictures/Sudo Make Art (it is also copied to the clipboard and added to Sources). Scroll for a bigger or smaller box (a picture, then its caption, then the whole card), drag to draw your own, Space takes the whole screen, Esc cancels.
 
 ## Add to Steam
 The **Add to Steam** button on the home screen adds Sudo Make Art to your Steam library as a non-Steam game. It asks first, needs Steam to be closed, keeps a backup of Steam's shortcuts file, leaves your other shortcuts untouched, and does nothing if it is already there.
 
+## Profiles: import from HopCast, export your own
+- **Import from HopCast** (Sudo Make Live > Tools, or Import a profile on the home screen): finds HopCast's settings (or a folder or backup you choose) and lets you pick what to bring over: output settings (size, frame rate, bitrates, encoder, recording format and folder), scene collections (scenes with pictures, video files, text, colors, and camera and screen slots you point at your own devices), audio inputs, snapping and tray options, and your channels with their stream keys (unlocked from HopCast's encrypted file with its key file, then stored encrypted here). Nothing in HopCast is changed, your current setup stays, and imported scenes are added as new collections. Browser sources and scenes inside scenes have no match and are listed as left out.
+- **Export my Sudo Make Art profile**: one `.smaprofile` file with the parts you tick: app settings and saved signatures, Sudo Make Live scenes and settings, channels (names and addresses), optionally the stream keys locked with a password you choose, and optionally your Sources library. **Import a Sudo Make Art profile** puts it all back on a new install.
+
 ## Right-click menu, copy and paste, multi-select
 In the design editor, right-click an item for Copy, Paste, Duplicate, Bring to front, Send to back, Add text here and Delete; right-click empty canvas for Paste and Add text here. Ctrl+C / Ctrl+V copy and paste items. The video editor has right-click menus on clips (Split, Add text, Delete) and on the preview (Add text here, Delete). In Sources, Ctrl-click (Cmd-click) to select several files or folders, or Shift-click for a range, then drag any one of them: they all move into the folder together. Dropping several on the canvas places each picture. You can also hold the left button on empty space in Sources and drag a box over several items to select them (hold Ctrl or Shift to add to the selection).
 
 ## Shapes and fonts
 Rectangle, Ellipse and Star now live in the Shapes menu (Star of David is in the Stars group). Font files are recognised even when the system gives them no file extension or a generic file type (TrueType, OpenType, WOFF, WOFF2 and TrueType Collections), and the font picker's file chooser lists them on Android too.
+
+## Custom PC icons
+A **Custom PC icons** category in the New design window, for people who theme their desktop: folders (classic, dark, flat), CDs and DVDs (dark or silver), SD and microSD cards, rounded and round app icons, and a presentation sheet for each kind (a ready-made "my icon pack" picture), plus the usual icon sizes (1024 down to 16). Everything is made of ordinary shapes and text, so recolor it, swap the symbol or letters, resize it. Shapes can now have a two-colour gradient (straight or radial), and a page can be transparent (shown as a checkerboard). Export as PNG (keeps the see-through background), SVG, **ICO** (Windows icon, 16 to 256) or an **icon set zip** (PNG sizes 16 to 512 laid out like an icon theme, plus the SVG).
+
+## Game covers and game icons
+A **Game covers & icons** category (next to Custom PC icons) for custom artwork: boxed cover icons, round icons with a silver or colored ring, squircle icons, 2:3 covers, wide capsules, 16:9 banners, 3:1 hero banners, a transparent logo, and posters. Each has a picture frame: drop your game's art onto it and it snaps in and crops to the shape, then edit the title text. The sizes suit artwork for a Steam library entry (see Add to Steam), and the icon ones export as PNG, ICO or an icon-theme zip.
 
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.

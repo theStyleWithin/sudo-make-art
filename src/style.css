@@ -644,6 +644,21 @@ body.avatar-mode main,body.avatar-mode footer,body.avatar-mode #pages,body.avata
 #av-foot{padding:4px 10px;background:var(--panel);border-top:1px solid var(--line);font-size:12px;min-height:18px}
 #av-dlg{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:320px;max-height:80vh;overflow:auto}#av-dlg::backdrop{background:#000b}#av-dlg form{display:flex;flex-direction:column;gap:8px}#av-dlg h3{margin:0}
 .mg-saved{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}.mg-sp{display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px;font-size:10px}.mg-sp img{max-width:100%;border-radius:4px;background:#e8e8ee}
+/* Text Grab */
+#tg-dlg{width:min(560px,92vw);background:#222430;color:#e8e8f0;border:1px solid #3a3d4d;border-radius:10px;padding:18px 20px}#tg-dlg::backdrop{background:#0009}#tg-dlg h3{margin:0 0 10px}#tg-dlg button{background:#2c2e3a;color:#e8e8f0;border:1px solid #3a3d4d;border-radius:6px;padding:7px 12px;cursor:pointer}#tg-dlg button:hover{background:#383b4d}#tg-text{width:100%;background:#15161d;color:#e8e8f0;border:1px solid #3a3d4d;border-radius:6px;padding:8px;box-sizing:border-box;font:14px/1.45 ui-monospace,monospace;min-height:200px;resize:vertical}
+#tg-dlg .tg-row{display:flex;gap:8px;align-items:center;margin-top:8px}.tg-wrap{position:relative}
+#tg-menu{position:absolute;left:0;bottom:calc(100% + 4px);min-width:290px;max-height:260px;overflow:auto;background:#1b1d27;border:1px solid var(--line);border-radius:8px;padding:4px;z-index:5;box-shadow:0 8px 24px #0009}
+#tg-menu button{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;background:transparent;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;color:#e8e8f0;border:0}#tg-menu button:hover{background:#2c2e3a}#tg-menu small{opacity:.6;white-space:nowrap}
+.tg-h{font-size:11px;opacity:.6;padding:8px 10px 3px;text-transform:uppercase;letter-spacing:.04em}.tg-none{padding:6px 10px;opacity:.6;font-size:13px}
+#h-abar{margin-top:30px}#h-assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:14px;padding-bottom:30px}#h-assets .hint{grid-column:1/-1;opacity:.6}
+#h-assets .thumb.txt{align-items:start;justify-items:start;padding:10px;font-size:34px}.atxt{font:12px/1.4 ui-monospace,monospace;opacity:.85;overflow:hidden;white-space:pre-wrap;word-break:break-word;max-height:120px}
+#tg-menu button b{white-space:nowrap}
+.applogo{width:20px;height:20px;vertical-align:-5px;margin-right:6px;border-radius:5px}
+
+/* new-design templates */
+#newgrid .tgroup{grid-column:1/-1;margin:10px 0 0;font-size:13px;opacity:.8}
+#newgrid .card.tpl{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+#newgrid .tplprev{width:100%;height:110px;background:repeating-conic-gradient(#2a2a30 0% 25%, #34343c 0% 50%) 0 0 / 16px 16px;border-radius:6px;margin-bottom:4px}
 
 /* Sudo Make VTuber */
 #vtview{display:none;flex:1;min-height:0;grid-template-columns:76px 360px 1fr;grid-template-rows:1fr auto}

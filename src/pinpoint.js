@@ -6,7 +6,7 @@
 (async () => {
 'use strict';
 const cv = document.getElementById('c'), ctx = cv.getContext('2d'), tip = document.getElementById('tip');
-const { dataUrl } = await window.pin.image(); const im = new Image(); im.src = dataUrl; await im.decode();
+const { dataUrl, text: TEXT } = await window.pin.image(); const im = new Image(); im.src = dataUrl; await im.decode();
 const W = im.naturalWidth, H = im.naturalHeight; cv.width = W; cv.height = H;
 const base = document.createElement('canvas'); base.width = W; base.height = H; const bctx = base.getContext('2d', { willReadFrequently: true }); bctx.drawImage(im, 0, 0);
 const px = bctx.getImageData(0, 0, W, H).data;
@@ -65,7 +65,18 @@ function paint() {
   ctx.fillStyle = '#161616'; ctx.fillRect(cur.x, ty, tw, 20 * s); ctx.fillStyle = '#f4ff2b'; ctx.textBaseline = 'middle'; ctx.fillText(label, cur.x + 6 * s, ty + 10 * s);
 }
 function point(ev) { mx = ev.clientX * k(); my = ev.clientY * k(); }
-function save(b) { if (!b) return; const c = document.createElement('canvas'); c.width = b.w; c.height = b.h; c.getContext('2d').drawImage(base, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h); window.pin.done(c.toDataURL('image/png')); }
+function save(b) { if (!b) return; const c = document.createElement('canvas'); c.width = b.w; c.height = b.h; c.getContext('2d').drawImage(base, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h); window.pin.done((TEXT ? prep(c) : c).toDataURL('image/png')); }
+// Text Grab: reading works best on dark text on a light page and at a decent size, so small grabs are doubled in size and
+// light-on-dark text (dark mode, terminals) is flipped to dark-on-light. Only the copy sent to the reader changes.
+function prep(c) {
+  const k2 = c.height < 90 || c.width < 200 ? 2 : 1, o = document.createElement('canvas'); o.width = Math.min(8000, c.width * k2); o.height = Math.min(8000, c.height * k2);
+  const x = o.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, o.width, o.height);
+  const d = x.getImageData(0, 0, o.width, o.height), a = d.data; let sum = 0, n = 0;
+  for (let i = 0; i < a.length; i += 16) { sum += a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11; n++; }
+  if (sum / n < 110) { for (let i = 0; i < a.length; i += 4) { a[i] = 255 - a[i]; a[i + 1] = 255 - a[i + 1]; a[i + 2] = 255 - a[i + 2]; } x.putImageData(d, 0, 0); }
+  return o;
+}
+if (TEXT) document.getElementById('tip').innerHTML = '<b>Drag</b> over the text you want. Or point at a block and <b>click</b>; <b>scroll</b> for a bigger or smaller box. <b>Space</b> reads the whole screen. <b>Esc</b> cancels.';
 addEventListener('pointermove', ev => { point(ev); if (drag) { const x = Math.min(drag.x, mx), y = Math.min(drag.y, my), w = Math.abs(mx - drag.x), h = Math.abs(my - drag.y); if (w > 5 * k() || h > 5 * k()) { drag.moved = true; manual = { x: Math.round(x), y: Math.round(y), w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) }; } } else { const before = cands.length ? cands[Math.min(lvl, cands.length - 1)] : null; cands = candidates(mx, my); const idx = before ? cands.findIndex(c => c.x === before.x && c.y === before.y && c.w === before.w && c.h === before.h) : -1; if (idx >= 0) lvl = idx; else if (lvl >= cands.length) lvl = Math.max(0, cands.length - 1); } paint(); });
 addEventListener('pointerdown', ev => { if (ev.button === 2) { window.pin.done(null); return; } point(ev); drag = { x: mx, y: my, moved: false }; manual = null; });
 addEventListener('pointerup', ev => { if (ev.button !== 0 || !drag) return; point(ev); const d = drag; drag = null; if (d.moved && manual) save(manual); else save(cands[Math.min(lvl, cands.length - 1)] || null); });
