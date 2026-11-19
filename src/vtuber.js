@@ -127,15 +127,15 @@ async function pageOutput(b) {
   b.append(check('Record the microphone sound too', () => rec.audio, v => { rec.audio = v; }));
   const rb = el('button', { type: 'button', className: rec.on ? 'pri' : '', disabled: !cfg.model }, rec.on ? 'Stop recording' : '● Start recording'); rb.onclick = () => { if (rec.on) recStop(); else recStart(); };
   const st = el('div', { id: 'vt-recstat', className: 'vt-status' }, rec.on ? 'Recording…' : 'Not recording.'); b.append(rb, st);
-  b.append(h('Spout and NDI')); b.append(hint('Spout (Windows) and NDI output are not built: Spout needs Windows-only native code, and NDI needs NDI’s own runtime. On Linux use the virtual webcam, or add the VTuber to Sudo Make Live.'));
   await vcamBox(b);
+  await ndiSpoutBox(b);
 }
 // ----- virtual webcam (Linux, through a v4l2loopback device) -----
 const vc = { on: false, device: '', color: '#00b140', cvs: null, ctx: null };
 async function vcamStart() { const api = window.sma && window.sma.vcam; if (!api || !vc.device || !sess || !sess.rig.model) return; const D = cfg.display; try { await api.start({ device: vc.device, w: D.width, h: D.height, fps: D.fps }); vc.cvs = el('canvas', { width: D.width, height: D.height }); vc.ctx = vc.cvs.getContext('2d', { willReadFrequently: true }); vc.on = true; vc.w = D.width; vc.h = D.height; say('The virtual webcam is on. Pick “' + (vc.name || vc.device) + '” as the camera in your other program.'); } catch (e) { say(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')); } if (panel === 'output') build(); }
 async function vcamStop() { vc.on = false; const api = window.sma && window.sma.vcam; if (api) await api.stop(); vc.cvs = null; say('The virtual webcam is off.'); if (panel === 'output') build(); }
 function vcFrame(c) { const D = cfg.display; if (D.width !== vc.w || D.height !== vc.h) { vcamStop(); say('The picture size changed, so the virtual webcam was stopped. Start it again.'); return; } const x = vc.ctx; x.fillStyle = D.bg === 'color' ? D.color : vc.color; x.fillRect(0, 0, vc.w, vc.h); if (c) x.drawImage(c, 0, 0); window.sma.vcam.frame(x.getImageData(0, 0, vc.w, vc.h).data.buffer); }
-if (window.sma && window.sma.vcam) window.sma.vcam.onEnded((code, err) => { if (vc.on) { vc.on = false; vc.cvs = null; say('The virtual webcam stopped. ' + (err || '')); if (panel === 'output') build(); } });
+if (window.sma && window.sma.vcam) window.sma.vcam.onEnded((code, err, kind) => { if (kind && kind !== 'v4l2') return; if (vc.on) { vc.on = false; vc.cvs = null; say('The virtual webcam stopped. ' + (err || '')); if (panel === 'output') build(); } });
 async function vcamBox(b) {
   const api = window.sma && window.sma.vcam; b.append(h('Virtual webcam')); if (!api) { b.append(hint('The virtual webcam needs the desktop app.')); return; } const info = await api.devices();
   if (!info.ok) { b.append(hint(info.why)); return; }
@@ -144,6 +144,17 @@ async function vcamBox(b) {
   const sel = el('select'); info.list.forEach(d => sel.append(el('option', { value: d.path }, `${d.name} (${d.path})${d.writable ? '' : ' - no permission'}`))); if (!vc.device || !info.list.some(d => d.path === vc.device)) vc.device = info.list[0].path; sel.value = vc.device; vc.name = (info.list.find(d => d.path === vc.device) || {}).name; sel.onchange = () => { vc.device = sel.value; vc.name = (info.list.find(d => d.path === sel.value) || {}).name; }; b.append(row('Camera device', sel));
   const c = el('input', { type: 'color', value: vc.color }); c.oninput = () => { vc.color = c.value; }; b.append(row('Background colour', c));
   const bt = el('button', { type: 'button', className: vc.on ? 'pri' : '', disabled: !cfg.model || (!vc.on && !info.list.find(d => d.path === vc.device && d.writable)) }, vc.on ? 'Stop the virtual webcam' : 'Start the virtual webcam'); bt.onclick = () => (vc.on ? vcamStop() : vcamStart()); b.append(bt);
+}
+// ----- NDI and Spout (they keep the see-through background) -----
+const outs = { ndi: { on: false, name: 'Sudo Make VTuber' }, spout: { on: false, name: 'Sudo Make VTuber' }, cvs: null, ctx: null, w: 0, h: 0 };
+async function outStart(kind) { const api = window.sma && window.sma.vcam; if (!api || !sess || !sess.rig.model) return; const D = cfg.display; try { await api.start({ kind, name: outs[kind].name, w: D.width, h: D.height, fps: D.fps }); outs.cvs = el('canvas', { width: D.width, height: D.height }); outs.ctx = outs.cvs.getContext('2d', { willReadFrequently: true }); outs.w = D.width; outs.h = D.height; outs[kind].on = true; say(kind === 'ndi' ? 'NDI output is on as “' + outs.ndi.name + '”.' : 'Spout output is on as “' + outs.spout.name + '”.'); } catch (e) { say(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')); } if (panel === 'output') build(); }
+async function outStop(kind) { outs[kind].on = false; const api = window.sma && window.sma.vcam; if (api) await api.stop(kind); say((kind === 'ndi' ? 'NDI' : 'Spout') + ' output is off.'); if (panel === 'output') build(); }
+function outFrame(c) { const D = cfg.display; if (D.width !== outs.w || D.height !== outs.h) { for (const k of ['ndi', 'spout']) if (outs[k].on) outStop(k); say('The picture size changed, so NDI and Spout were stopped. Start them again.'); return; } const x = outs.ctx; x.clearRect(0, 0, outs.w, outs.h); if (D.bg === 'color') { x.fillStyle = D.color; x.fillRect(0, 0, outs.w, outs.h); } if (c) x.drawImage(c, 0, 0); const buf = x.getImageData(0, 0, outs.w, outs.h).data.buffer, api = window.sma.vcam; if (outs.spout.on) api.frame(buf.slice(0), 'spout'); if (outs.ndi.on) api.frame(buf, 'ndi'); }
+async function ndiSpoutBox(b) {
+  const api = window.sma && window.sma.vcam; b.append(h('NDI and Spout')); if (!api) { b.append(hint('These need the desktop app.')); return; } const o = await api.outputs();
+  b.append(hint('Both keep the see-through background, so other programs can lay your avatar over a game or a scene.'));
+  for (const [kind, title, info] of [['spout', 'Spout (Windows)', o.spout], ['ndi', 'NDI (network video)', o.ndi]]) { const w = el('div', { className: 'vt-status' + (info.ok ? '' : ' bad') }); w.append(el('b', {}, title + ': '), info.ok ? (outs[kind].on ? 'sending' : 'ready') : info.why); b.append(w); if (!info.ok) continue;
+    const nm = el('input', { value: outs[kind].name, maxLength: 60 }); nm.oninput = () => { outs[kind].name = nm.value.replace(/[^\w .-]/g, '') || 'Sudo Make VTuber'; }; b.append(row('Name', nm)); const bt = el('button', { type: 'button', className: outs[kind].on ? 'pri' : '', disabled: !cfg.model }, outs[kind].on ? 'Stop ' + title.split(' ')[0] : 'Start ' + title.split(' ')[0]); bt.onclick = () => (outs[kind].on ? outStop(kind) : outStart(kind)); b.append(bt); }
 }
 // ----- recording the animation -----
 const rec = { on: false, color: '#00b140', audio: false, mr: null, chunks: [], cvs: null, stream: null, mic: null, t0: 0 };
@@ -193,11 +204,11 @@ function loop(now) {
   if (cv.width !== rw || cv.height !== rh) { cv.width = rw; cv.height = rh; cv.style.width = w + 'px'; cv.style.height = hh + 'px'; }
   const x = cv.getContext('2d'); x.clearRect(0, 0, rw, rh); if (D.bg === 'color') { x.fillStyle = D.color; x.fillRect(0, 0, rw, rh); } cv.classList.toggle('chk', D.bg === 'transparent');
   const c = sess.rig.render(rw, rh); if (c) x.drawImage(c, 0, 0);
-  if ((rec.on && rec.cvs) || vc.on) { const full = sess.rig.render(D.width, D.height); if (rec.on && rec.cvs) recFrame(full); if (vc.on) vcFrame(full); }
+  if ((rec.on && rec.cvs) || vc.on || outs.ndi.on || outs.spout.on) { const full = sess.rig.render(D.width, D.height); if (rec.on && rec.cvs) recFrame(full); if (vc.on) vcFrame(full); if (outs.ndi.on || outs.spout.on) outFrame(full); }
   frames++; if (now - t0 > 1000) { fpsShown = frames * 1000 / (now - t0); frames = 0; t0 = now; const st = $('#vt-stat'); if (st) st.textContent = `${fpsShown.toFixed(0)} fps · render ${(performance.now() - t).toFixed(0)} ms${sess.rig.hasFace ? ' · face tracked' : cfg.tracking.on ? ' · no face' : ''}`; if (panel === 'camera') statusLine(); }
 }
 function start() { if (running) return; running = true; build(); requestAnimationFrame(loop); if (cfg.model && !sess) selectModel(cfg.model); else if (sess) sync(); }
-function stop() { if (rec.on) recStop(); if (vc.on) vcamStop(); running = false; if (sess) { sess.stop(); sess = null; } }
+function stop() { if (rec.on) recStop(); if (vc.on) vcamStop(); for (const k of ['ndi', 'spout']) if (outs[k].on) outStop(k); running = false; if (sess) { sess.stop(); sess = null; } }
 document.addEventListener('sma-mode', ev => { if (ev.detail === 'vtuber') start(); else if (running) stop(); });
 window.SMA_vtuber = { show: start, hide: stop, cfg: () => cfg, session: () => sess, selectModel, setCfg: c => { cfg = VT.mergeCfg(c); save(); sync(); build(); }, state: () => ({ model: cfg.model, face: !!(sess && sess.rig.hasFace), fps: fpsShown, status: sess ? sess.status : null }) };
 })();

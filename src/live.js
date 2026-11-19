@@ -500,7 +500,7 @@ async function vcamToggle(want) {
   if (!on) { clearInterval(vcamLive.timer); vcamLive.on = false; await api.stop(); notify('Virtual camera stopped.'); return; }
   try { const info = await api.devices(); if (!info.ok) { notify(info.why); return; } const dev = info.list.find(d => d.writable); if (!dev) { notify(info.list.length ? 'No permission to use the virtual camera.' : 'No virtual camera found. Install the v4l2loopback driver first (the steps are in Sudo Make VTuber > Output).'); return; }
     const w = canvas.width, h = canvas.height, fps = st.set.fps; await api.start({ device: dev.path, w, h, fps }); vcamLive.on = true; clearInterval(vcamLive.timer); vcamLive.timer = setInterval(() => { if (canvas.width === w && canvas.height === h) api.frame(ctx.getImageData(0, 0, w, h).data.buffer); }, 1000 / fps);
-    api.onEnded((code, err) => { if (vcamLive.on) { vcamLive.on = false; clearInterval(vcamLive.timer); notify('The virtual camera stopped. ' + (err || '')); } }); notify('Virtual camera started: pick "' + dev.name + '" as the camera in your other program.'); } catch (e) { notify(clean(e)); }
+    api.onEnded((code, err, kind) => { if (kind && kind !== 'v4l2') return; if (vcamLive.on) { vcamLive.on = false; clearInterval(vcamLive.timer); notify('The virtual camera stopped. ' + (err || '')); } }); notify('Virtual camera started: pick "' + dev.name + '" as the camera in your other program.'); } catch (e) { notify(clean(e)); }
 }
 // ---------- bottom bar: output info, CPU, LIVE timer, Go Live, Rec ----------
 function bottom() { $('#hc-res').innerHTML = `<b>${st.set.res}</b> · <b>${st.set.fps}fps</b>`; }
