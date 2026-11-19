@@ -15,7 +15,7 @@ const say = t => { msg = t; const m = $('#vt-msg'); if (m) m.textContent = t; };
 
 // ---------- the page ----------
 const root = el('section', { id: 'vtview' });
-root.innerHTML = '<div id="vt-rail" role="tablist"></div><div id="vt-panel"></div><div id="vt-stage"><canvas id="vt-cv" aria-label="Live preview of your avatar"></canvas><div id="vt-empty"><h2>Sudo Make VTuber</h2><p>Pick or import a <b>.vrm</b> model on the left. Turn on camera tracking and the microphone and your avatar follows you.</p></div><div id="vt-stat"></div></div><input id="vt-file" type="file" accept=".vrm,.glb" multiple hidden>';
+root.innerHTML = '<div id="vt-rail" role="tablist"></div><div id="vt-panel"></div><div id="vt-stage"><canvas id="vt-cv" aria-label="Live preview of your avatar"></canvas><div id="vt-empty"><h2>Sudo Make VTuber</h2><p>Pick or import a <b>.vrm</b> model (or a Live2D <b>.zip</b>) on the left. Turn on camera tracking and the microphone and your avatar follows you.</p></div><div id="vt-stat"></div></div><input id="vt-file" type="file" accept=".vrm,.glb,.zip" multiple hidden>';
 $('#mangaview').after(root);
 const cv = $('#vt-cv'), stage = $('#vt-stage'), side = $('#vt-panel');
 $('#vt-stage').after(el('div', { id: 'vt-foot' }, ''));
@@ -59,10 +59,10 @@ async function pageModels(b) {
   const f = el('input', { type: 'search', placeholder: 'Filter models', value: filter }); f.oninput = () => { filter = f.value; grid(); }; b.append(f);
   const g = el('div', { className: 'vt-grid' }); b.append(g);
   function grid() { g.textContent = ''; const list = libCache.filter(m => !filter || m.name.toLowerCase().includes(filter.toLowerCase()));
-    if (!libCache.length) g.append(hint('No models yet. Import a .vrm file (VRoid Studio makes them). They are kept on this computer.')); else if (!list.length) g.append(hint('No models match.'));
-    for (const m of list) { const t = el('div', { className: 'vt-tile' + (m.id === cfg.model ? ' on' : '') + (m.id === loadingId ? ' busy' : ''), title: m.name }); const pick = el('button', { type: 'button', disabled: cfg.lock && m.id !== cfg.model }); if (m.thumb) pick.append(Object.assign(el('img'), { src: m.thumb, alt: '' })); pick.append(el('small', {}, m.name)); pick.onclick = () => { if (m.id !== cfg.model) selectModel(m.id); };
+    if (!libCache.length) g.append(hint('No models yet. Import a .vrm file (VRoid Studio makes them) or a Live2D model .zip. They are kept on this computer.')); else if (!list.length) g.append(hint('No models match.'));
+    for (const m of list) { const t = el('div', { className: 'vt-tile' + (m.id === cfg.model ? ' on' : '') + (m.id === loadingId ? ' busy' : ''), title: m.name }); const pick = el('button', { type: 'button', disabled: cfg.lock && m.id !== cfg.model }); if (m.thumb) pick.append(Object.assign(el('img'), { src: m.thumb, alt: '' })); pick.append(el('small', {}, (m.kind === 'live2d' ? '◆ ' : '') + m.name)); pick.onclick = () => { if (m.id !== cfg.model) selectModel(m.id); };
       const x = el('button', { type: 'button', className: 'x', title: 'Remove from the library' }, '×'); x.onclick = async e => { e.stopPropagation(); if (cfg.lock) return; if (confirm(`Remove "${m.name}" from the library?`)) { if (cfg.model === m.id) unload(); await VT.models.del(m.id); build(); } }; t.append(pick, x); g.append(t); } }
-  grid(); b.append(hint('Live2D models (.model3.json) are not supported yet. VRM models work with every setting here.'));
+  grid(); b.append(h('Live2D models')); const l2 = el('div', { id: 'vt-l2d' }); b.append(l2); l2dBox(l2);
 }
 async function pageCamera(b) {
   const T = cfg.tracking; b.append(check('Use camera tracking', () => T.on, v => { T.on = v; if (v) statusLine(); }));
@@ -121,16 +121,51 @@ function pageOutput(b) {
   const add = el('button', { type: 'button', className: 'pri', disabled: !cfg.model }, 'Add to Sudo Make Live'); add.onclick = () => { const L = window.SMA_live; if (!L || !L.addVTuber) { say('Sudo Make Live is not ready.'); return; } window.SMA_apps.choose('live'); setTimeout(() => L.addVTuber(JSON.parse(JSON.stringify(cfg))), 150); }; b.append(add);
   if (!cfg.model) b.append(hint('Pick a model first.'));
   b.append(h('Picture')); const pic = el('button', { type: 'button', disabled: !cfg.model }, 'Save a picture (PNG)'); pic.onclick = () => { if (!sess) return; const D = cfg.display, c = sess.rig.render(D.width, D.height); c.toBlob(bl => { const a = el('a', { href: URL.createObjectURL(bl), download: 'vtuber.png' }); document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }, 'image/png'); }; b.append(pic);
-  b.append(h('Coming later')); b.append(hint('Virtual webcam, Spout and NDI output, recording animations and Live2D model support are not built yet.'));
+  b.append(h('Record animation'));
+  b.append(hint('Records what you see in the preview, at the picture size you chose in Display, as a WebM video. Plain WebM cannot keep a see-through background, so pick a background colour for the recording (a green screen colour lets you remove it later).'));
+  const rc = el('input', { type: 'color', value: rec.color }); rc.oninput = () => { rec.color = rc.value; }; b.append(row('Recording background', rc));
+  b.append(check('Record the microphone sound too', () => rec.audio, v => { rec.audio = v; }));
+  const rb = el('button', { type: 'button', className: rec.on ? 'pri' : '', disabled: !cfg.model }, rec.on ? 'Stop recording' : '● Start recording'); rb.onclick = () => { if (rec.on) recStop(); else recStart(); };
+  const st = el('div', { id: 'vt-recstat', className: 'vt-status' }, rec.on ? 'Recording…' : 'Not recording.'); b.append(rb, st);
+  b.append(h('Other outputs')); b.append(hint('See "Virtual webcam" below for using your avatar in other programs.'));
 }
+// ----- recording the animation -----
+const rec = { on: false, color: '#00b140', audio: false, mr: null, chunks: [], cvs: null, stream: null, mic: null, t0: 0 };
+async function recStart() {
+  if (!sess || !sess.rig.model || rec.on) return; const D = cfg.display; rec.cvs = el('canvas', { width: D.width, height: D.height }); rec.chunks = [];
+  const fps = D.fps; rec.stream = rec.cvs.captureStream(fps);
+  if (rec.audio) { try { rec.mic = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: cfg.mic.device ? { exact: cfg.mic.device } : undefined }, video: false }); rec.mic.getAudioTracks().forEach(t => rec.stream.addTrack(t)); } catch (e) { say('No microphone for the recording: ' + e.message); } }
+  const types = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'], mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  rec.mr = new MediaRecorder(rec.stream, { mimeType: mime, videoBitsPerSecond: Math.round(D.width * D.height * fps * 0.12) }); rec.mr.ondataavailable = e => { if (e.data.size) rec.chunks.push(e.data); };
+  rec.mr.onstop = () => { const blob = new Blob(rec.chunks, { type: 'video/webm' }), d = new Date(), p2 = n => String(n).padStart(2, '0'), name = `vtuber-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}.webm`; const a = el('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000); say(`Saved ${name} (${(blob.size / 1e6).toFixed(1)} MB).`); if (rec.mic) rec.mic.getTracks().forEach(t => t.stop()); rec.mic = null; rec.stream = null; rec.cvs = null; };
+  rec.mr.start(500); rec.on = true; rec.t0 = performance.now(); say('Recording…'); if (panel === 'output') build();
+}
+function recStop() { if (!rec.on) return; rec.on = false; try { rec.mr.stop(); } catch (e) {} if (panel === 'output') build(); }
+function recFrame() { const D = cfg.display, x = rec.cvs.getContext('2d'); if (rec.cvs.width !== D.width || rec.cvs.height !== D.height) return; x.fillStyle = D.bg === 'color' ? D.color : rec.color; x.fillRect(0, 0, rec.cvs.width, rec.cvs.height); const c = sess.rig.render(D.width, D.height); if (c) x.drawImage(c, 0, 0); const s = $('#vt-recstat'); if (s) s.textContent = `Recording… ${((performance.now() - rec.t0) / 1000).toFixed(0)} s`; }
 async function build() {
   RAIL.forEach(([k]) => { const b = $('#vt-r-' + k); b.classList.toggle('on', k === panel); b.setAttribute('aria-selected', String(k === panel)); });
   const b = el('div', { className: 'vt-body' }); side.textContent = ''; side.append(b); const mine = panel;
   try { await ({ models: pageModels, camera: pageCamera, mic: pageMic, motion: pageMotion, display: pageDisplay, output: pageOutput })[panel](b); } catch (e) { b.append(hint(String(e.message || e))); }
   if (mine !== panel) return; $('#vt-empty').hidden = !!cfg.model; $('#vt-msg').textContent = msg;
 }
-$('#vt-file').onchange = async e => { const files = [...e.target.files]; e.target.value = ''; let last = null; for (const f of files) { try { say('Importing ' + f.name + '…'); last = await VT.importVRM(f); } catch (err) { say(String(err.message || err)); } } if (last) { say(`Added "${last.name}".`); await build(); if (!cfg.model) selectModel(last.id); } };
-stage.addEventListener('dragover', e => e.preventDefault()); stage.addEventListener('drop', async e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(x => /\.(vrm|glb)$/i.test(x.name)); if (fs.length) { for (const f of fs) { try { await VT.importVRM(f); } catch (err) { say(String(err.message || err)); } } await build(); } });
+let pendingZips = [];
+async function importFiles(files) {
+  let last = null; for (const f of files) { try { say('Importing ' + f.name + '…'); last = await VT.importModel(f); } catch (err) { if (err.code === 'NORUNTIME') { pendingZips.push(f); panel = 'models'; say('Live2D models need the Live2D runtime. Read the licence and install it below, then the model is added.'); } else say(String(err.message || err)); } }
+  if (last) { say(`Added "${last.name}".`); await build(); if (!cfg.model) selectModel(last.id); } else if (pendingZips.length) await build();
+}
+// the optional Live2D runtime: licence first, then an explicit download
+async function l2dBox(box) {
+  const api = window.sma && window.sma.live2d; if (!api) { box.append(hint('Live2D models need the desktop app.')); return; } const s = await api.status(); box.textContent = '';
+  if (s.installed) { const r = el('div', { className: 'vt-status ok' }, 'Live2D runtime installed. Import a model as a .zip that contains a .model3.json. '), x = el('button', { type: 'button', className: 'link' }, 'Remove the runtime'); x.onclick = async () => { await api.remove(); l2dBox(box); }; r.append(x); box.append(r); box.append(hint('Not supported yet for Live2D: swaying hair and clothes (physics), and Live2D’s own motions and expressions. Head turns, blinking, eyebrows and mouth follow your tracking and microphone.')); return; }
+  const w = el('div', { className: 'vt-warn' });
+  w.append(el('b', {}, 'Live2D support needs a separate download. '), 'It is Live2D’s own “Cubism Core” (about 200 KB), which is Live2D Inc.’s proprietary software and is not part of this app. It is only fetched if you accept Live2D’s licence below and press the button. Nothing about you or your models is sent anywhere, and it is saved on this computer.', el('br'), el('br'));
+  const lic = el('button', { type: 'button', className: 'link' }, 'Read Live2D’s Proprietary Software License Agreement'); lic.onclick = () => api.license(); w.append(lic, el('br'));
+  const ck = el('input', { type: 'checkbox' }), lab = el('label', { className: 'cv-chk' }); lab.append(ck, ' I have read and accept Live2D’s licence agreement.'); w.append(lab, el('br'));
+  const btn = el('button', { type: 'button', className: 'pri', disabled: true }, 'Download the Live2D runtime'); ck.onchange = () => { btn.disabled = !ck.checked; };
+  btn.onclick = async () => { btn.disabled = true; try { await api.download(true); say('The Live2D runtime is installed.'); const q = pendingZips; pendingZips = []; if (q.length) await importFiles(q); else build(); } catch (e) { btn.disabled = false; say(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')); } };
+  w.append(btn); box.append(w); }
+$('#vt-file').onchange = async e => { const files = [...e.target.files]; e.target.value = ''; await importFiles(files); };
+stage.addEventListener('dragover', e => e.preventDefault()); stage.addEventListener('drop', async e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(x => /\.(vrm|glb|zip)$/i.test(x.name)); if (fs.length) await importFiles(fs); });
 
 // ---------- the preview loop ----------
 let last = 0, frames = 0, t0 = 0, running = false;
@@ -142,10 +177,11 @@ function loop(now) {
   if (cv.width !== rw || cv.height !== rh) { cv.width = rw; cv.height = rh; cv.style.width = w + 'px'; cv.style.height = hh + 'px'; }
   const x = cv.getContext('2d'); x.clearRect(0, 0, rw, rh); if (D.bg === 'color') { x.fillStyle = D.color; x.fillRect(0, 0, rw, rh); } cv.classList.toggle('chk', D.bg === 'transparent');
   const c = sess.rig.render(rw, rh); if (c) x.drawImage(c, 0, 0);
+  if (rec.on && rec.cvs) recFrame();
   frames++; if (now - t0 > 1000) { fpsShown = frames * 1000 / (now - t0); frames = 0; t0 = now; const st = $('#vt-stat'); if (st) st.textContent = `${fpsShown.toFixed(0)} fps · render ${(performance.now() - t).toFixed(0)} ms${sess.rig.hasFace ? ' · face tracked' : cfg.tracking.on ? ' · no face' : ''}`; if (panel === 'camera') statusLine(); }
 }
 function start() { if (running) return; running = true; build(); requestAnimationFrame(loop); if (cfg.model && !sess) selectModel(cfg.model); else if (sess) sync(); }
-function stop() { running = false; if (sess) { sess.stop(); sess = null; } }
+function stop() { if (rec.on) recStop(); running = false; if (sess) { sess.stop(); sess = null; } }
 document.addEventListener('sma-mode', ev => { if (ev.detail === 'vtuber') start(); else if (running) stop(); });
 window.SMA_vtuber = { show: start, hide: stop, cfg: () => cfg, session: () => sess, selectModel, setCfg: c => { cfg = VT.mergeCfg(c); save(); sync(); build(); }, state: () => ({ model: cfg.model, face: !!(sess && sess.rig.hasFace), fps: fpsShown, status: sess ? sess.status : null }) };
 })();

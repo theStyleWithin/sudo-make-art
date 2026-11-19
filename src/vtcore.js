@@ -49,13 +49,22 @@ async function importVRM(file) { // checks the file really is a VRM, makes a sma
   S3.disposeModel(m); await models.put(rec); return rec;
 }
 
+async function importLive2D(file) { // a .zip holding a Live2D model (.model3.json, .moc3, textures)
+  if (file.size > 150e6) throw new Error('That file is too big (over 150 MB).');
+  const L = window.SMA_l2d; if (!L) throw new Error('Live2D support is not available.'); const m = await L.load(file); let thumb = null, name = m.name || file.name.replace(/\.zip$/i, '');
+  try { const c = m.render(256, 256, { zoom: 1.5, ox: 0, oy: -0.15 }), o = document.createElement('canvas'); o.width = 160; o.height = 160; const x = o.getContext('2d'); x.fillStyle = '#2b2d3a'; x.fillRect(0, 0, 160, 160); x.drawImage(c, 0, 0, 160, 160); thumb = o.toDataURL('image/jpeg', 0.75); } catch (e) {}
+  m.dispose(); const rec = { id: newId(), kind: 'live2d', name: String(name).slice(0, 80), blob: new Blob([await file.arrayBuffer()], { type: 'application/zip' }), added: Date.now(), thumb, author: '', licenseName: '', exprs: 0 }; await models.put(rec); return rec;
+}
+const importModel = file => (/\.zip$/i.test(file.name) ? importLive2D(file) : importVRM(file));
 // ---------- the rig ----------
 const ALL_EXPR = ['happy', 'sad', 'angry', 'relaxed', 'surprised', 'blink', 'blinkL', 'blinkR', 'a', 'i', 'u', 'e', 'o'];
 class Rig {
-  constructor(cfg) { this.cfg = mergeCfg(cfg); this.model = null; this.t = 0; this.p = this.zero(); this.raw = { track: null, mic: null, mouse: [0, 0] }; this.lastTrack = 0; this.nextBlink = 2; this.blinkT = -1; this.base = CH ? CH.PRESETS['Stand (relaxed)']() : {}; this.hasFace = false; this.fps = 0; }
+  constructor(cfg) { this.cfg = mergeCfg(cfg); this.model = null; this.t = 0; this.p = this.zero(); this.raw = { track: null, mic: null, mouse: [0, 0] }; this.lastTrack = 0; this.nextBlink = 2; this.blinkT = -1; this.base = CH ? CH.PRESETS['Stand (relaxed)']() : {}; this.l2d = null; this.hasFace = false; this.fps = 0; }
   zero() { return { pitch: 0, yaw: 0, roll: 0, bl: 0, br: 0, mouth: 0, smile: 0, browUp: 0, browDown: 0, sad: 0, funnel: 0, pucker: 0, wide: 0, vow: { a: 0, i: 0, u: 0, e: 0, o: 0 } }; }
-  async setModel(buf) { if (this.model) S3.disposeModel(this.model); this.model = await S3.loadVRM(buf); return this.model; }
-  dispose() { if (this.model) S3.disposeModel(this.model); this.model = null; }
+  _free() { if (this.l2d) { this.l2d.dispose(); this.l2d = null; } else if (this.model && this.model.kind !== 'live2d') S3.disposeModel(this.model); this.model = null; }
+  async setModel(buf) { const m = await S3.loadVRM(buf); this._free(); this.model = m; return m; }
+  async setLive2D(blob) { const L = window.SMA_l2d; if (!L) throw new Error('Live2D support is not available.'); const m = await L.load(blob); this._free(); this.l2d = m; this.model = { kind: 'live2d', human: {}, exprs: {}, prims: [], name: m.name }; return this.model; }
+  dispose() { this._free(); }
   setTracking(tr) { this.raw.track = tr; if (tr) this.lastTrack = this.t; }
   setMic(m) { this.raw.mic = m; }
   setMouse(x, y) { this.raw.mouse = [x, y]; }
@@ -80,7 +89,7 @@ class Rig {
     for (const k of ['mouth', 'funnel', 'pucker']) p[k] = ease(p[k], tgt[k], 32);
     for (const k of ['smile', 'browUp', 'browDown', 'sad', 'wide']) p[k] = ease(p[k], tgt[k], 12);
     for (const k of ['a', 'i', 'u', 'e', 'o']) p.vow[k] = ease(p.vow[k], tgt.vow[k], 34);
-    this._pose(); this._expr();
+    this._dt = dt; this._pose(); this._expr();
   }
   _pose() {
     const p = this.p, c = this.cfg, pose = {}, hm = this.model ? this.model.human : {}, t = this.t, set = (b, v) => { if (hm[b] !== undefined) pose[b] = v; };
@@ -103,7 +112,7 @@ class Rig {
   }
   stateForRender() { const d = this.cfg.display; return { pose: this.pose || {}, expr: this.expr || {}, yaw: 0, pitch: 0, zoom: d.zoom, fov: 22, ox: d.ox, oy: d.oy, style: d.style, outline: d.outline, hide: [], ss: 1 }; }
   // draws the avatar (transparent background) into a fresh canvas of the given size
-  render(w, h) { if (!this.model) return null; if (!this.pose) this.update(0.016); return S3.render(this.model, this.stateForRender(), w, h); }
+  render(w, h) { if (!this.model) return null; if (!this.pose) this.update(0.016); if (this.l2d) { this.l2d.apply(this.p, this._dt || 0.016, this.cfg.tracking); return this.l2d.render(w, h, this.cfg.display); } return S3.render(this.model, this.stateForRender(), w, h); }
 }
 
 // ---------- webcam face tracking (MediaPipe Face Landmarker) ----------
@@ -177,7 +186,7 @@ class MicLip {
 class Session {
   constructor(cfg) { this.rig = new Rig(cfg); this.cam = null; this.mic = null; this.lastT = 0; this.status = { model: '', camera: '', mic: '' }; this.mouseH = null; }
   get cfg() { return this.rig.cfg; }
-  async load(id) { const rec = await models.get(id); if (!rec) throw new Error('This model is no longer in the VTuber library.'); await this.rig.setModel(await rec.blob.arrayBuffer()); this.rig.cfg.model = id; this.status.model = rec.name; return rec; }
+  async load(id) { const rec = await models.get(id); if (!rec) throw new Error('This model is no longer in the VTuber library.'); if (rec.kind === 'live2d') await this.rig.setLive2D(rec.blob); else await this.rig.setModel(await rec.blob.arrayBuffer()); this.rig.cfg.model = id; this.status.model = rec.name; return rec; }
   async applyTrackers() {
     const c = this.rig.cfg;
     if (c.tracking.on) { if (!this.cam) this.cam = new FaceTracker(); try { await this.cam.start(c.tracking, tr => this.rig.setTracking(tr)); this.status.camera = 'on'; } catch (e) { this.status.camera = e.code === 'NOMODEL' ? 'nomodel' : String(e.message || e); this.cam.stop(); } } else if (this.cam) { this.cam.stop(); this.status.camera = ''; }
@@ -191,5 +200,5 @@ class Session {
 const CFG_KEY = 'sma-vtuber-cfg';
 const loadCfg = () => { try { return mergeCfg(JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch (e) { return mergeCfg({}); } };
 const saveCfg = c => { try { localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch (e) {} };
-window.SMA_vt = { DEFAULT_CFG, mergeCfg, models, importVRM, Rig, FaceTracker, MicLip, Session, loadCfg, saveCfg, ALL_EXPR };
+window.SMA_vt = { DEFAULT_CFG, mergeCfg, models, importVRM, importLive2D, importModel, Rig, FaceTracker, MicLip, Session, loadCfg, saveCfg, ALL_EXPR };
 })();
