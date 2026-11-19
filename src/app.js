@@ -450,7 +450,7 @@ function readImage(file) {
   r.readAsDataURL(file);
 }
 // ---------- sources (persistent local library, like OBS sources) ----------
-const kindOf = f => f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|ttc|woff2?)$/i.test(f.name) ? 'font' : null;
+const kindOf = f => (f.type.startsWith('text/') || /\.(txt|md)$/i.test(f.name)) && !f.type.startsWith('image/') ? 'text' : f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : /\.(ttf|otf|ttc|woff2?)$/i.test(f.name) ? 'font' : null;
 // Some systems hand over font files with no extension or as "application/octet-stream": recognise them by their first bytes instead
 const FONT_ACCEPT = '.ttf,.otf,.ttc,.woff,.woff2,font/*,application/font-sfnt,application/font-woff,application/x-font-ttf,application/x-font-otf,application/x-font-truetype,application/x-font-opentype,application/octet-stream';
 async function sniffFont(f) { try { const b = new Uint8Array(await f.slice(0, 4).arrayBuffer()), t = String.fromCharCode(...b);
@@ -470,7 +470,7 @@ async function addSource(file, meta, folder = null) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, useSource: sr => useSource(sr), delSource: id => delSource(id), addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
 // ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
 let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
 let curFolder = null, renamingFolder = null;
@@ -548,7 +548,7 @@ function renderSources() {
     else if (sr.kind === 'image' || sr.kind === 'video') {
       const u = URL.createObjectURL(sr.blob); thumbURLs.push(u);
       const m = document.createElement(sr.kind === 'image' ? 'img' : 'video'); m.src = u + (sr.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; m.draggable = false; d.append(m);
-    } else d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: '♪' }));
+    } else d.append(Object.assign(document.createElement('div'), { className: 'ico', textContent: sr.kind === 'text' ? '📝' : '♪' }));
     const n = document.createElement('small'); n.textContent = sr.name; d.append(n);
     const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Remove from library';
     x.onclick = ev => { ev.stopPropagation(); delSource(sr.id); }; d.append(x);
@@ -557,7 +557,7 @@ function renderSources() {
   });
   paintPicked();
 }
-function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
+function useSource(sr) { if (sr.kind === 'font') return; if (sr.kind === 'text') { if (window.SMA_textgrab) window.SMA_textgrab.viewText(sr); return; } if (sr.kind === 'image') readImage(sr.blob); else alert('Video and audio editing is coming in a later release. The file is kept in your library.'); }
 async function ingest(files, place, meta, folder = curFolder) {
   for (let f of files) { if (!kindOf(f)) { const x = await sniffFont(f); if (!x) continue; f = new File([f], f.name.replace(/\.[^.]*$/, '') + x, { type: f.type }); } const rec = await addSource(f, meta, folder); if (place && rec && rec.kind === 'image') useSource(rec); }
 }

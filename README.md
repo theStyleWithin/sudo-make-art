@@ -16,6 +16,10 @@ npm run dist:win     # Windows installer + portable exe (build on Windows; CI do
 Downloads (AppImage, Windows installer and portable exe, Android APK) are on the [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). To publish a new one: GitHub → Actions → build → Run workflow, tick *publish* (bump `version` in `package.json` first).
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
+## Text Grab and Assets
+**Text Grab** (home screen, the 🔤 button in Sources, and **Grab text** in the Write Stuff toolbar) freezes your screen like Sudo Take Screenshot. Drag over any text, or point at a block and click, and it is read on this computer: nothing is uploaded and no model is downloaded (English is bundled, using tesseract.js, Apache-2.0). Light-on-dark text such as dark mode or a terminal is handled too. The result opens in a window where you can fix it, **Copy** it, **Save to Assets**, or use **Send to Write Stuff ▾**: choose *New document* or any document you already have from the list, and the text is added to the end of it. In Write Stuff, **Grab text** adds the text straight to the page you are on.
+
+The home screen now has an **Assets** section under your projects. It shows everything kept in Sources (pictures, video, sound, fonts) plus text you saved with Text Grab. Click a picture to use it in a design, or a text asset to edit, copy or send it to Write Stuff. It follows the search box and has a type filter.
 ## Logo
 The icon is a terminal prompt (`>_`) next to a paintbrush. The source is `build/icon.svg`; the PNG, Android launcher, adaptive icon and splash screens are rendered from it.
 ## Desktop audio in Sudo Make Live

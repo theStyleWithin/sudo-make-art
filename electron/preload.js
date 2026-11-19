@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
+  pinpoint: { start: opts => ipcRenderer.invoke('pinpoint:start', opts) },
+  ocr: { read: dataUrl => ipcRenderer.invoke('ocr:read', dataUrl), copy: text => ipcRenderer.invoke('ocr:copy', text) },
   deskaudio: { list: () => ipcRenderer.invoke('deskaudio:list'), start: (id, src) => ipcRenderer.invoke('deskaudio:start', id, src), stop: id => ipcRenderer.invoke('deskaudio:stop', id), onData: fn => { const h = (e, id, buf) => fn(id, buf); ipcRenderer.on('deskaudio:data', h); return () => ipcRenderer.removeListener('deskaudio:data', h); }, onEnded: fn => { const h = (e, id, code, err) => fn(id, code, err); ipcRenderer.on('deskaudio:ended', h); return () => ipcRenderer.removeListener('deskaudio:ended', h); } },
   profile: {
     hopcastFind: () => ipcRenderer.invoke('profile:hopcast-find'), hopcastPick: () => ipcRenderer.invoke('profile:hopcast-pick'), hopcastRead: r => ipcRenderer.invoke('profile:hopcast-read', r),
@@ -51,7 +53,6 @@ contextBridge.exposeInMainWorld('sma', {
     seal: (t, p) => ipcRenderer.invoke('profile:seal', t, p), unseal: (b, p) => ipcRenderer.invoke('profile:unseal', b, p), save: (n, d) => ipcRenderer.invoke('profile:save', n, d), open: () => ipcRenderer.invoke('profile:open'),
   },
   tray: { prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
-  pinpoint: { start: () => ipcRenderer.invoke('pinpoint:start') },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
     info: () => ipcRenderer.invoke('live:info'),
