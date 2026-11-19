@@ -32,7 +32,20 @@ This is a good-faith list. It is not legal advice.
 - The fonts it was measured from are open-licensed (almost all SIL Open Font License 1.1, a few Apache-2.0 or similar). The name, licence and weight of each font are listed in `data/fontindex.json`. The index was built with `scripts/build-fontindex.py` (build tools such as Pillow are not part of the app).
 - If you choose "Get the real file" for a font, that file keeps its own licence, which the app shows before you download it.
 
+## tesseract.js, tesseract.js-core and English language data (Apache-2.0)
+- **What it does here:** reads text out of a picture for Text Grab, on your computer, in a separate background process. The English data is bundled, so nothing is downloaded.
+- **Where it comes from:** the npm packages `tesseract.js`, `tesseract.js-core` and `@tesseract.js-data/eng`. They are licensed under the Apache License 2.0 and each package's licence file is kept inside the app's `node_modules` folders. Not modified.
+
+## MediaPipe tasks-vision (Apache-2.0)
+- **What it does here:** face tracking for Sudo Make VTuber, on your computer. The npm package `@mediapipe/tasks-vision` (code and WebAssembly runtime) is bundled, not modified, and carries its Apache License 2.0 file.
+- **Model file:** the Face Landmarker model (`face_landmarker.task`, Apache-2.0, from Google's MediaPipe model storage) is **not** bundled. It is only downloaded when the user presses the download button, and is checked against a fixed size and SHA-256.
+
+## Spout2 (BSD 2-Clause)
+- **What it does here:** `sma-spout.exe`, a small Windows helper written for this project, is built with the Spout2 SDK (Lynn Jarvis and contributors, <https://github.com/leadedge/Spout2>) to publish a Spout sender. The licence file ships next to the helper (`Spout2-LICENSE.txt`).
+
 ## Not included (for clarity)
 
 - **XL Converter** (GPL-3.0, <https://codepoems.eu/xl-converter>) inspired the idea of the Convert tab. **No code or assets from it are used.**
 - No templates, stock images, icons or fonts from any other design tool or service are bundled.
+- **Live2D Cubism Core** (proprietary) is not included. It is downloaded only after the user accepts Live2D's licence agreement and presses the download button, from Live2D's own address.
+- **NDI** software is not included. NDI output uses an FFmpeg built with NDI support that the user provides.
