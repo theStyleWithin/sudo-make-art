@@ -53,6 +53,8 @@ contextBridge.exposeInMainWorld('sma', {
     seal: (t, p) => ipcRenderer.invoke('profile:seal', t, p), unseal: (b, p) => ipcRenderer.invoke('profile:unseal', b, p), save: (n, d) => ipcRenderer.invoke('profile:save', n, d), open: () => ipcRenderer.invoke('profile:open'),
   },
   tray: { reset: () => ipcRenderer.invoke('tray:reset'), prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
+  vcam: { devices: () => ipcRenderer.invoke('vcam:devices'), start: o => ipcRenderer.invoke('vcam:start', o), stop: () => ipcRenderer.invoke('vcam:stop'), state: () => ipcRenderer.invoke('vcam:state'), frame: buf => ipcRenderer.send('vcam:frame', buf), onEnded: fn => { const h = (e, code, err) => fn(code, err); ipcRenderer.on('vcam:ended', h); return () => ipcRenderer.removeListener('vcam:ended', h); } },
+  live2d: { status: () => ipcRenderer.invoke('l2d:status'), download: accepted => ipcRenderer.invoke('l2d:download', accepted === true), remove: () => ipcRenderer.invoke('l2d:remove'), license: () => ipcRenderer.invoke('l2d:license') },
   vtuber: { status: () => ipcRenderer.invoke('vtuber:model-status'), download: () => ipcRenderer.invoke('vtuber:model-download'), cancel: () => ipcRenderer.invoke('vtuber:model-cancel'), read: () => ipcRenderer.invoke('vtuber:model-read'), remove: () => ipcRenderer.invoke('vtuber:model-remove'), onProgress: fn => { const h = (e, d) => fn(d); ipcRenderer.on('vtuber:progress', h); return () => ipcRenderer.removeListener('vtuber:progress', h); } },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {

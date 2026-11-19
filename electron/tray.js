@@ -59,6 +59,7 @@ function menu() {
     { label: streaming ? 'Stop streaming' : 'Go Live', click: () => send('golive') },
     { label: rec ? 'Stop recording' : 'Start recording', click: () => send('record') },
     { label: 'Sudo Take Screenshot', click: () => send('screenshot') },
+    { label: 'Text Grab (copy text from the screen)', click: () => send('textgrab') },
     { type: 'separator' },
     { label: 'Open', submenu: modes.map(([m, l]) => ({ label: l, click: () => { showWindow(); send('mode', { mode: m }); } })) },
     { label: 'New design…', click: () => { showWindow(); send('newdesign'); } },
