@@ -14,9 +14,9 @@ async function start(sender, opts) {
   const textMode = !!(opts && opts.mode === 'text'); // Text Grab: hand back the picked region, save nothing
   if (active) throw new Error('A screenshot is already open. Press Esc in it first.');
   const parent = BrowserWindow.fromWebContents(sender), disp = parent ? screen.getDisplayMatching(parent.getBounds()) : screen.getPrimaryDisplay();
-  active = true;
+  active = true; const wasVisible = !!(parent && parent.isVisible());
   try {
-    if (parent) { parent.hide(); await wait(450); } // out of the way, so the picture shows what is behind the app
+    if (parent && wasVisible) { parent.hide(); await wait(450); } // out of the way, so the picture shows what is behind the app
     let img;
     if (process.env.SMA_PINPOINT_IMAGE) img = nativeImage.createFromPath(process.env.SMA_PINPOINT_IMAGE); // for tests
     else {
@@ -32,8 +32,9 @@ async function start(sender, opts) {
     const name = `Screenshot-${t.getFullYear()}${p2(t.getMonth() + 1)}${p2(t.getDate())}-${p2(t.getHours())}${p2(t.getMinutes())}${p2(t.getSeconds())}.png`;
     fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, name), png = Buffer.from(out.split(',')[1], 'base64'); fs.writeFileSync(file, png);
     try { clipboard.writeImage(nativeImage.createFromBuffer(png)); } catch (e) {}
+    if (!wasVisible) { try { require('./tray').toast('Screenshot saved', file); } catch (e) {} }
     return { path: file, name, dataUrl: out };
-  } finally { active = null; if (parent && !parent.isDestroyed()) { parent.show(); parent.focus(); } }
+  } finally { active = null; if (parent && !parent.isDestroyed() && wasVisible) { parent.show(); parent.focus(); } }
 }
 
 function overlay(disp, img, textMode) {

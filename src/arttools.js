@@ -46,7 +46,21 @@
     label: 'Shape',
     draw(e, g) {
       const s = SH.byId[e.shape] || SH.byId.square;
-      el('path', { d: s.d(e.w, e.h), fill: e.fill, stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw, 'stroke-linejoin': 'round', 'fill-rule': e.shape === 'ring' || e.shape === 'frame' ? 'evenodd' : 'nonzero' }, g);
+      let fill = e.fill;
+      if (e.grad) { // a two-colour gradient fill (straight at an angle, or radial from the middle)
+        const gid = 'gr-' + e.id, defs = el('defs', {}, g), a = (e.grad.angle ?? 90) * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+        const gr = e.grad.type === 'radial' ? el('radialGradient', { id: gid, cx: '50%', cy: '50%', r: '50%' }, defs) : el('linearGradient', { id: gid, x1: f2(50 - 50 * c) + '%', y1: f2(50 - 50 * sn) + '%', x2: f2(50 + 50 * c) + '%', y2: f2(50 + 50 * sn) + '%' }, defs);
+        el('stop', { offset: '0%', 'stop-color': e.grad.c1 || e.fill }, gr); el('stop', { offset: '100%', 'stop-color': e.grad.c2 || '#000000' }, gr); fill = `url(#${gid})`;
+      }
+      el('path', { d: s.d(e.w, e.h), fill, stroke: e.sw ? e.stroke : 'none', 'stroke-width': e.sw, 'stroke-linejoin': 'round', 'fill-rule': ['ring', 'frame', 'disc'].includes(e.shape) ? 'evenodd' : 'nonzero' }, g);
+    },
+    props(e, p, H) {
+      const on = document.createElement('input'); on.type = 'checkbox'; on.checked = !!e.grad; on.onchange = () => { H.commit(); e.grad = on.checked ? { type: 'linear', c1: e.fill, c2: '#000000', angle: 90 } : null; H.render(); };
+      p.append(H.row('Gradient fill', on));
+      if (e.grad) {
+        const ty = document.createElement('select'); [['linear', 'Straight'], ['radial', 'Radial']].forEach(([v, n]) => ty.add(new Option(n, v))); ty.value = e.grad.type; ty.onchange = () => { H.commit(); e.grad.type = ty.value; H.render(); };
+        p.append(H.row('Gradient', ty), H.row('Start color', H.field(e.grad, 'c1', 'color')), H.row('End color', H.field(e.grad, 'c2', 'color')), H.row('Angle', H.field(e.grad, 'angle', 'range', { min: 0, max: 360, step: 1 })));
+      }
     },
   };
 
@@ -114,7 +128,7 @@
     if (D.t.kind === 'line') { if (ev.shiftKey) { const a = Math.round(Math.atan2(y1 - y0, x1 - x0) / (Math.PI / 12)) * Math.PI / 12, L = Math.hypot(x1 - x0, y1 - y0); x1 = x0 + Math.cos(a) * L; y1 = y0 + Math.sin(a) * L; D.p1 = [x1, y1]; }
       D.node = el('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke: S.color, 'stroke-width': 6, 'stroke-linecap': 'round' }, ensurePreview()); }
     else { let w = Math.abs(x1 - x0), h = Math.abs(y1 - y0); if (ev.shiftKey) w = h = Math.max(w, h); const x = x1 < x0 ? x0 - w : x0, y = y1 < y0 ? y0 - h : y0; D.box = { x, y, w, h };
-      D.node = el('path', { d: (SH.byId[D.t.id] || SH.byId.square).d(Math.max(w, 1), Math.max(h, 1)), transform: `translate(${x} ${y})`, fill: S.shapeFill, opacity: 0.8, 'fill-rule': D.t.id === 'ring' || D.t.id === 'frame' ? 'evenodd' : 'nonzero' }, ensurePreview()); }
+      D.node = el('path', { d: (SH.byId[D.t.id] || SH.byId.square).d(Math.max(w, 1), Math.max(h, 1)), transform: `translate(${x} ${y})`, fill: S.shapeFill, opacity: 0.8, 'fill-rule': ['ring', 'frame', 'disc'].includes(D.t.id) ? 'evenodd' : 'nonzero' }, ensurePreview()); }
   }
   function onUp(ev) {
     const D = drawing; if (!D) return; ev.stopImmediatePropagation(); drawing = null; const A = api(); clearPreview();
@@ -173,7 +187,7 @@
     const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Click a shape to add it. Shift-click, then drag on the page to size it as you place it.'; box.append(hint);
     function paint() { chips.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === cat)); grid.textContent = '';
       const items = SH.search(q.value).filter(s => cat === 'all' || s.cat === cat); if (!items.length) { grid.textContent = 'No shapes match.'; return; }
-      items.forEach(s => { const b = document.createElement('button'); b.title = s.name; b.innerHTML = `<svg width="40" height="40" viewBox="-2 -2 44 44"><path d="${s.d(40, 40)}" fill="${S.shapeFill}" fill-rule="${s.id === 'ring' || s.id === 'frame' ? 'evenodd' : 'nonzero'}"/></svg>`;
+      items.forEach(s => { const b = document.createElement('button'); b.title = s.name; b.innerHTML = `<svg width="40" height="40" viewBox="-2 -2 44 44"><path d="${s.d(40, 40)}" fill="${S.shapeFill}" fill-rule="${['ring', 'frame', 'disc'].includes(s.id) ? 'evenodd' : 'nonzero'}"/></svg>`;
         b.onclick = ev => { if (ev.shiftKey) { setTool({ kind: 'shape', id: s.id, group: 'shapes' }); closeFly(); } else addShape(s.id); }; grid.append(b); }); }
     q.oninput = paint; paint(); setTimeout(() => q.focus(), 0);
   }

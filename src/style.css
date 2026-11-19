@@ -631,3 +631,9 @@ body.wr-focus #wr-bar,body.wr-focus #wr-tools,body.wr-focus #wr-outline,body.wr-
 #h-abar{margin-top:30px}#h-assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:14px;padding-bottom:30px}#h-assets .hint{grid-column:1/-1;opacity:.6}
 #h-assets .thumb.txt{align-items:start;justify-items:start;padding:10px;font-size:34px}.atxt{font:12px/1.4 ui-monospace,monospace;opacity:.85;overflow:hidden;white-space:pre-wrap;word-break:break-word;max-height:120px}
 #tg-menu button b{white-space:nowrap}
+.applogo{width:20px;height:20px;vertical-align:-5px;margin-right:6px;border-radius:5px}
+
+/* new-design templates */
+#newgrid .tgroup{grid-column:1/-1;margin:10px 0 0;font-size:13px;opacity:.8}
+#newgrid .card.tpl{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+#newgrid .tplprev{width:100%;height:110px;background:repeating-conic-gradient(#2a2a30 0% 25%, #34343c 0% 50%) 0 0 / 16px 16px;border-radius:6px;margin-bottom:4px}
