@@ -16,6 +16,9 @@ npm run dist:win     # Windows installer + portable exe (build on Windows; CI do
 Downloads (AppImage, Windows installer and portable exe, Android APK) are on the [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). To publish a new one: GitHub → Actions → build → Run workflow, tick *publish* (bump `version` in `package.json` first).
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
+## Getting the window back from the tray
+Starting Sudo Make Art again (from the launcher, a shortcut, or a terminal) now brings the running window back instead of opening a second copy, so you can never be locked out of a window that is hidden in the tray. `sudo-make-art --show` ignores "Start minimized to the system tray", and `sudo-make-art --reset-tray` puts every tray option back to its default. Live settings has a **Reset tray settings** button too. On Wayland (KDE Plasma, GNOME) "hide to the tray" minimizes the window without a task bar entry, because a Wayland app cannot reliably show a hidden window again; and if the window does not come back after Show, the tray options switch themselves off. On Linux the app checks that the desktop really has a tray; if it does not (GNOME needs the AppIndicator extension) it will not hide the window to the tray at all, and says so in Live settings.
+
 ## Sudo Make VTuber (beta)
 Pick **Sudo Make VTuber** from the logo menu to be a VTuber with your own VRM model (VRoid Studio makes them). The pages down the left:
 - **Model**: import `.vrm` files into a library (kept on this computer), pick one, unload it, filter the list, and turn on **Model lock** so it cannot change by accident.
