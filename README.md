@@ -1,5 +1,7 @@
 # Sudo Make Art
 
+<p align="right"><img src="build/icon.png" alt="The Sudo Make Art logo: a terminal prompt next to a paintbrush" width="140"></p>
+
 **One offline app for design, photo editing and video editing, with swappable modes.** The same program can also write your documents, lay out a comic, make a card game, run a livestream and be your VTuber. It is made for **work projects, artists, streamers and VTubers**: open it, pick a mode from the name at the top-left, and keep going without hopping between a dozen different tools.
 
 It started as an offline alternative to Canva: a design editor you own, with no account, no subscription and no cloud. It has since grown into its own thing. The design editor, the photo tools and the video editor are still the heart of it, and around them sit modes for streaming, VTubing, manga, writing, pixel art, music and more, all sharing one library of your own files.
@@ -9,6 +11,10 @@ It started as an offline alternative to Canva: a design editor you own, with no 
 - **Free and open.** [0BSD](LICENSE): do anything you like with the code. All code is original; third-party pieces are listed at the bottom.
 
 > **⚠️ Windows testers wanted.** The Windows installer and portable exe are built automatically but have **never been run by the maintainer**, who only uses Linux (and tests Android on their own time). They are untested and unsigned, so Windows may show a SmartScreen warning. If you use Windows and try them, please [open an issue](https://github.com/theStyleWithin/sudo-make-art/issues) with what worked and what broke. Fixes are welcome as pull requests.
+
+![The Sudo Make Art home screen: your projects from every mode in one place](docs/screenshots/home.png)
+
+*The home screen: projects from every mode, side by side. Screenshots in this README are of the real app, with sample content made for it (see [docs/screenshots](docs/screenshots/README.md)).*
 
 ## Modes at a glance
 Click the name at the top-left (the logo menu) to switch. Every mode keeps its own projects, and they all show up together on the home screen.
@@ -25,6 +31,10 @@ Click the name at the top-left (the logo menu) to switch. Every mode keeps its o
 | **Sudo Make TCG** | Design a whole trading card game and print the sheets | Desktop |
 | **Sudo Write Stuff** | A writer for stories, notes, essays and scripts, with PDF, Word and LibreOffice export | Desktop |
 | **Sudo Make Pixels, Tiles, Music, Games** | Pixel art and animation, tilesets and maps, a chiptune tracker, and a small Game Boy-style game maker that uses all three | Desktop, Android |
+
+The mode list, opened from the name at the top-left:
+
+![the mode menu](docs/screenshots/modes-menu.png)
 
 Handy tools that work across modes: **Text Grab** (copy text from anywhere on your screen), **Sudo Take Screenshot**, the **Assets** shelf on the home screen, a **system tray** menu, **Add to Steam**, and **profiles** you can export and import (including from HopCast).
 
@@ -43,6 +53,12 @@ npm run dist:win     # Windows installer + portable exe (build on Windows; CI do
 # Design, photos and video
 
 ## The design editor
+![the design editor with a poster open](docs/screenshots/design-editor.png)
+
+| the New design window: sizes for social posts, channel banners, icons and print | the image converter: JPEG XL, AVIF, WebP, JPEG and PNG, lossless, downscale, metadata removal |
+|---|---|
+| ![the New design window: sizes for social posts, channel banners, icons and print](docs/screenshots/new-design.png) | ![the image converter: JPEG XL, AVIF, WebP, JPEG and PNG, lossless, downscale, metadata removal](docs/screenshots/convert-images.png) |
+
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
 - **Create a design**: social media, presentation and print size presets, plus custom sizes
 - **Text**: font, size, bold/italic/align, outline, and **curved text** (arch and smile)
@@ -110,6 +126,8 @@ A **Game covers & icons** category (next to Custom PC icons) for custom artwork:
 
 
 ## Video editor (Video tab)
+![the video editor: media bin, preview, timeline with a caption clip](docs/screenshots/video-editor.png)
+
 - Timeline with video/image, audio and text lanes; drag clips, drag edges to trim, **split** at the playhead
 - **Detach audio** onto its own track, trim/split/move it separately, or **replace the visuals** and keep the audio
 - Text over video (drag it in the preview), volume per clip, fill-frame or fit-inside framing, undo/redo
@@ -152,6 +170,8 @@ The app adds no content filter of its own: what you can generate depends on the 
 # Streaming and VTubing
 
 ## Sudo Make Live (desktop)
+![Sudo Make Live: scenes, sources and the audio mixer around a preview](docs/screenshots/live-studio.png)
+
 A livestreaming and recording studio inside Sudo Make Art, shaped after the author's own app HopCast: the same layout (channel bar on top, menu bar, big preview, Properties and Filters strip, Scenes / Sources / Audio Mixer docks, Go Live and Rec at the bottom, a tool column on the right) and the same ways of working. Open it from the **Live** button next to Trim video, or from the logo menu.
 - **No account, no nudges.** You type your own server address and stream key (RTMP, RTMPS or SRT, and RIST if your FFmpeg has it). There are no platform buttons, no suggestions of where to stream, and no viewer or follower numbers.
 - **Several servers at once from one encode.** Click channels in the bar to switch them on, then Go Live: the picture is encoded once and copied to every channel and to a recording. A channel that fails does not stop the others, and each reconnects by itself (retrying over IPv4 when it needs to).
@@ -166,6 +186,10 @@ A livestreaming and recording studio inside Sudo Make Art, shaped after the auth
 
 
 ## Sudo Make VTuber (beta)
+| the VTuber studio: camera tracking settings (the app asks before downloading its one tracking model) | Sudo Make Avatar Pose with the built-in character |
+|---|---|
+| ![the VTuber studio: camera tracking settings (the app asks before downloading its one tracking model)](docs/screenshots/vtuber-studio.png) | ![Sudo Make Avatar Pose with the built-in character](docs/screenshots/avatar-pose.png) |
+
 Pick **Sudo Make VTuber** from the logo menu to be a VTuber with your own VRM model (VRoid Studio makes them). The pages down the left:
 - **Model**: import `.vrm` files into a library (kept on this computer), pick one, unload it, filter the list, and turn on **Model lock** so it cannot change by accident.
 - **Camera**: face tracking drives the head, eyes, eyebrows, mouth and smile. Choose the camera, tracking quality (fast, good, best), an FPS limit, what the model does when tracking is lost (go back to the default pose or stay put), automatic or manual parameter calculation (with a calibrate button), whether blinking is linked (never, always, when the head is turned), mirroring, and the sensitivity of blinking, eye opening, mouth, smile and eyebrows, each with a reset.
@@ -204,6 +228,18 @@ Models stay on your computer and carry their own licence: check it before publis
 
 
 # Creative modes
+| a manga page: slanted panels, a speech bubble and a 3D character | Sudo Write Stuff, a writer for stories and scripts |
+|---|---|
+| ![a manga page: slanted panels, a speech bubble and a 3D character](docs/screenshots/manga.png) | ![Sudo Write Stuff, a writer for stories and scripts](docs/screenshots/write-stuff.png) |
+
+| Sudo Make TCG: a card with its rules, stats and art | Sudo Make Games: a Game Boy-style level |
+|---|---|
+| ![Sudo Make TCG: a card with its rules, stats and art](docs/screenshots/tcg.png) | ![Sudo Make Games: a Game Boy-style level](docs/screenshots/games.png) |
+
+| Sudo Make Visual Novel: scenes, choices and jumps | Sudo Make Pixels: a pixel-art sprite |
+|---|---|
+| ![Sudo Make Visual Novel: scenes, choices and jumps](docs/screenshots/visual-novel.png) | ![Sudo Make Pixels: a pixel-art sprite](docs/screenshots/pixels.png) |
+
 
 - **Sudo Make Manga** (desktop and Android): a page editor for manga and comics. Page sizes (manga B5, A4, US comic, a tall webtoon strip, square); eight ready-made **panel layouts**, including a slanted manga one; a **Split** tool that cuts a panel with a line you drag (slanted lines make slanted panels, with a gutter between); pictures for panels (pick a file or drop one on a panel, then size and move it inside); **speech bubbles** (oval, rounded, thought cloud, spiky shout) with draggable tails, **caption boxes**, **sound effects** with outlines and tilt, **screentones** (dots, fading dots, lines, cross-hatch, kept inside their panel), **speed lines** (focus and parallel), a pen with a stroke eraser, ordering, undo and redo, and autosave. Export a page as PNG (normal or double size) or **all pages as one PDF**. Saved in a plain `sudo-make-manga` JSON format, and other modes can draw a page or a single panel from a saved manga file.
   - **3D characters**: make an anime-style male or female character (body shape, face, eyes, hair, outfit, colours, accessories), or **import a VRM model**; drag it from the character list onto a panel, then pose it (ready-made poses plus a joint-by-joint editor), turn it round, change the camera and draw it as ink and tones, grey or colour. Choices are thumbnail grids (hair, eyes, outfit, accessory, expression, ready-made pose, camera angle). Nine **expressions** (smile, calm, laugh, surprised, angry, sad, shy, wink, smirk) are picked per placed character, outfits include a school uniform with sailor collar, a blazer with tie and lapels, T-shirt, dress and sportswear. Characters are always still. Imported VRM models keep their author and licence details, shown in the editor: check the licence before you publish pages that use one. Your models and pictures stay on your device. Pictures (JPG, PNG) can be dropped straight into panels. Limits: VRM face expressions and hair physics are ignored; the built-in maker makes simple stylised figures, so a VRoid Studio model gives the best looking result.
@@ -220,6 +256,8 @@ Models stay on your computer and carry their own licence: check it before publis
 # Tools that work everywhere
 
 ## Text Grab and Assets
+![Text Grab: text read from the screen, with Copy, Save to Assets and a Send to Write Stuff list of documents](docs/screenshots/text-grab.png)
+
 **Text Grab** (home screen, the 🔤 button in Sources, and **Grab text** in the Write Stuff toolbar) freezes your screen like Sudo Take Screenshot. Drag over any text, or point at a block and click, and it is read on this computer: nothing is uploaded and no model is downloaded (English is bundled, using tesseract.js, Apache-2.0). Light-on-dark text such as dark mode or a terminal is handled too. The result opens in a window where you can fix it, **Copy** it, **Save to Assets**, or use **Send to Write Stuff ▾**: choose *New document* or any document you already have from the list, and the text is added to the end of it. In Write Stuff, **Grab text** adds the text straight to the page you are on.
 
 The home screen now has an **Assets** section under your projects. It shows everything kept in Sources (pictures, video, sound, fonts) plus text you saved with Text Grab. Click a picture to use it in a design, or a text asset to edit, copy or send it to Write Stuff. It follows the search box and has a type filter.
