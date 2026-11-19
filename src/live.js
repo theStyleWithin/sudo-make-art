@@ -420,7 +420,7 @@ function menus(name) {
   if (name === 'Docks') return ['scenes', 'sources', 'mixer'].map(k => ({ label: (st.docks[k] !== false ? '✓ ' : '') + ({ scenes: 'Scenes', sources: 'Sources', mixer: 'Audio Mixer' })[k], fn: () => { st.docks[k] = st.docks[k] === false; save(); layout(); } }));
   if (name === 'Profile') return [...Object.keys(st.profiles).map(n => ({ label: 'Load: ' + n, fn: () => { Object.assign(st.set, st.profiles[n]); sizeCanvas(true); loop(); save(); render(); notify('Loaded the profile "' + n + '".'); } })), ...(Object.keys(st.profiles).length ? ['sep'] : []),
     { label: 'Save the current output settings as…', fn: profileSave }, ...Object.keys(st.profiles).map(n => ({ label: 'Delete: ' + n, danger: true, fn: () => { delete st.profiles[n]; save(); } }))];
-  if (name === 'Tools') return [{ label: 'Import from HopCast…', fn: () => window.SMA_profile && SMA_profile.importHopcast() }, { label: 'Import a Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.importProfile() }, { label: 'Export my Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.exportProfile() }, 'sep', { label: 'Back up settings now', fn: backupNow }, { label: 'Restore settings from a backup…', fn: restoreDialog }, 'sep', { label: 'Stream key storage…', fn: keyInfo }];
+  if (name === 'Tools') return [{ label: 'Import from HopCast…', fn: () => window.SMA_profile && SMA_profile.importHopcast() }, { label: 'Import a Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.importProfile() }, { label: 'Export my Sudo Make Art profile…', fn: () => window.SMA_profile && SMA_profile.exportProfile() }, 'sep', { label: 'Screenshot of my screen', fn: () => window.sma.tray.desktopShot() }, { label: 'Screenshot of one picture (pinpoint)', fn: pinpointShot }, { label: 'Screenshot of the stream preview', fn: streamShot }, 'sep', { label: 'Back up settings now', fn: backupNow }, { label: 'Restore settings from a backup…', fn: restoreDialog }, 'sep', { label: 'Stream key storage…', fn: keyInfo }];
   if (name === 'Help') return [{ label: 'How Sudo Make Live works', fn: helpDialog }, { label: 'Mouse and keyboard tips', fn: tipsDialog }];
   return [];
 }
@@ -443,8 +443,8 @@ function settingsDialog(startTab) {
         page.append(el('h2', { textContent: 'Output' }), check('Automatically record when streaming', S.alsoRecord, v => { S.alsoRecord = v; save(); }));
         const tr = window.sma.tray; if (tr) { const box = el('div'); page.append(el('h2', { textContent: 'System Tray' }), box);
           tr.prefs().then(tp => { if (tp.supported === false) box.append(el('p', { className: 'hc-bad', textContent: 'No system tray was found on this desktop (GNOME needs the AppIndicator extension), so the window will not be hidden to the tray.' })); const set = (k, v) => { tp[k] = v; tr.set({ [k]: v }).then(n => Object.assign(tp, n)); };
-            box.append(check('Show a tray icon', tp.enabled, v => set('enabled', v), 'Right-click it for Go Live, Record, Sudo Take Screenshot, and quick access to every mode. On some Linux desktops (GNOME) the icon needs the AppIndicator extension.'),
-              check('Minimize to the system tray instead of the task bar', tp.minToTray, v => set('minToTray', v)), check('Start minimized to the system tray', tp.startInTray, v => set('startInTray', v)),
+            box.append(check('Enable', tp.enabled, v => set('enabled', v), 'Right-click it for Go Live, Record, Sudo Take Screenshot, and quick access to every mode. On some Linux desktops (GNOME) the icon needs the AppIndicator extension.'),
+              check('Minimize to system tray when started', tp.startInTray, v => set('startInTray', v)), check('Always minimize to system tray instead of task bar', tp.minToTray, v => set('minToTray', v)),
               check('Keep running in the tray when I close the window while live or recording', tp.keepRunning, v => set('keepRunning', v), 'So closing the window by mistake does not end your stream. Quit from the tray menu.'),
               check('Always send the close button to the tray', tp.closeToTray, v => set('closeToTray', v)), check('Show a message when a channel drops and when it is back', tp.notify, v => set('notify', v)));
             const rs = el('button', { textContent: 'Reset tray settings', className: 'hc-mini', title: 'Puts every tray option back to its default (nothing is hidden to the tray)' }); rs.onclick = () => tr.reset().then(() => notify('Tray settings were reset.')); box.append(rs, el('p', { className: 'hc-hint', textContent: 'If the window ever stays hidden, start Sudo Make Art again to bring it back, or start it with --reset-tray.' })); }); } }
@@ -489,6 +489,19 @@ async function pinpointShot() {
     const s = window.SMA.getSources().find(x => x.name === f.name && x.blob && x.blob.size === blob.size) || window.SMA.getSources().slice(-1)[0]; if (s) { const im = new Image(); im.onload = () => { const it = addItem({ kind: 'image', name: 'Screenshot', src: s.id }); fitItem(it, im.naturalWidth, im.naturalHeight); }; im.src = r.dataUrl; } notify('Screenshot saved' + (r.path ? ': ' + r.path : '') + ' and added as a source.'); } catch (e) { notify(clean(e)); }
 }
 
+// the stream preview as a picture (HopCast: "Screenshot of the stream preview")
+async function streamShot() {
+  try { const r = await window.sma.pinpoint.save(canvas.toDataURL('image/png'), 'Stream'); const m = 'Stream preview saved: ' + r.path + ' (also copied)'; notify(m); try { window.sma.tray.toast('Sudo Take Screenshot', m); } catch (e) {} } catch (e) { notify(clean(e)); }
+}
+// the virtual camera (HopCast: "Start Virtual Camera"): the scene goes to a v4l2loopback camera device on Linux
+const vcamLive = { on: false, timer: null };
+async function vcamToggle(want) {
+  const api = window.sma && window.sma.vcam; if (!api) { notify('The virtual camera needs the desktop app.'); return; } const on = want === undefined ? !vcamLive.on : want;
+  if (!on) { clearInterval(vcamLive.timer); vcamLive.on = false; await api.stop(); notify('Virtual camera stopped.'); return; }
+  try { const info = await api.devices(); if (!info.ok) { notify(info.why); return; } const dev = info.list.find(d => d.writable); if (!dev) { notify(info.list.length ? 'No permission to use the virtual camera.' : 'No virtual camera found. Install the v4l2loopback driver first (the steps are in Sudo Make VTuber > Output).'); return; }
+    const w = canvas.width, h = canvas.height, fps = st.set.fps; await api.start({ device: dev.path, w, h, fps }); vcamLive.on = true; clearInterval(vcamLive.timer); vcamLive.timer = setInterval(() => { if (canvas.width === w && canvas.height === h) api.frame(ctx.getImageData(0, 0, w, h).data.buffer); }, 1000 / fps);
+    api.onEnded((code, err) => { if (vcamLive.on) { vcamLive.on = false; clearInterval(vcamLive.timer); notify('The virtual camera stopped. ' + (err || '')); } }); notify('Virtual camera started: pick "' + dev.name + '" as the camera in your other program.'); } catch (e) { notify(clean(e)); }
+}
 // ---------- bottom bar: output info, CPU, LIVE timer, Go Live, Rec ----------
 function bottom() { $('#hc-res').innerHTML = `<b>${st.set.res}</b> · <b>${st.set.fps}fps</b>`; }
 $('#hc-resgear').onclick = () => settingsDialog('Video');
@@ -582,6 +595,6 @@ async function importHopcast(sel) { // sel: { profile, collections: [...], chann
   save(); render(); chbar(); return { done, skipped };
 }
 function liveReloadFromStorage() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j) { Object.keys(st).forEach(k => delete st[k]); Object.assign(st, j); } } catch (e) {} }
-window.SMA_live = { addVTuber: cfg => { const it = addItem({ kind: 'vtuber', name: 'VTuber', cfg }); notify('Added your VTuber to the scene.'); return it; }, audio: { open: a => openInput(a), levels: () => st.audio.map(a => { const i = inputs.get(a.id); return { name: a.name, err: a.err || '', level: i ? levelOf(i.an) : -1 }; }), add: a => { st.audio.push(a); save(); mixer(); return a; } }, ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
+window.SMA_live = { vcamToggle, vcamOn: () => vcamLive.on, streamShot, openSettings: () => settingsDialog('General'), addVTuber: cfg => { const it = addItem({ kind: 'vtuber', name: 'VTuber', cfg }); notify('Added your VTuber to the scene.'); return it; }, audio: { open: a => openInput(a), levels: () => st.audio.map(a => { const i = inputs.get(a.id); return { name: a.name, err: a.err || '', level: i ? levelOf(i.an) : -1 }; }), add: a => { st.audio.push(a); save(); mixer(); return a; } }, ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
 icons(); menubar(); bottom(); render();
 })();

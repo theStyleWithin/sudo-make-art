@@ -12,7 +12,8 @@ async function shoot() {
     const r = await api.start(); if (!r || !r.dataUrl) return;
     const blob = await (await fetch(r.dataUrl)).blob(); await window.SMA.addFiles([new File([blob], r.name, { type: 'image/png' })]);
     toast('Saved to ' + r.path + ', copied to the clipboard and added to Sources.');
-  } catch (e) { toast(clean(e)); }
+    if (window.__trayShot) { window.__trayShot = false; try { window.sma.tray.toast('Sudo Take Screenshot', 'Picture saved: ' + r.path + ' (also copied)'); } catch (e) {} }
+  } catch (e) { toast(clean(e)); window.__trayShot = false; }
 }
 home.onclick = shoot; src.onclick = shoot;
 })();

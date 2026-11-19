@@ -44,7 +44,7 @@ contextBridge.exposeInMainWorld('sma', {
     onProgress: cb => on('convert:progress', cb),
     onFinished: cb => on('convert:finished', cb),
   },
-  pinpoint: { start: opts => ipcRenderer.invoke('pinpoint:start', opts) },
+  pinpoint: { start: opts => ipcRenderer.invoke('pinpoint:start', opts), save: (dataUrl, prefix) => ipcRenderer.invoke('pinpoint:save', dataUrl, prefix) },
   ocr: { read: dataUrl => ipcRenderer.invoke('ocr:read', dataUrl), copy: text => ipcRenderer.invoke('ocr:copy', text) },
   deskaudio: { list: () => ipcRenderer.invoke('deskaudio:list'), start: (id, src) => ipcRenderer.invoke('deskaudio:start', id, src), stop: id => ipcRenderer.invoke('deskaudio:stop', id), onData: fn => { const h = (e, id, buf) => fn(id, buf); ipcRenderer.on('deskaudio:data', h); return () => ipcRenderer.removeListener('deskaudio:data', h); }, onEnded: fn => { const h = (e, id, code, err) => fn(id, code, err); ipcRenderer.on('deskaudio:ended', h); return () => ipcRenderer.removeListener('deskaudio:ended', h); } },
   profile: {
@@ -52,7 +52,7 @@ contextBridge.exposeInMainWorld('sma', {
     hopcastKey: () => ipcRenderer.invoke('profile:hopcast-key'), readFile: f => ipcRenderer.invoke('profile:read-file', f), fileSize: f => ipcRenderer.invoke('profile:file-size', f),
     seal: (t, p) => ipcRenderer.invoke('profile:seal', t, p), unseal: (b, p) => ipcRenderer.invoke('profile:unseal', b, p), save: (n, d) => ipcRenderer.invoke('profile:save', n, d), open: () => ipcRenderer.invoke('profile:open'),
   },
-  tray: { reset: () => ipcRenderer.invoke('tray:reset'), prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
+  tray: { desktopShot: () => ipcRenderer.invoke('tray:desktopshot'), toast: (t, b) => ipcRenderer.invoke('tray:toast', t, b), reset: () => ipcRenderer.invoke('tray:reset'), prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
   vcam: { devices: () => ipcRenderer.invoke('vcam:devices'), start: o => ipcRenderer.invoke('vcam:start', o), stop: () => ipcRenderer.invoke('vcam:stop'), state: () => ipcRenderer.invoke('vcam:state'), frame: buf => ipcRenderer.send('vcam:frame', buf), onEnded: fn => { const h = (e, code, err) => fn(code, err); ipcRenderer.on('vcam:ended', h); return () => ipcRenderer.removeListener('vcam:ended', h); } },
   live2d: { status: () => ipcRenderer.invoke('l2d:status'), download: accepted => ipcRenderer.invoke('l2d:download', accepted === true), remove: () => ipcRenderer.invoke('l2d:remove'), license: () => ipcRenderer.invoke('l2d:license') },
   vtuber: { status: () => ipcRenderer.invoke('vtuber:model-status'), download: () => ipcRenderer.invoke('vtuber:model-download'), cancel: () => ipcRenderer.invoke('vtuber:model-cancel'), read: () => ipcRenderer.invoke('vtuber:model-read'), remove: () => ipcRenderer.invoke('vtuber:model-remove'), onProgress: fn => { const h = (e, d) => fn(d); ipcRenderer.on('vtuber:progress', h); return () => ipcRenderer.removeListener('vtuber:progress', h); } },

@@ -10,6 +10,7 @@ const path = require('path');
 const vconvert = require('./vconvert');
 
 let job = null;
+const changed = () => { try { require('./tray').refreshMenu(); } catch (e) {} };
 const SYS = '/sys/class/video4linux';
 
 // every camera device that is a loopback (a device other programs can read and this app can write)
@@ -28,11 +29,11 @@ function start(sender, o) {
   const args = ['-hide_banner', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${w}x${h}`, '-r', String(fps), '-i', 'pipe:0', '-vf', 'format=yuv420p', ...(test ? ['-t', '30', '-f', 'matroska', '-y', test] : ['-f', 'v4l2', out])];
   const p = spawn(vconvert.ffmpegPath(), args, { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true }); let err = '';
   p.stderr.on('data', d => { err = (err + d).slice(-500); }); p.stdin.on('error', () => {});
-  job = { p, w, h, frames: 0, err: () => err }; p.on('exit', code => { if (job && job.p === p) { job = null; if (!sender.isDestroyed()) sender.send('vcam:ended', code, err.trim()); } });
-  return { w, h, fps };
+  job = { p, w, h, frames: 0, err: () => err }; p.on('exit', code => { if (job && job.p === p) { job = null; changed(); if (!sender.isDestroyed()) sender.send('vcam:ended', code, err.trim()); } });
+  changed(); return { w, h, fps };
 }
 function frame(buf) { if (!job) return false; const need = job.w * job.h * 4; if (!buf || buf.byteLength !== need) return false; if (job.p.stdin.writableLength > need * 4) return false; /* drop frames if FFmpeg falls behind */ job.p.stdin.write(Buffer.from(buf)); job.frames++; return true; }
-function stop() { if (job) { const p = job.p; job = null; try { p.stdin.end(); } catch (e) {} setTimeout(() => { try { p.kill(); } catch (e) {} }, 800); } return true; }
+function stop() { if (job) { const p = job.p; job = null; changed(); try { p.stdin.end(); } catch (e) {} setTimeout(() => { try { p.kill(); } catch (e) {} }, 800); } return true; }
 function register() {
   ipcMain.handle('vcam:devices', () => devices());
   ipcMain.handle('vcam:start', (e, o) => start(e.sender, o || {}));
@@ -40,4 +41,4 @@ function register() {
   ipcMain.handle('vcam:stop', () => stop());
   ipcMain.handle('vcam:state', () => ({ running: !!job, frames: job ? job.frames : 0, err: job ? job.err() : '' }));
 }
-module.exports = { register, stop };
+module.exports = { register, stop, running: () => !!job };
