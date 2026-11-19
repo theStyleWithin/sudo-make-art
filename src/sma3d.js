@@ -67,7 +67,7 @@ async function loadVRM(buf, onProgress) {
     const mp = matProps[mi] || {}, vec = mp.vectorProperties || {}, fl = mp.floatProperties || {}, tp = mp.textureProperties || {}, pbr = m.pbrMetallicRoughness || {}, tag = (mp.tagMap || {}).RenderType || '', kw = mp.keywordMap || {};
     const color = vec._Color || pbr.baseColorFactor || [1, 1, 1, 1], shade = vec._ShadeColor || null, texIdx = tp._MainTex !== undefined ? tp._MainTex : (pbr.baseColorTexture ? pbr.baseColorTexture.index : -1);
     if (texIdx >= 0) await decodeTex(texIdx); if (onProgress) onProgress(mi / Math.max(1, J.materials.length));
-    return { color: color.slice(0, 4).map((v, k) => (k < 3 ? Math.min(1, Math.max(0, v)) : v)), shade: shade ? shade.slice(0, 3) : null, tex: texIdx, cut: kw._ALPHATEST_ON || tag === 'TransparentCutout' ? (fl._Cutoff === undefined ? 0.5 : fl._Cutoff) : (tag === 'Transparent' ? 0.02 : -1), blend: tag === 'Transparent', double: fl._CullMode === 0 || !!m.doubleSided, queue: mp.renderQueue || (tag === 'Transparent' ? 3000 : tag === 'TransparentCutout' ? 2450 : 2000), unlit: false, outlineMode: fl._OutlineWidthMode || 0, outlineWidth: fl._OutlineWidth || 0, outlineColor: vec._OutlineColor ? vec._OutlineColor.slice(0, 3) : [0.1, 0.07, 0.07] };
+    return { name: String(m.name || '').replace(/ \(Instance\)$/, ''), color: color.slice(0, 4).map((v, k) => (k < 3 ? Math.min(1, Math.max(0, v)) : v)), shade: shade ? shade.slice(0, 3) : null, tex: texIdx, cut: kw._ALPHATEST_ON || tag === 'TransparentCutout' ? (fl._Cutoff === undefined ? 0.5 : fl._Cutoff) : (tag === 'Transparent' ? 0.02 : -1), blend: tag === 'Transparent', double: fl._CullMode === 0 || !!m.doubleSided, queue: mp.renderQueue || (tag === 'Transparent' ? 3000 : tag === 'TransparentCutout' ? 2450 : 2000), unlit: false, outlineMode: fl._OutlineWidthMode || 0, outlineWidth: fl._OutlineWidth || 0, outlineColor: vec._OutlineColor ? vec._OutlineColor.slice(0, 3) : [0.1, 0.07, 0.07] };
   }));
   const skins = (J.skins || []).map(s => ({ joints: s.joints, ibm: s.inverseBindMatrices !== undefined ? readAccessor(g, s.inverseBindMatrices).data : null }));
   const prims = [];
@@ -77,9 +77,17 @@ async function loadVRM(buf, onProgress) {
     let idx = p.indices !== undefined ? readAccessor(g, p.indices).data : Uint32Array.from({ length: pos.length / 3 }, (_, k) => k); if (!(idx instanceof Uint16Array) && !(idx instanceof Uint32Array)) idx = Uint32Array.from(idx);
     const prim = { pos, nor, uv: uvA, idx, mat: materials[p.material !== undefined ? p.material : 0] || { color: [1, 1, 1, 1], shade: null, tex: -1, cut: -1, double: true, queue: 2000, outlineMode: 0, outlineColor: [0, 0, 0] }, node: ni, skin: n.skin !== undefined ? n.skin : -1 };
     if (n.skin !== undefined && p.attributes.JOINTS_0 !== undefined) { const jj = readAccessor(g, p.attributes.JOINTS_0), ww = readAccessor(g, p.attributes.WEIGHTS_0); prim.joints = Uint16Array.from(jj.data); prim.weights = Float32Array.from(ww.data, v => normFloat(v, ww.type)); }
+    if (p.targets && p.targets.length) { prim.meshIdx = n.mesh; prim.morph = p.targets.map(t => ({ pos: t.POSITION !== undefined ? Float32Array.from(readAccessor(g, t.POSITION).data) : null })); }
     prims.push(prim);
   } });
-  return { kind: 'vrm', name: meta.title || meta.name || 'VRM model', meta, nodes, human, prims, skins, textures, facing: v1 ? [0, 0, 1] : [0, 0, -1] };
+  // face expressions: the model's own morph-target recipes, under one set of names (happy, sad, angry, relaxed, surprised, blink, a i u e o ...)
+  const exprs = {}, addE = (k, binds) => { if (k && binds.length) exprs[k] = binds; };
+  if (v0 && v0.blendShapeMaster) { const M0 = { joy: 'happy', fun: 'relaxed', sorrow: 'sad', angry: 'angry', a: 'a', i: 'i', u: 'u', e: 'e', o: 'o', blink: 'blink', blink_l: 'blinkL', blink_r: 'blinkR', lookup: 'lookUp', lookdown: 'lookDown', lookleft: 'lookLeft', lookright: 'lookRight' };
+    for (const gr of v0.blendShapeMaster.blendShapeGroups || []) { const pn = String(gr.presetName || '').toLowerCase(), k = pn === 'unknown' ? String(gr.name || '').slice(0, 40) : M0[pn]; if (k && k.toLowerCase() !== 'neutral') addE(k, (gr.binds || []).map(b => ({ mesh: b.mesh, index: b.index, weight: (b.weight === undefined ? 100 : b.weight) / 100 }))); } }
+  else if (v1 && v1.expressions) { const M1 = { happy: 'happy', angry: 'angry', sad: 'sad', relaxed: 'relaxed', surprised: 'surprised', aa: 'a', ih: 'i', ou: 'u', ee: 'e', oh: 'o', blink: 'blink', blinkLeft: 'blinkL', blinkRight: 'blinkR', lookUp: 'lookUp', lookDown: 'lookDown', lookLeft: 'lookLeft', lookRight: 'lookRight' };
+    const one = (k, def) => addE(k, ((def && def.morphTargetBinds) || []).map(b => ({ mesh: (J.nodes[b.node] || {}).mesh, index: b.index, weight: b.weight === undefined ? 1 : b.weight })));
+    for (const [nm, def] of Object.entries(v1.expressions.preset || {})) if (M1[nm]) one(M1[nm], def); for (const [nm, def] of Object.entries(v1.expressions.custom || {})) one(String(nm).slice(0, 40), def); }
+  return { kind: 'vrm', name: meta.title || meta.name || 'VRM model', meta, nodes, human, prims, skins, textures, exprs, facing: v1 ? [0, 0, 1] : [0, 0, -1] };
 }
 
 // ---------- the skeleton and its pose ----------
@@ -106,15 +114,47 @@ function poseWorld(m, pose) {
 }
 function skinPrim(m, p, W) { // fills p.outPos / p.outNor for the current pose
   const nv = p.pos.length / 3; if (!p.outPos) { p.outPos = new Float32Array(p.pos.length); p.outNor = new Float32Array(p.pos.length); }
-  const op = p.outPos, on = p.outNor;
+  const op = p.outPos, on = p.outNor, src = p.mpos || p.pos;
   if (p.skin >= 0 && p.joints) { const sk = m.skins[p.skin], nj = sk.joints.length, JM = new Float32Array(nj * 16), tmp = new Float32Array(16); for (let j = 0; j < nj; j++) { const ibm = sk.ibm ? sk.ibm.subarray(j * 16, j * 16 + 16) : m.restInv[sk.joints[j]]; mmul(W[sk.joints[j]], ibm, tmp); JM.set(tmp, j * 16); }
-    for (let v = 0; v < nv; v++) { const x = p.pos[v * 3], y = p.pos[v * 3 + 1], z = p.pos[v * 3 + 2], nx = p.nor[v * 3], ny = p.nor[v * 3 + 1], nz = p.nor[v * 3 + 2]; let px = 0, py = 0, pz = 0, qx = 0, qy = 0, qz = 0;
+    for (let v = 0; v < nv; v++) { const x = src[v * 3], y = src[v * 3 + 1], z = src[v * 3 + 2], nx = p.nor[v * 3], ny = p.nor[v * 3 + 1], nz = p.nor[v * 3 + 2]; let px = 0, py = 0, pz = 0, qx = 0, qy = 0, qz = 0;
       for (let k = 0; k < 4; k++) { const w = p.weights[v * 4 + k]; if (!w) continue; const o = p.joints[v * 4 + k] * 16; px += w * (JM[o] * x + JM[o + 4] * y + JM[o + 8] * z + JM[o + 12]); py += w * (JM[o + 1] * x + JM[o + 5] * y + JM[o + 9] * z + JM[o + 13]); pz += w * (JM[o + 2] * x + JM[o + 6] * y + JM[o + 10] * z + JM[o + 14]); qx += w * (JM[o] * nx + JM[o + 4] * ny + JM[o + 8] * nz); qy += w * (JM[o + 1] * nx + JM[o + 5] * ny + JM[o + 9] * nz); qz += w * (JM[o + 2] * nx + JM[o + 6] * ny + JM[o + 10] * nz); }
       op[v * 3] = px; op[v * 3 + 1] = py; op[v * 3 + 2] = pz; on[v * 3] = qx; on[v * 3 + 1] = qy; on[v * 3 + 2] = qz; }
   } else { const j = p.rigid !== undefined ? p.rigid : p.node, M = p.rigid !== undefined ? mmul(W[j], m.restInv[j]) : W[j];
-    for (let v = 0; v < nv; v++) { const x = p.pos[v * 3], y = p.pos[v * 3 + 1], z = p.pos[v * 3 + 2], nx = p.nor[v * 3], ny = p.nor[v * 3 + 1], nz = p.nor[v * 3 + 2]; op[v * 3] = M[0] * x + M[4] * y + M[8] * z + M[12]; op[v * 3 + 1] = M[1] * x + M[5] * y + M[9] * z + M[13]; op[v * 3 + 2] = M[2] * x + M[6] * y + M[10] * z + M[14]; on[v * 3] = M[0] * nx + M[4] * ny + M[8] * nz; on[v * 3 + 1] = M[1] * nx + M[5] * ny + M[9] * nz; on[v * 3 + 2] = M[2] * nx + M[6] * ny + M[10] * nz; } }
+    for (let v = 0; v < nv; v++) { const x = src[v * 3], y = src[v * 3 + 1], z = src[v * 3 + 2], nx = p.nor[v * 3], ny = p.nor[v * 3 + 1], nz = p.nor[v * 3 + 2]; op[v * 3] = M[0] * x + M[4] * y + M[8] * z + M[12]; op[v * 3 + 1] = M[1] * x + M[5] * y + M[9] * z + M[13]; op[v * 3 + 2] = M[2] * x + M[6] * y + M[10] * z + M[14]; on[v * 3] = M[0] * nx + M[4] * ny + M[8] * nz; on[v * 3 + 1] = M[1] * nx + M[5] * ny + M[9] * nz; on[v * 3 + 2] = M[2] * nx + M[6] * ny + M[10] * nz; } }
 }
 
+// ---------- face expressions, clothing parts, outfits from another model ----------
+const groupOf = p => p.group || (p.mat && p.mat.name) || ('part ' + p.node);
+function applyExpr(m, ex) { // blend the weighted morph targets into each piece before it is skinned
+  for (const p of m.prims) { if (!p.morph) continue; let w = null;
+    if (ex && m.exprs) for (const k of Object.keys(ex)) { const v = +ex[k]; if (!v || !m.exprs[k]) continue; for (const b of m.exprs[k]) { const t = b.mesh === p.meshIdx && p.morph[b.index]; if (t && t.pos) (w || (w = [])).push([t.pos, v * b.weight]); } }
+    if (!w) { p.mpos = null; continue; } if (!p.mpos) p.mpos = new Float32Array(p.pos.length); p.mpos.set(p.pos); for (const [d, k] of w) for (let i = 0; i < d.length; i++) p.mpos[i] += d[i] * k; }
+}
+const CLEAN = n => String(n).replace(/^N\d+_\d+_\d+_/, '').replace(/^N\d+_\d+_/, '').replace(/_(SKIN|CLOTH|HAIR|FACE|EYE)(?=_|$)/gi, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+const kindOfName = raw => /accessor|ear|tail|glasses|ribbon/i.test(raw) ? 'accessory' : ((/_(SKIN|CLOTH|HAIR|FACE|EYE)(?=_|$)/i.exec(raw) || [])[1] || 'other').toLowerCase();
+function parts(m) { // the pieces you can show or hide: one per material (skin, tops, shoes, hair, cat ears ...)
+  const map = new Map(); for (const p of m.prims) { const k = groupOf(p), raw = (p.mat && p.mat.name) || k; if (!map.has(k)) map.set(k, { key: k, label: (p.mat && p.mat.label) || CLEAN(k) || k, kind: (p.mat && p.mat.kind) || kindOfName(raw), n: 0, added: !!p.added }); map.get(k).n++; }
+  return [...map.values()];
+}
+function addOutfit(m, donor, keys, tag) { // copy pieces (by part key) of another VRM onto this skeleton, matching bones by humanoid role and then by name
+  prepare(m); prepare(donor); const byName = new Map(); m.nodes.forEach((n, i) => byName.set(n.name, i));
+  const tgtBone = {}; for (const [b, i] of Object.entries(m.human)) tgtBone[b] = i;
+  const mapNode = i => { for (let k = 0; i >= 0 && k < 60; k++, i = donor.nodes[i].parent) { const b = donor.boneOf[i]; if (b && tgtBone[b] !== undefined) return tgtBone[b]; if (byName.has(donor.nodes[i].name)) return byName.get(donor.nodes[i].name); } return m.human.hips; };
+  const want = new Set(keys), skinMap = new Map(), texOff = m.textures.length, matMap = new Map(); donor.textures.forEach(t => m.textures.push(t)); let added = 0;
+  for (const p of donor.prims) { if (!want.has(groupOf(p))) continue;
+    let skin = -1; if (p.skin >= 0 && p.joints) { if (!skinMap.has(p.skin)) { const sk = donor.skins[p.skin]; m.skins.push({ joints: sk.joints.map(mapNode), ibm: sk.ibm }); skinMap.set(p.skin, m.skins.length - 1); } skin = skinMap.get(p.skin); }
+    if (!matMap.has(p.mat)) matMap.set(p.mat, Object.assign({}, p.mat, { tex: p.mat.tex >= 0 ? p.mat.tex + texOff : -1, name: (p.mat.name || 'Outfit') + (tag ? ' · ' + tag : ''), kind: kindOfName(p.mat.name || ''), label: (CLEAN(p.mat.name || 'Outfit') || 'Outfit') + (tag ? ' (from ' + tag + ')' : '') }));
+    m.prims.push({ pos: p.pos, nor: p.nor, uv: p.uv, idx: p.idx, col: p.col, joints: p.joints, weights: p.weights, mat: matMap.get(p.mat), node: skin >= 0 ? m.human.hips : mapNode(p.node), skin, added: true }); added++; }
+  disposeModel(m); return added;
+}
+function project(m, st, W, H) { // where each body part is on the picture (pixels), for clickable joint dots
+  prepare(m); const Wd = poseWorld(m, st.pose), b = m.bounds, ht = b.h, fov = Math.max(5, Math.min(70, st.fov || 25)) * D2R, zoom = Math.max(0.2, st.zoom || 1);
+  const target = [b.c[0] + (st.ox || 0) * ht, b.c[1] + (st.oy || 0) * ht, b.c[2]], dist = (ht * 0.56) / Math.tan(fov / 2) / zoom, yaw = (st.yaw || 0) * D2R, pitch = (st.pitch || 0) * D2R, f = m.facing, fa = Math.atan2(f[0], f[2]);
+  const dir = [Math.sin(fa + yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(fa + yaw) * Math.cos(pitch)], eye = [target[0] + dir[0] * dist, target[1] + dir[1] * dist, target[2] + dir[2] * dist];
+  const VP = mmul(perspective(fov, W / H, dist * 0.05, dist * 4), lookAt(eye, target, [0, 1, 0])), out = {};
+  for (const [bn, i] of Object.entries(m.human)) { const x = Wd[i][12], y = Wd[i][13], z = Wd[i][14], cx = VP[0] * x + VP[4] * y + VP[8] * z + VP[12], cy = VP[1] * x + VP[5] * y + VP[9] * z + VP[13], cw = VP[3] * x + VP[7] * y + VP[11] * z + VP[15]; if (cw > 0) out[bn] = [(cx / cw * 0.5 + 0.5) * W, (1 - (cy / cw * 0.5 + 0.5)) * H]; }
+  return out;
+}
 // ---------- drawing with WebGL ----------
 const VS = `attribute vec3 aPos;attribute vec3 aNor;attribute vec2 aUv;attribute vec3 aCol;uniform mat4 uVP;uniform mat3 uV3;uniform float uOut;varying vec3 vN;varying vec2 vUv;varying vec3 vCol;
 void main(){vec3 n=normalize(aNor);vec3 p=aPos+n*uOut;gl_Position=uVP*vec4(p,1.0);vN=uV3*n;vUv=aUv;vCol=aCol;}`;
@@ -153,8 +193,9 @@ function render(m, st, W, H) {
   const dir = [Math.sin(fa + yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(fa + yaw) * Math.cos(pitch)], eye = [target[0] + dir[0] * dist, target[1] + dir[1] * dist, target[2] + dir[2] * dist];
   const V = lookAt(eye, target, [0, 1, 0]), P = perspective(fov, w / h, dist * 0.05, dist * 4), VP = mmul(P, V); gl.uniformMatrix4fv(U.uVP, false, VP); gl.uniformMatrix3fv(U.uV3, false, new Float32Array([V[0], V[1], V[2], V[4], V[5], V[6], V[8], V[9], V[10]]));
   gl.uniform3f(U.uLight, -0.45, 0.65, 0.75); gl.uniform1i(U.uStyle, STYLES[st.style] || 0); gl.uniform1i(U.uTex, 0);
+  applyExpr(m, st.expr);
   for (const p of m.prims) skinPrim(m, p, Wd);
-  const order = m.prims.map((p, i) => i).sort((a, b2) => (m.prims[a].mat.queue - m.prims[b2].mat.queue) || (a - b2));
+  const hide = new Set(st.hide || []), order = m.prims.map((p, i) => i).filter(i => !hide.has(groupOf(m.prims[i]))).sort((a, b2) => (m.prims[a].mat.queue - m.prims[b2].mat.queue) || (a - b2));
   const bind = (i) => { const p = m.prims[i], g = gpu.prims[i]; gl.bindBuffer(gl.ARRAY_BUFFER, g.pos); gl.bufferData(gl.ARRAY_BUFFER, p.outPos, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(A.aPos); gl.vertexAttribPointer(A.aPos, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, g.nor); gl.bufferData(gl.ARRAY_BUFFER, p.outNor, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(A.aNor); gl.vertexAttribPointer(A.aNor, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, g.uv); gl.enableVertexAttribArray(A.aUv); gl.vertexAttribPointer(A.aUv, 2, gl.FLOAT, false, 0, 0);
@@ -170,6 +211,6 @@ function render(m, st, W, H) {
 }
 function disposeModel(m) { if (!m._gpu || !GL) return; const { gl } = GL; for (const g of m._gpu.prims) [g.pos, g.nor, g.uv, g.col, g.idx].forEach(b => b && gl.deleteBuffer(b)); m._gpu.tex.forEach(t => t && gl.deleteTexture(t)); m._gpu = null; }
 
-const api = { loadVRM, parseGLB, render, prepare, poseWorld, disposeModel, HUMAN_BONES, qmul, qconj, qeuler, qaxis, qfromBasis, mcompose, mmul, minvRigid, D2R };
+const api = { parts, addOutfit, project, groupOf, loadVRM, parseGLB, render, prepare, poseWorld, disposeModel, HUMAN_BONES, qmul, qconj, qeuler, qaxis, qfromBasis, mcompose, mmul, minvRigid, D2R };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.SMA3D = api;
 })();

@@ -16,6 +16,17 @@ npm run dist:win     # Windows installer + portable exe (build on Windows; CI do
 Downloads (AppImage, Windows installer and portable exe, Android APK) are on the [Releases page](https://github.com/theStyleWithin/sudo-make-art/releases). To publish a new one: GitHub → Actions → build → Run workflow, tick *publish* (bump `version` in `package.json` first).
 Flathub/AUR drafts for other people to submit are in `packaging/`.
 
+## Sudo Make Avatar Pose (beta)
+Pick **Sudo Make Avatar Pose** from the logo menu to pose VRM characters (from VRoid Studio and others). Open a `.vrm` or drop one on the window, then:
+- **Turn the camera**: drag to orbit, scroll to zoom, Shift-drag to move, or pick an angle (front, three-quarter, side, back, above, below, waist up, bust, face).
+- **Pose**: ready-made poses (walking, running, punch, kick, jump, salute, sitting and more) or bend any part yourself. Click a dot on a joint, then use the sliders for arms, legs, spine and head. There are copy-to-other-side and swap-left-and-right buttons.
+- **Face**: the model's own expressions (happy, sad, angry, relaxed, surprised, blink, wink, mouth shapes and any custom ones it has), as moods or sliders.
+- **Outfit**: show or hide each piece (tops, bottoms, shoes, hair, accessories). **Add pieces from a VRM** puts clothes or accessories from another model on this one. It works best between models that share VRoid's skeleton, and results can need fixing when body shapes differ.
+- **Saved poses**: save the pose under a name, export or import pose files (`.smapose.json`) and share them. Saved poses also appear in **Sudo Make Manga**: open a character, go to its Pose tab, and pick one under **My saved poses**.
+- **Save picture** gives a PNG with a see-through background; **Copy picture** puts it on the clipboard. Projects are saved automatically and show on the home screen.
+
+Models stay on your computer and carry their own licence: check it before publishing pictures.
+
 ## What works now
 - **Home screen** with search and Recents (thumbnails). Projects autosave as plain files in `~/sudo-make-art/projects` on desktop
 - **Convert** (desktop app): batch-convert images between **JPEG XL, AVIF, WebP, JPEG and PNG**. Add files or whole folders (drag and drop works), pick quality and effort, lossless, **lossless JPEG transcoding** (JPEG → JPEG XL, fully reversible), **downscale** by percent, fit-inside size, shortest side, longest side or megapixels (never enlarges), choose where the files go (folder structure is kept), what to do if a file exists, keep the original date, and optionally move originals to the trash. Several files convert at once, with progress and time left. Metadata is not copied

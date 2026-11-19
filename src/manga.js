@@ -356,9 +356,24 @@ function studioFace(b) {
   tiles(b, 'Expression', CH.EXPR.map(x => [x, EXPR_NAMES[x], 'x|' + x + '|' + JSON.stringify([P.gender, P.hair, P.hairStyle, P.skin, P.eyes, P.eyeStyle])]), () => st.expr, v => { st.expr = v; }, v => headThumb({ expr: v }));
 }
 const POSE_NAMES = Object.keys(CH.PRESETS);
+// Poses saved in Sudo Make Avatar Pose (a shared list in local storage) or imported from .smapose.json files
+function savedPoses(b, human, st) {
+  let L = []; try { L = JSON.parse(localStorage.getItem('sma-poses') || '[]'); if (!Array.isArray(L)) L = []; } catch (e) {}
+  b.append(el('h5', {}, L.length ? `My saved poses (${L.length})` : 'My saved poses'));
+  if (!L.length) b.append(el('div', { className: 'hint' }, 'Make poses in Sudo Make Avatar Pose and save them: they show up here. You can also import pose files.'));
+  const g = el('div', { className: 'mg-saved' });
+  for (const p of L.slice(0, 80)) { const t = el('button', { type: 'button', className: 'mg-sp', title: p.name }); if (p.thumb) t.append(Object.assign(el('img'), { src: p.thumb, alt: '' })); t.append(el('small', {}, p.name));
+    t.onclick = () => { st.pose = {}; for (const [k, v] of Object.entries(p.pose || {})) if (human[k] !== undefined && Array.isArray(v) && v.length === 3 && v.every(Number.isFinite)) st.pose[k] = v.slice(); setTimeout(() => studioTab('pose'), 0); }; g.append(t); }
+  b.append(g);
+  const inp = el('input', { type: 'file', accept: '.json,.smapose', multiple: true, hidden: true }), imp = el('button', { type: 'button' }, 'Import pose files…'); imp.onclick = () => inp.click();
+  inp.onchange = async () => { let n = 0; const A = L.slice(); for (const f of [...inp.files]) { try { if (f.size > 5e6) continue; const o = JSON.parse(await f.text()); for (const p of (o && o.app === 'sudo-make-pose' ? (Array.isArray(o.poses) ? o.poses : [o]) : [])) { const ps = {}; for (const [k, v] of Object.entries(p.pose || {})) if (/^[a-zA-Z]{3,24}$/.test(k) && Array.isArray(v) && v.length === 3 && v.every(Number.isFinite)) ps[k] = v.map(x => Math.max(-360, Math.min(360, x))); if (Object.keys(ps).length) { A.unshift({ id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: String(p.name || f.name).slice(0, 60), pose: ps, expr: {}, thumb: null, created: Date.now() }); n++; } } } catch (e) {} }
+    if (n) { try { localStorage.setItem('sma-poses', JSON.stringify(A)); } catch (e) {} } studioTab('pose'); };
+  b.append(imp, inp);
+}
 function studioPose(b) {
   const m = studioModel() || {}, human = m.human || {}, bones = S3.HUMAN_BONES.filter(x => human[x] !== undefined), st = studio.st, sig = studio.pmSig || studio.modelId;
   if (m.nodes) tiles(b, 'Ready-made poses', POSE_NAMES.map(k => [k, k, 'p|' + k + '|' + sig]), () => '', v => { const p = CH.PRESETS[v](); st.pose = {}; for (const k of Object.keys(p)) if (human[k] !== undefined) st.pose[k] = p[k]; setTimeout(() => studioTab('pose'), 0); }, v => { const p = CH.PRESETS[v](), pose = {}; for (const k of Object.keys(p)) if (human[k] !== undefined) pose[k] = p[k]; return S3.render(m, { pose, yaw: 0, pitch: 0, zoom: 1.05, fov: 22, style: 'color', outline: 1 }, 60, 96); }, [60, 96]);
+  savedPoses(b, human, st);
   b.append(el('h5', {}, 'Move one part'));
   if (!bones.includes(studio.bone)) studio.bone = bones.includes('head') ? 'head' : bones[0]; const bs = el('select'); bones.forEach(k => bs.append(el('option', { value: k }, BONE_LABEL(k)))); bs.value = studio.bone; bs.onchange = () => { studio.bone = bs.value; studioTab('pose'); }; const bl = el('label', {}, 'Body part'); bl.append(bs); b.append(bl);
   const cur = () => st.pose[studio.bone] || (st.pose[studio.bone] = [0, 0, 0]);

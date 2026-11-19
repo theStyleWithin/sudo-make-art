@@ -9,6 +9,7 @@ const APPS = [
   { id: 'live', name: 'Sudo Make Live', tag: 'Livestream and record: scenes, cameras, screen capture, many servers at once', ready: true, mode: 'live' },
   { id: 'tcg', name: 'Sudo Make TCG', tag: 'Trading cards and whole decks: frames, art, stats, print sheets', ready: true, mode: 'tcg' },
   { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages: panels, bubbles, tones', ready: true, beta: true, mode: 'manga' },
+  { id: 'avatar', name: 'Sudo Make Avatar Pose', tag: 'Pose VRM characters: angles, arms and legs, faces, clothes; save poses for Manga', ready: true, beta: true, mode: 'avatar' },
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts: write, then export as PDF, Word, LibreOffice', ready: true, mode: 'write' },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
