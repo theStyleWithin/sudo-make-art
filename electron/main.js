@@ -139,8 +139,12 @@ writepdf.register();
 fontmatch.register();
 modelhub.register();
 app.setName('Sudo Make Art');
+// One copy only. Starting the app again (from the launcher, say) brings the running copy back from the tray instead of opening a second one.
+const gotLock = !!process.env.SMA_MULTI || app.requestSingleInstanceLock();
+if (!gotLock) app.quit(); else app.on('second-instance', () => { tray.showWindow(); });
 Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
+  if (!gotLock) return;
   // The page may only ask for one thing: the list of installed fonts (for the font picker). Everything else is refused.
   // ...plus the camera and microphone, only for the app's own page, and only when a live scene asks for them.
   const own = u => typeof u === 'string' && u.startsWith('file://');
