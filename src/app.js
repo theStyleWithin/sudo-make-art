@@ -578,7 +578,7 @@ document.addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])], typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if (files.length) ingest(files, true); else if (!typing && isDesign()) pasteEl(); // Ctrl+V pastes the element you copied
 });
-const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write)-mode/.test(document.body.className);
+const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write|avatar)-mode/.test(document.body.className);
 
 // ---------- new design dialog ----------
 const dlg = $('#newdlg');
@@ -761,7 +761,7 @@ document.addEventListener('keydown', ev => {
 
 // ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write');
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write'); document.body.classList.toggle('avatar-mode', m === 'avatar');
   ['home', 'design', 'video', 'convert', 'vconvert', 'vtrim', 'live'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
   if (m !== 'video') window.SMA_video?.hide();
   if (m !== 'pixels') window.SMA_pixels?.hide(); else window.SMA_pixels?.show();
@@ -769,6 +769,7 @@ function setMode(m) {
   if (m !== 'music') window.SMA_music?.hide(); else window.SMA_music?.show();
   if (m !== 'games') window.SMA_games?.hide(); else window.SMA_games?.show();
   if (m === 'manga') window.SMA_manga?.show();
+  if (m === 'avatar') window.SMA_avatar?.show();
   if (m !== 'vn') window.SMA_vn?.hide(); else window.SMA_vn?.show();
   if (m === 'tcg') window.SMA_tcg?.show();
   if (m !== 'write') window.SMA_write?.hide(); else window.SMA_write?.show();
