@@ -91,6 +91,12 @@ In the design editor, right-click an item for Copy, Paste, Duplicate, Bring to f
 ## Shapes and fonts
 Rectangle, Ellipse and Star now live in the Shapes menu (Star of David is in the Stars group). Font files are recognised even when the system gives them no file extension or a generic file type (TrueType, OpenType, WOFF, WOFF2 and TrueType Collections), and the font picker's file chooser lists them on Android too.
 
+## Custom PC icons
+A **Custom PC icons** category in the New design window, for people who theme their desktop: folders (classic, dark, flat), CDs and DVDs (dark or silver), SD and microSD cards, rounded and round app icons, and a presentation sheet for each kind (a ready-made "my icon pack" picture), plus the usual icon sizes (1024 down to 16). Everything is made of ordinary shapes and text, so recolor it, swap the symbol or letters, resize it. Shapes can now have a two-colour gradient (straight or radial), and a page can be transparent (shown as a checkerboard). Export as PNG (keeps the see-through background), SVG, **ICO** (Windows icon, 16 to 256) or an **icon set zip** (PNG sizes 16 to 512 laid out like an icon theme, plus the SVG).
+
+## Game covers and game icons
+A **Game covers & icons** category (next to Custom PC icons) for custom artwork: boxed cover icons, round icons with a silver or colored ring, squircle icons, 2:3 covers, wide capsules, 16:9 banners, 3:1 hero banners, a transparent logo, and posters. Each has a picture frame: drop your game's art onto it and it snaps in and crops to the shape, then edit the title text. The sizes suit artwork for a Steam library entry (see Add to Steam), and the icon ones export as PNG, ICO or an icon-theme zip.
+
 ## Design editor page edges
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 
