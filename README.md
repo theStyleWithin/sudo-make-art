@@ -93,7 +93,7 @@ The list on the left starts with **Default image size**: the sizes a standard PN
 
 
 ## Channel icons and banners
-A **Channel icons & banners** section in the New design window lists icon and banner sizes for Kick, blaze.stream, Rumble and Odysee first, then Twitch, YouTube, Kamtape, Discord, X / Twitter and Facebook. Rumble's banner (3600×600) and Odysee's ratios (1:1 icon, 6.25:1 cover) come from their own help pages. Kick, blaze.stream and Kamtape do not publish exact sizes, so those entries are marked *(typical)*: they are sizes that scale down cleanly, so check the site's upload screen if it shows a different number.
+A **Channel icons & banners** section in the New design window lists icon and banner sizes for Kick, blaze.stream, Rumble, Odysee, Twitch, YouTube, Kamtape, Discord, X / Twitter and Facebook. Rumble's banner (3600×600) and Odysee's ratios (1:1 icon, 6.25:1 cover) come from their own help pages. Kick, blaze.stream and Kamtape do not publish exact sizes, so those entries are marked *(typical)*: they are sizes that scale down cleanly, so check the site's upload screen if it shows a different number.
 
 
 ## Source folders
@@ -102,10 +102,6 @@ The Sources panel (design editor) now has folders. Press **+ Folder**, name it, 
 
 ## Right-click menu, copy and paste, multi-select
 In the design editor, right-click an item for Copy, Paste, Duplicate, Bring to front, Send to back, Add text here and Delete; right-click empty canvas for Paste and Add text here. Ctrl+C / Ctrl+V copy and paste items. The video editor has right-click menus on clips (Split, Add text, Delete) and on the preview (Add text here, Delete). In Sources, Ctrl-click (Cmd-click) to select several files or folders, or Shift-click for a range, then drag any one of them: they all move into the folder together. Dropping several on the canvas places each picture. You can also hold the left button on empty space in Sources and drag a box over several items to select them (hold Ctrl or Shift to add to the selection).
-
-
-## Shapes and fonts
-Rectangle, Ellipse and Star now live in the Shapes menu (Star of David is in the Stars group). Font files are recognised even when the system gives them no file extension or a generic file type (TrueType, OpenType, WOFF, WOFF2 and TrueType Collections), and the font picker's file chooser lists them on Android too.
 
 
 ## Design editor page edges
