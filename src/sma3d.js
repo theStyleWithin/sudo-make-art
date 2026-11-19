@@ -185,7 +185,7 @@ function gpuFor(m) {
 const STYLES = { color: 0, gray: 1, ink: 2 };
 // Draws the model into a new canvas (transparent background). st: { pose, yaw, pitch, zoom, fov, ox, oy, style, outline }
 function render(m, st, W, H) {
-  prepare(m); const { c, gl, pr, U, A } = glInit(), gpu = gpuFor(m), SS = Math.min(2, 2400 / Math.max(W, H)); const w = Math.max(8, Math.round(W * SS)), h = Math.max(8, Math.round(H * SS));
+  prepare(m); const { c, gl, pr, U, A } = glInit(), gpu = gpuFor(m), SS = st.ss ? st.ss : Math.min(2, 2400 / Math.max(W, H)); const w = Math.max(8, Math.round(W * SS)), h = Math.max(8, Math.round(H * SS));
   c.width = w; c.height = h; gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(pr);
   const Wd = poseWorld(m, st.pose), b = m.bounds, ht = b.h, fov = Math.max(5, Math.min(70, st.fov || 25)) * D2R, zoom = Math.max(0.2, st.zoom || 1);
   const target = [b.c[0] + (st.ox || 0) * ht, b.c[1] + (st.oy || 0) * ht, b.c[2]], dist = (ht * 0.56) / Math.tan(fov / 2) / zoom * Math.max(1, (h / w) < 1.2 ? 1 : 1);
@@ -196,8 +196,8 @@ function render(m, st, W, H) {
   applyExpr(m, st.expr);
   for (const p of m.prims) skinPrim(m, p, Wd);
   const hide = new Set(st.hide || []), order = m.prims.map((p, i) => i).filter(i => !hide.has(groupOf(m.prims[i]))).sort((a, b2) => (m.prims[a].mat.queue - m.prims[b2].mat.queue) || (a - b2));
-  const bind = (i) => { const p = m.prims[i], g = gpu.prims[i]; gl.bindBuffer(gl.ARRAY_BUFFER, g.pos); gl.bufferData(gl.ARRAY_BUFFER, p.outPos, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(A.aPos); gl.vertexAttribPointer(A.aPos, 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, g.nor); gl.bufferData(gl.ARRAY_BUFFER, p.outNor, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(A.aNor); gl.vertexAttribPointer(A.aNor, 3, gl.FLOAT, false, 0, 0);
+  const fid = (render.frame = (render.frame || 0) + 1), bind = (i) => { const p = m.prims[i], g = gpu.prims[i], up = p._up !== fid; p._up = fid; gl.bindBuffer(gl.ARRAY_BUFFER, g.pos); if (up) gl.bufferData(gl.ARRAY_BUFFER, p.outPos, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(A.aPos); gl.vertexAttribPointer(A.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, g.nor); if (up) gl.bufferData(gl.ARRAY_BUFFER, p.outNor, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(A.aNor); gl.vertexAttribPointer(A.aNor, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, g.uv); gl.enableVertexAttribArray(A.aUv); gl.vertexAttribPointer(A.aUv, 2, gl.FLOAT, false, 0, 0);
     if (g.col) { gl.bindBuffer(gl.ARRAY_BUFFER, g.col); gl.enableVertexAttribArray(A.aCol); gl.vertexAttribPointer(A.aCol, 3, gl.FLOAT, false, 0, 0); } else { gl.disableVertexAttribArray(A.aCol); gl.vertexAttrib3f(A.aCol, 1, 1, 1); }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, g.idx); };
@@ -211,6 +211,7 @@ function render(m, st, W, H) {
 }
 function disposeModel(m) { if (!m._gpu || !GL) return; const { gl } = GL; for (const g of m._gpu.prims) [g.pos, g.nor, g.uv, g.col, g.idx].forEach(b => b && gl.deleteBuffer(b)); m._gpu.tex.forEach(t => t && gl.deleteTexture(t)); m._gpu = null; }
 
-const api = { parts, addOutfit, project, groupOf, loadVRM, parseGLB, render, prepare, poseWorld, disposeModel, HUMAN_BONES, qmul, qconj, qeuler, qaxis, qfromBasis, mcompose, mmul, minvRigid, D2R };
+function skinAll(m, pose, expr) { prepare(m); const Wd = poseWorld(m, pose); applyExpr(m, expr); for (const p of m.prims) skinPrim(m, p, Wd); }
+const api = { skinAll, parts, addOutfit, project, groupOf, loadVRM, parseGLB, render, prepare, poseWorld, disposeModel, HUMAN_BONES, qmul, qconj, qeuler, qaxis, qfromBasis, mcompose, mmul, minvRigid, D2R };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.SMA3D = api;
 })();

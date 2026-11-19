@@ -10,6 +10,7 @@ const APPS = [
   { id: 'tcg', name: 'Sudo Make TCG', tag: 'Trading cards and whole decks: frames, art, stats, print sheets', ready: true, mode: 'tcg' },
   { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages: panels, bubbles, tones', ready: true, beta: true, mode: 'manga' },
   { id: 'avatar', name: 'Sudo Make Avatar Pose', tag: 'Pose VRM characters: angles, arms and legs, faces, clothes; save poses for Manga', ready: true, beta: true, mode: 'avatar' },
+  { id: 'vtuber', name: 'Sudo Make VTuber', tag: 'Be a VTuber: camera and microphone drive a VRM avatar; use it as a source in Sudo Make Live', ready: true, beta: true, mode: 'vtuber' },
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts: write, then export as PDF, Word, LibreOffice', ready: true, mode: 'write' },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },

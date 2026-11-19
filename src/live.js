@@ -134,11 +134,17 @@ async function runtime(it) {
       const stream = await navigator.mediaDevices.getUserMedia(c), v = el('video', { srcObject: stream, muted: true, playsInline: true }); await v.play(); r.stream = stream; r.el = v;
       if (!it.w) fitItem(it, v.videoWidth, v.videoHeight);
     }
+    else if (it.kind === 'vtuber') { // a VTuber avatar: its own camera, microphone and model, drawn onto a canvas that is composited like any picture
+      const VT = window.SMA_vt; if (!VT) throw new Error('The VTuber studio is not available'); const cfg = VT.mergeCfg(it.cfg); if (!cfg.model) throw new Error('No model chosen for this VTuber');
+      const sess = new VT.Session(cfg); r.sess = sess; await sess.load(cfg.model); await sess.applyTrackers(); const D = sess.cfg.display, cvs = el('canvas', { width: D.width, height: D.height }), x = cvs.getContext('2d'); r.el = cvs;
+      const tick = () => { if (!rt.has(it.id) || rt.get(it.id) !== r) return; const d = sess.cfg.display; sess.frame(performance.now()); const c = sess.rig.render(d.width, d.height); if (cvs.width !== d.width || cvs.height !== d.height) { cvs.width = d.width; cvs.height = d.height; } x.clearRect(0, 0, cvs.width, cvs.height); if (d.bg === 'color') { x.fillStyle = d.color; x.fillRect(0, 0, cvs.width, cvs.height); } if (c) x.drawImage(c, 0, 0); r.timer = setTimeout(tick, 1000 / d.fps); }; tick();
+      r.stop = () => { clearTimeout(r.timer); sess.stop(); }; if (!it.w) fitItem(it, D.width, D.height);
+    }
   } catch (e) { r.err = clean(e); }
   list(); return r;
 }
 function fitItem(it, w, h, fill) { const k = (fill ? Math.max : Math.min)(canvas.width / w, canvas.height / h); it.w = w * k; it.h = h * k; it.x = (canvas.width - it.w) / 2; it.y = (canvas.height - it.h) / 2; save(); }
-function dropRuntime(id) { const r = rt.get(id); if (!r) return; if (r.stream) r.stream.getTracks().forEach(t => t.stop()); if (r.el && r.el.pause) r.el.pause(); if (r.gain) try { r.gain.disconnect(); } catch (e) {} rt.delete(id); }
+function dropRuntime(id) { const r = rt.get(id); if (!r) return; if (r.stop) try { r.stop(); } catch (e) {} if (r.stream) r.stream.getTracks().forEach(t => t.stop()); if (r.el && r.el.pause) r.el.pause(); if (r.gain) try { r.gain.disconnect(); } catch (e) {} rt.delete(id); }
 const fxCss = fx => (fx ? `brightness(${fx.brightness ?? 1}) contrast(${fx.contrast ?? 1}) saturate(${fx.saturate ?? 1}) blur(${fx.blur ?? 0}px) grayscale(${fx.gray ?? 0})` : 'none');
 function drawItem(c, it) {
   if (it.visible === false) return;
@@ -150,7 +156,7 @@ function drawItem(c, it) {
     lines.forEach((l, k) => { w = Math.max(w, c.measureText(l).width); if (it.stroke) { c.lineWidth = it.size / 8; c.strokeStyle = '#000'; c.lineJoin = 'round'; c.strokeText(l, it.x, it.y + k * lh); } c.fillText(l, it.x, it.y + k * lh); }); it.w = w; it.h = lines.length * lh;
   } else {
     const r = rt.get(it.id); if (!r) { runtime(it); }
-    else if (r.el && (r.el.videoWidth || r.el.naturalWidth)) { try { c.drawImage(r.el, it.x, it.y, it.w, it.h); } catch (e) {} }
+    else if (r.el && (r.el.videoWidth || r.el.naturalWidth || (r.el.tagName === 'CANVAS' && r.el.width))) { try { c.drawImage(r.el, it.x, it.y, it.w, it.h); } catch (e) {} }
     else { c.fillStyle = '#222'; c.fillRect(it.x, it.y, it.w || 320, it.h || 180); c.fillStyle = '#aaa'; c.font = '20px sans-serif'; c.textBaseline = 'middle'; c.fillText(r.err || 'Waiting for the source…', it.x + 12, it.y + (it.h || 180) / 2); }
   }
   c.restore();
@@ -267,6 +273,10 @@ function propsDialog(it) {
     if (it.kind === 'color') box.append(field('Color', colorIn('color')));
     if (it.kind === 'media') { box.append(check('Loop', it.loop, v => { it.loop = v; const r = rt.get(it.id); if (r && r.el) r.el.loop = v; save(); }), field('Volume', (() => { const c = el('input', { type: 'range', min: 0, max: 2, step: 0.01, value: it.vol ?? 1 }); c.oninput = () => { it.vol = +c.value; const r = rt.get(it.id); if (r && r.gain) r.gain.gain.value = it.vol; save(); }; return c; })())); }
     if (it.kind === 'screen') { const b = el('button', { textContent: 'Choose another screen or window…', className: 'hc-mini' }); b.onclick = () => screenPicker(s => { dropRuntime(it.id); it.sourceId = s.id; it.name = s.name.slice(0, 40); save(); list(); propsDialog(it); }); box.append(field('Capture', b)); }
+    if (it.kind === 'vtuber') { const VT = window.SMA_vt, re = () => { const r2 = rt.get(it.id); if (r2 && r2.sess) { r2.sess.rig.cfg = VT.mergeCfg(it.cfg); r2.sess.applyTrackers(); } save(); };
+      box.append(check('Camera tracking', it.cfg.tracking.on, v => { it.cfg.tracking.on = v; re(); }), check('Microphone lip sync', it.cfg.mic.on, v => { it.cfg.mic.on = v; re(); }), check('Head follows the mouse', it.cfg.mouse.on, v => { it.cfg.mouse.on = v; re(); }));
+      const rl = el('button', { textContent: 'Use the current Sudo Make VTuber settings', className: 'hc-mini' }); rl.onclick = () => { const keep = it.cfg.model, c = VT.loadCfg(); c.model = c.model || keep; it.cfg = c; dropRuntime(it.id); save(); list(); propsDialog(it); }; box.append(field('Settings', rl));
+      const op = el('button', { textContent: 'Open Sudo Make VTuber', className: 'hc-mini' }); op.onclick = () => window.SMA_apps.choose('vtuber'); box.append(field('Studio', op)); }
     const r = rt.get(it.id); if (r && r.err) box.append(el('p', { className: 'hc-bad', textContent: r.err }));
   } });
 }
@@ -289,6 +299,7 @@ const SRC_TYPES = [
   { cat: 'Audio · Music', id: 'sys', name: 'Desktop Audio', sub: 'System Sound', icon: 'speaker', blurb: 'What the computer is playing: games, music, a browser. It is added to the Audio Mixer. On Linux this needs parec (pulseaudio-utils) or pw-record (pipewire).' },
   { cat: 'Image · Video Playback', id: 'image', name: 'Image', sub: 'Picture', icon: 'img', blurb: 'A picture from your Sources library.' },
   { cat: 'Image · Video Playback', id: 'media', name: 'Media Source', sub: 'Video, sound', icon: 'media', blurb: 'A video or sound file from your Sources library. Its sound goes to the mix.' },
+  { cat: 'VTuber', id: 'vtuber', name: 'VTuber', sub: 'Avatar', icon: 'cam', blurb: 'Your VTuber avatar from Sudo Make VTuber: it follows your camera and microphone, with a see-through background, so it can sit over a game or your screen.' },
   { cat: 'Text · Color', id: 'text', name: 'Text', sub: 'Words', icon: 'text', blurb: 'Words on the picture.' },
   { cat: 'Text · Color', id: 'color', name: 'Color Source', sub: 'Solid color', icon: 'color', blurb: 'A flat color, handy as a background.' },
 ];
@@ -307,7 +318,11 @@ function addDialog() {
       if (pick.id === 'image' || pick.id === 'media') { const bt = el('button', { textContent: 'Choose from Sources…', className: 'hc-mini' }); bt.onclick = () => libraryPicker(pick.id, s => { extra.src = s; bt.textContent = s.name; d.buttons.OK.disabled = false; }); right.append(field('File', bt)); d.buttons.OK.disabled = true; }
       if (pick.id === 'text') { const t = el('textarea', { value: 'Your text' }); extra.text = () => t.value; right.append(field('Text', t)); }
       if (pick.id === 'color') { const c = el('input', { type: 'color', value: '#1b1b2f' }); extra.color = () => c.value; right.append(field('Color', c)); }
-      if (!['screen', 'image', 'media', 'sys'].includes(pick.id)) d.buttons.OK.disabled = false; };
+      if (pick.id === 'vtuber') { const VT = window.SMA_vt, cur = VT ? VT.loadCfg() : null; const sel = el('select'); sel.add(new Option('Loading models…', '')); right.append(field('Model', sel));
+        right.append(el('p', { className: 'hc-hint', textContent: 'Uses the camera, microphone, size and look you set up in Sudo Make VTuber. You can change them later from this source\'s Properties.' }));
+        if (VT) VT.models.list().then(ms => { sel.textContent = ''; if (!ms.length) { sel.add(new Option('No models yet. Add one in Sudo Make VTuber.', '')); return; } ms.forEach(m => sel.add(new Option(m.name, m.id))); sel.value = ms.some(m => m.id === cur.model) ? cur.model : ms[0].id; d.buttons.OK.disabled = false; extra.model = () => sel.value; nm.value = 'VTuber'; });
+        extra.cfg = () => Object.assign(VT.mergeCfg(cur), { model: extra.model ? extra.model() : null }); }
+      if (!['screen', 'image', 'media', 'vtuber', 'sys'].includes(pick.id)) d.buttons.OK.disabled = false; };
     const paintList = () => { lst.textContent = ''; const term = q.value.trim().toLowerCase(); let cat = ''; SRC_TYPES.filter(t => !term || (t.name + t.sub + t.cat).toLowerCase().includes(term)).forEach(t => { if (t.cat !== cat) { cat = t.cat; lst.append(el('div', { className: 'hc-cat', textContent: cat })); }
       const b = el('button', { className: 'hc-src' + (pick === t ? ' on' : '') }); b.innerHTML = `<span class="hc-sic">${ICON[t.icon]}</span>`; const tx = el('span'); tx.append(el('b', { textContent: t.name }), el('small', { textContent: t.sub })); b.append(tx); b.onclick = () => { pick = t; paintList(); showRight(); }; lst.append(b); }); };
     q.oninput = paintList; paintList(); showRight();
@@ -324,6 +339,7 @@ function commitAdd(t, x) {
   const name = x.name();
   if (t.id === 'camera') addItem({ kind: 'camera', name, device: x.device() });
   else if (t.id === 'screen') addItem({ kind: 'screen', name, sourceId: x.src.id });
+  else if (t.id === 'vtuber') addItem({ kind: 'vtuber', name, cfg: x.cfg() });
   else if (t.id === 'mic' || t.id === 'sys') { const a = t.id === 'sys' ? { id: uid(), name, kind: 'desk', source: x.device(), vol: 1, mute: false } : { id: uid(), name, device: x.device(), vol: 1, mute: false }; st.audio.push(a); save(); mixer(); if (status.live) openInput(a); }
   else if (t.id === 'image') { const s = x.src, u = URL.createObjectURL(s.blob), im = new Image(); im.onload = () => { const it = addItem({ kind: 'image', name, src: s.id }); fitItem(it, im.naturalWidth, im.naturalHeight); URL.revokeObjectURL(u); }; im.src = u; }
   else if (t.id === 'media') { const it = addItem({ kind: 'media', name, src: x.src.id, loop: true, vol: 1 }); const tm = setInterval(() => { const r = rt.get(it.id); if (r && r.el && r.el.videoWidth) { fitItem(it, r.el.videoWidth, r.el.videoHeight); clearInterval(tm); } else if (r && r.err) clearInterval(tm); }, 200); }
@@ -565,6 +581,6 @@ async function importHopcast(sel) { // sel: { profile, collections: [...], chann
   save(); render(); chbar(); return { done, skipped };
 }
 function liveReloadFromStorage() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j) { Object.keys(st).forEach(k => delete st[k]); Object.assign(st, j); } } catch (e) {} }
-window.SMA_live = { audio: { open: a => openInput(a), levels: () => st.audio.map(a => { const i = inputs.get(a.id); return { name: a.name, err: a.err || '', level: i ? levelOf(i.an) : -1 }; }), add: a => { st.audio.push(a); save(); mixer(); return a; } }, ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
+window.SMA_live = { addVTuber: cfg => { const it = addItem({ kind: 'vtuber', name: 'VTuber', cfg }); notify('Added your VTuber to the scene.'); return it; }, audio: { open: a => openInput(a), levels: () => st.audio.map(a => { const i = inputs.get(a.id); return { name: a.name, err: a.err || '', level: i ? levelOf(i.an) : -1 }; }), add: a => { st.audio.push(a); save(); mixer(); return a; } }, ui: { dlg, field, check, para, el }, importHopcast, setChannels: c => { channels = c; chbar(); }, getChannels: () => channels, persistChannels, notify, goLive: () => goLive(), record: () => recToggle(), state: () => st, status: () => status, channels: () => channels, addItem, runtime: () => rt };
 icons(); menubar(); bottom(); render();
 })();

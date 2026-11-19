@@ -71,7 +71,7 @@ body.pixels-mode #pixview{display:flex}
 body.tiles-mode #tilesview{display:flex}
 body.music-mode #musicview{display:flex}
 body.games-mode #gamesview{display:flex}
-body.manga-mode #mangaview{display:flex}body.avatar-mode #avatarview{display:flex}
+body.manga-mode #mangaview{display:flex}body.avatar-mode #avatarview{display:flex}body.vtuber-mode #vtview{display:grid}
 body.vn-mode #vnview{display:flex}
 body.tcg-mode #tcgview{display:flex}
 body.write-mode #writeview{display:flex}
@@ -271,7 +271,7 @@ body.home-mode #home{display:flex}
 #soonview{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
 #soonview h1{margin:0;color:var(--acc)}#soonview p{margin:0;opacity:.75}#soonview ul{margin:8px 0;padding:0;list-style:none;opacity:.85;line-height:1.8}#soonview .hint{font-size:12px;opacity:.55}
 body.app-soon #soonview{display:flex}
-body.app-soon main,body.app-soon footer,body.app-soon #pages,body.app-soon #videoview,body.app-soon #pixview,body.app-soon #tilesview,body.app-soon #musicview,body.app-soon #gamesview,body.app-soon #mangaview,body.app-soon #avatarview,body.app-soon #vnview,body.app-soon #vtrimview,body.app-soon #tcgview,body.app-soon #writeview,body.app-soon #convertview,body.app-soon #vconvertview,body.app-soon #home,body.app-soon .modes,body.app-soon .dz,body.app-soon .nm{display:none!important}
+body.app-soon main,body.app-soon footer,body.app-soon #pages,body.app-soon #videoview,body.app-soon #pixview,body.app-soon #tilesview,body.app-soon #musicview,body.app-soon #gamesview,body.app-soon #mangaview,body.app-soon #avatarview,body.app-soon #vtview,body.app-soon #vnview,body.app-soon #vtrimview,body.app-soon #tcgview,body.app-soon #writeview,body.app-soon #convertview,body.app-soon #vconvertview,body.app-soon #home,body.app-soon .modes,body.app-soon .dz,body.app-soon .nm{display:none!important}
 
 #pixview{display:none;flex:1;flex-direction:column;min-height:0}
 body.pixels-mode main,body.pixels-mode footer,body.pixels-mode #pages,body.pixels-mode #videoview,body.pixels-mode .modes,body.pixels-mode .dz,body.pixels-mode .nm{display:none}
@@ -659,3 +659,25 @@ body.avatar-mode main,body.avatar-mode footer,body.avatar-mode #pages,body.avata
 #newgrid .tgroup{grid-column:1/-1;margin:10px 0 0;font-size:13px;opacity:.8}
 #newgrid .card.tpl{display:flex;flex-direction:column;gap:4px;align-items:stretch}
 #newgrid .tplprev{width:100%;height:110px;background:repeating-conic-gradient(#2a2a30 0% 25%, #34343c 0% 50%) 0 0 / 16px 16px;border-radius:6px;margin-bottom:4px}
+
+/* Sudo Make VTuber */
+#vtview{display:none;flex:1;min-height:0;grid-template-columns:76px 360px 1fr;grid-template-rows:1fr auto}
+body.vtuber-mode main,body.vtuber-mode footer,body.vtuber-mode #pages,body.vtuber-mode #videoview,body.vtuber-mode .modes,body.vtuber-mode .dz,body.vtuber-mode .nm{display:none}
+#vt-rail{display:flex;flex-direction:column;gap:4px;padding:8px 6px;background:var(--panel);border-right:1px solid var(--line);overflow:auto}
+#vt-rail button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:10px}#vt-rail button .ic{font-size:20px}#vt-rail button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#vt-panel{background:var(--panel);border-right:1px solid var(--line);overflow:auto;min-height:0}.vt-body{padding:12px;display:flex;flex-direction:column;gap:9px}.vt-body h5{margin:8px 0 0;font-size:11px;text-transform:uppercase;opacity:.6}
+#vt-stage{position:relative;min-width:0;min-height:0;display:grid;place-items:center;background:#15161c;overflow:hidden}
+#vt-cv{max-width:100%;max-height:100%}#vt-cv.chk{background:repeating-conic-gradient(#2a2c36 0 25%,#20222b 0 50%) 0 0/24px 24px}
+#vt-empty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:30px;pointer-events:none}#vt-empty[hidden]{display:none}#vt-empty p{max-width:420px;margin:6px auto;opacity:.8}
+#vt-stat{position:absolute;left:10px;bottom:8px;font-size:12px;opacity:.6;pointer-events:none}
+#vt-msg{grid-column:1/-1;padding:4px 10px;background:var(--panel);border-top:1px solid var(--line);font-size:12px;min-height:18px}#vt-foot{display:none}
+.vt-row{display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center;font-size:13px}.vt-row select,.vt-row input{width:100%}
+.vt-sl{display:grid;grid-template-columns:120px 1fr 46px 22px;gap:6px;align-items:center;font-size:12px}.vt-sl .v{text-align:right;opacity:.7;font-variant-numeric:tabular-nums}.vt-sl input{width:100%}.vt-sl .rs{padding:0 4px}
+.vt-bar{display:flex;gap:6px;flex-wrap:wrap}.vt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.vt-tile{position:relative;border:1px solid var(--line);border-radius:10px;background:#1f2029}.vt-tile.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}.vt-tile.busy{opacity:.6}
+.vt-tile>button:first-child{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:6px;border:0;background:none;font-size:11px;color:inherit}.vt-tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px}
+.vt-tile .x{position:absolute;top:3px;right:3px;display:none;padding:0 6px}.vt-tile:hover .x{display:block}
+.vt-status{font-size:12px;padding:6px 8px;border-radius:6px;background:#1f2029}.vt-status.ok{color:#8fe39b}.vt-status.bad{color:#ff9d9d}
+.vt-warn{font-size:12px;line-height:1.45;padding:10px;border:1px solid #6b5a1e;background:#2a2512;border-radius:8px}.vt-warn progress{width:100%;margin-top:6px}.link{background:none;border:0;color:var(--acc);text-decoration:underline;cursor:pointer;padding:0}
+.vt-meter{height:10px;background:#1f2029;border-radius:5px;overflow:hidden}.vt-meter i{display:block;height:100%;width:0;background:#4b6cff}.vt-meter.over i{background:#46c46b}
+.vt-vow{display:flex;gap:6px}.vt-vow button.on{background:#2b5a35;border-color:#46c46b}

@@ -32,7 +32,11 @@
       "data/**",
       "!node_modules/tesseract.js-core/tesseract-core.*",
       "!node_modules/tesseract.js-core/tesseract-core-simd.*",
-      "!node_modules/@tesseract.js-data/eng/4.0.0/**"
+      "!node_modules/@tesseract.js-data/eng/4.0.0/**",
+      "!node_modules/@mediapipe/tasks-vision/**/*.map",
+      "!node_modules/@mediapipe/tasks-vision/**/*nosimd*",
+      "!node_modules/@mediapipe/tasks-vision/vision_bundle.cjs",
+      "!node_modules/@mediapipe/tasks-vision/vision.d.ts"
     ],
     "directories": {
       "buildResources": "build",
@@ -85,6 +89,7 @@
     "@capacitor/core": "^6.2.2",
     "@capacitor/filesystem": "^6.0.4",
     "@capacitor/share": "^6.0.4",
+    "@mediapipe/tasks-vision": "^0.10.14",
     "@tesseract.js-data/eng": "^1.0.0",
     "ffmpeg-static": "^5.3.0",
     "tesseract.js": "^5.1.1"
