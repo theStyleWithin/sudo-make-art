@@ -187,6 +187,7 @@ function register() {
   });
   ipcMain.handle('live:channels', () => loadChannels());
   ipcMain.handle('live:channels:save', (e, list) => saveChannels(list));
+  ipcMain.handle('live:set-dir', (e, d) => { d = String(d || ''); if (!d || !path.isAbsolute(d) || !fs.existsSync(d) || !fs.statSync(d).isDirectory()) throw new Error('That folder does not exist here'); fs.writeFileSync(prefFile(), JSON.stringify({ ...readPrefs(), recordDir: d }), { mode: 0o600 }); return d; }); // used when importing a profile
   ipcMain.handle('live:pick-dir', async e => { const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), { title: 'Where should recordings go?', properties: ['openDirectory', 'createDirectory'], defaultPath: recDir() });
     if (r.canceled || !r.filePaths[0]) return null; fs.writeFileSync(prefFile(), JSON.stringify({ ...readPrefs(), recordDir: r.filePaths[0] }), { mode: 0o600 }); return r.filePaths[0]; });
   ipcMain.handle('live:start', (e, settings) => { startSession(settings || {}); push(true); return true; });
