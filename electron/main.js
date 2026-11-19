@@ -117,7 +117,7 @@ vtrim.register();
 live.register();
 steam.register();
 pinpoint.register();
-ocr.register();
+ocr.register(); app.on('will-quit', () => ocr.stop());
 gamepack.register();
 vnpack.register();
 savefiles.register();

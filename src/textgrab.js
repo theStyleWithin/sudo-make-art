@@ -20,19 +20,21 @@ async function sendToWrite(text, id) { // id null = new document
 }
 
 let dlg = null;
-function showResult(res) {
+function showResult(res, opts = {}) {
   if (dlg) dlg.remove();
   dlg = el('dialog', { id: 'tg-dlg' });
   const ta = el('textarea', { id: 'tg-text', spellcheck: false, rows: 10, value: res.text, placeholder: 'No text was found in that area. Try again with a tighter box around the text.' });
-  const info = el('p', { className: 'hint', id: 'tg-info' }, res.text ? `Read with ${res.confidence}% confidence. Fix anything wrong before you use it.` : 'No text found.');
-  const copy = el('button', { type: 'button' }, 'Copy'), again = el('button', { type: 'button' }, 'Grab again'), close = el('button', { type: 'button' }, 'Close');
+  const info = el('p', { className: 'hint', id: 'tg-info' }, res.text ? (res.confidence == null ? 'Edit, copy or send it.' : `Read with ${res.confidence}% confidence. Fix anything wrong before you use it.`) : 'No text found.');
+  const copy = el('button', { type: 'button' }, 'Copy'), keep = el('button', { type: 'button', title: 'Keep this text in Assets on the home screen for later' }, opts.saved ? 'Update asset' : 'Save to Assets'), again = el('button', { type: 'button' }, 'Grab again'), close = el('button', { type: 'button' }, 'Close');
   const send = el('button', { type: 'button', id: 'tg-send', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, 'Send to Write Stuff ▾'), menu = el('div', { id: 'tg-menu', role: 'menu', hidden: true });
   const wrap = el('span', { className: 'tg-wrap' }, ''); wrap.append(send, menu);
-  const row = el('div', { className: 'tg-row' }); row.append(copy, wrap, el('span', { className: 'sp' }), again, close);
+  const row = el('div', { className: 'tg-row' }); row.append(copy, keep, wrap, el('span', { className: 'sp' }), again, close);
   dlg.append(el('h3', {}, 'Text Grab'), ta, info, row); document.body.append(dlg); dlg.showModal(); ta.focus(); ta.select();
   const text = () => ta.value.trim();
   const done = m => { info.textContent = m; info.className = 'hint'; };
   copy.onclick = async () => { if (!text()) return; await ocr.copy(ta.value); done('Copied to the clipboard.'); };
+  keep.onclick = async () => { if (!text()) return; const base = opts.saved ? opts.saved.name : 'Text grab ' + stamp().replace(':', '.') + '.txt';
+    try { if (opts.saved) await window.SMA.delSource(opts.saved.id); const f = new File([ta.value], base, { type: 'text/plain' }); const rec = await window.SMA.addFiles([f]); opts.saved = (window.SMA.getSources().find(x => x.name === base && x.kind === 'text')) || opts.saved; keep.textContent = 'Update asset'; done('Saved to Assets as "' + base + '". Find it on the home screen under Assets.'); } catch (e) { info.textContent = clean(e); info.className = 'mh-bad'; } };
   close.onclick = () => dlg.close();
   again.onclick = () => { dlg.close(); grab(); };
   const hide = () => { menu.hidden = true; send.setAttribute('aria-expanded', 'false'); };
@@ -71,5 +73,6 @@ async function grab(opts) {
 }
 const home = el('button', { id: 'h-textgrab', title: 'Freeze the screen, drag over some text, and copy it or send it to Sudo Write Stuff' }, 'Text Grab'); $('#h-shot').after(home); home.onclick = () => grab();
 const src = el('button', { id: 'srctext', title: 'Text Grab: read text from anywhere on your screen' }, '🔤 Grab text'); $('#srcshot').after(src); src.onclick = () => grab();
-window.SMA_textgrab = { grab, showResult, sendToWrite };
+async function viewText(sr) { showResult({ text: await sr.blob.text(), confidence: null }, { saved: sr }); $('#tg-info').textContent = 'Saved asset "' + sr.name + '". Edit it, copy it or send it to Write Stuff.'; }
+window.SMA_textgrab = { grab, showResult, sendToWrite, viewText };
 })();

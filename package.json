@@ -62,7 +62,8 @@
       "node_modules/tesseract.js/**",
       "node_modules/tesseract.js-core/**",
       "node_modules/@tesseract.js-data/eng/**",
-      "node_modules/wasm-feature-detect/**"
+      "node_modules/wasm-feature-detect/**",
+      "electron/ocr-*.js"
     ],
     "extraResources": [
       {
