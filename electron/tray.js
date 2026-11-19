@@ -13,6 +13,8 @@ const DEFAULTS = { enabled: true, minToTray: false, startInTray: false, keepRunn
 // Linux: a tray icon only shows if the desktop runs a tray host (KDE and most do; GNOME needs the AppIndicator extension).
 // If none is running, hiding the window would leave nobody able to bring it back, so the window is never hidden in that case.
 let hostOk = true;
+// Wayland (KDE Plasma, GNOME): a hidden window cannot reliably be mapped again by the app, but a minimized one can always be restored, so there "hiding to the tray" means minimizing it without a task bar entry.
+const wayland = process.platform === 'linux' && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
 const checkHost = () => new Promise(res => { if (process.platform !== 'linux') return res(true); execFile('dbus-send', ['--session', '--print-reply', '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus.NameHasOwner', 'string:org.kde.StatusNotifierWatcher'], { timeout: 2000 }, (e, out) => res(e ? true : /boolean true/.test(String(out)))); });
 let prefs = { ...DEFAULTS }, tray = null, win = null, quitting = false, liveState = { live: false, dests: [] }, prev = new Map(), lastTip = '';
 const prefFile = () => path.join(app.getPath('userData'), 'tray-prefs.json');
@@ -28,8 +30,17 @@ function showWindow() {
   if (!alive()) return; win.setSkipTaskbar(false); if (!win.isVisible()) win.show(); if (win.isMinimized()) win.restore();
   win.setAlwaysOnTop(true); win.moveTop(); win.focus(); win.setAlwaysOnTop(false);
   setTimeout(() => { if (alive() && win.isMinimized()) win.restore(); if (alive() && !win.isVisible()) win.show(); }, 200);
+  verifyShown();
 }
-function hideWindow() { if (alive()) win.hide(); }
+// If the window still has not come back, try the other way once; if that fails too, switch hiding to the tray off, so nobody is ever locked out.
+let verifying = false;
+function verifyShown() {
+  if (verifying) return; verifying = true;
+  setTimeout(() => { if (alive() && (!win.isVisible() || win.isMinimized())) { try { win.setSkipTaskbar(false); win.minimize(); } catch (e) {} setTimeout(() => { if (alive()) { win.restore(); win.show(); win.focus(); } }, 250); }
+    setTimeout(() => { verifying = false; if (alive() && (!win.isVisible() || win.isMinimized())) { prefs.minToTray = false; prefs.startInTray = false; prefs.closeToTray = false; prefs.keepRunning = false; savePrefs(); refresh(); toast('Sudo Make Art', 'The window could not be brought back from the tray, so hiding to the tray was switched off. Start the app again to see it.'); } }, 1500); }, 800);
+}
+function tuck() { if (!alive()) return; if (wayland) { win.setSkipTaskbar(true); if (!win.isMinimized()) win.minimize(); } else win.hide(); refresh(); }
+function hideWindow() { tuck(); }
 function toggleWindow() { if (!alive()) return; if (win.isVisible() && !win.isMinimized() && win.isFocused()) hideWindow(); else showWindow(); }
 function send(cmd, extra) { if (alive()) win.webContents.send('tray:cmd', { cmd, ...extra }); }
 
@@ -75,20 +86,21 @@ function onLive(s) {
 }
 
 function attach(window) {
-  win = window; loadPrefs(); ensureTray();
-  win.on('minimize', () => { if (prefs.enabled && prefs.minToTray && tray && hostOk) setImmediate(() => { if (alive()) { win.restore(); win.hide(); refresh(); } }); }); // restored first, so it is hidden in a clean state
+  win = window; loadPrefs(); if (process.argv.includes('--reset-tray')) { prefs = { ...DEFAULTS }; savePrefs(); } ensureTray();
+  win.on('minimize', () => { if (prefs.enabled && prefs.minToTray && tray && hostOk) setImmediate(() => { if (!alive()) return; if (wayland) { win.setSkipTaskbar(true); refresh(); } else { win.restore(); win.hide(); refresh(); } }); }); // restored first, so it is hidden in a clean state
   win.on('close', e => {
     if (quitting || !prefs.enabled || !tray || !hostOk) return;
-    if (prefs.closeToTray || (prefs.keepRunning && busy())) { e.preventDefault(); win.hide(); refresh(); if (busy()) toast('Sudo Make Art', 'Still running in the tray. Use the tray icon to stop or quit.'); }
+    if (prefs.closeToTray || (prefs.keepRunning && busy())) { e.preventDefault(); tuck(); if (busy()) toast('Sudo Make Art', 'Still running in the tray. Use the tray icon to stop or quit.'); }
   });
   win.on('show', refresh); win.on('hide', refresh);
   checkHost().then(ok => { hostOk = ok; refresh(); });
-  if (prefs.enabled && prefs.startInTray && tray && !process.argv.includes('--show')) win.once('ready-to-show', () => checkHost().then(ok => { hostOk = ok; setImmediate(() => { if (alive() && hostOk) win.hide(); refresh(); }); }));
+  if (prefs.enabled && prefs.startInTray && tray && !process.argv.includes('--show')) win.once('ready-to-show', () => checkHost().then(ok => { hostOk = ok; setImmediate(() => { if (alive() && hostOk) tuck(); refresh(); }); }));
 }
 function register() {
   ipcMain.handle('tray:prefs', () => ({ ...prefs, supported: hostOk }));
   ipcMain.handle('tray:set', (e, p) => { for (const k of Object.keys(DEFAULTS)) if (p && typeof p[k] === 'boolean') prefs[k] = p[k]; savePrefs(); ensureTray(); refresh(); return { ...prefs }; });
   ipcMain.handle('tray:show', () => { showWindow(); return true; });
+  ipcMain.handle('tray:reset', () => { prefs = { ...DEFAULTS }; savePrefs(); ensureTray(); refresh(); return { ...prefs }; });
   app.on('before-quit', () => { quitting = true; });
 }
 module.exports = { register, attach, onLive, toast, showWindow, isHidden: () => !alive() || !win.isVisible() };

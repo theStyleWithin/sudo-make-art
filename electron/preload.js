@@ -52,7 +52,7 @@ contextBridge.exposeInMainWorld('sma', {
     hopcastKey: () => ipcRenderer.invoke('profile:hopcast-key'), readFile: f => ipcRenderer.invoke('profile:read-file', f), fileSize: f => ipcRenderer.invoke('profile:file-size', f),
     seal: (t, p) => ipcRenderer.invoke('profile:seal', t, p), unseal: (b, p) => ipcRenderer.invoke('profile:unseal', b, p), save: (n, d) => ipcRenderer.invoke('profile:save', n, d), open: () => ipcRenderer.invoke('profile:open'),
   },
-  tray: { prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
+  tray: { reset: () => ipcRenderer.invoke('tray:reset'), prefs: () => ipcRenderer.invoke('tray:prefs'), set: p => ipcRenderer.invoke('tray:set', p), show: () => ipcRenderer.invoke('tray:show'), onCommand: cb => on('tray:cmd', cb) },
   vtuber: { status: () => ipcRenderer.invoke('vtuber:model-status'), download: () => ipcRenderer.invoke('vtuber:model-download'), cancel: () => ipcRenderer.invoke('vtuber:model-cancel'), read: () => ipcRenderer.invoke('vtuber:model-read'), remove: () => ipcRenderer.invoke('vtuber:model-remove'), onProgress: fn => { const h = (e, d) => fn(d); ipcRenderer.on('vtuber:progress', h); return () => ipcRenderer.removeListener('vtuber:progress', h); } },
   steam: { status: () => ipcRenderer.invoke('steam:status'), add: () => ipcRenderer.invoke('steam:add') },
   live: {
