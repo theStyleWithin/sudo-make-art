@@ -1,4 +1,6 @@
 # Sudo Make Art
+[![Your app | AlternativeTo](https://alternativeto.net/static/badges/badge-compact-dark.svg)](https://alternativeto.net/software/your-app/about/?utm_source=badge&utm_medium=referral)
+
 
 <p align="right"><img src="build/icon.png" alt="The Sudo Make Art logo: a terminal prompt next to a paintbrush" width="140"></p>
 
