@@ -20,7 +20,7 @@
   <select class="dz" id="tpl" title="Templates"><option value="">Templates…</option></select>
   <button class="dz" id="open">Open</button>
   <button class="dz" id="save">Save</button>
-  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option><option value="pdf">pdf (all pages)</option><option value="ico">ico (Windows icon, 16 to 256)</option><option value="icons">icon set (zip: PNG sizes + SVG)</option></select>
+  <select class="dz" id="export"><option value="">Export…</option><option>png</option><option>jpg</option><option>svg</option><option value="pdf">pdf (all pages)</option><option value="ico">ico (Windows icon, 16 to 256)</option><option value="icons">icon set (zip: PNG sizes + SVG)</option><option value="deco">profile decoration (.asdeco) for Anti-Social…</option></select>
   <label class="dz" title="Takes camera, GPS, date and other hidden details out of photos in your exports"><input type="checkbox" data-meta> Remove metadata</label>
 </header>
 <main>
@@ -450,6 +450,7 @@
   <span id="status"></span><span class="sp"></span>
   <button id="zoomout">−</button><span id="zoomlbl">100%</span><button id="zoomin">+</button><button id="fit">Fit</button>
 </footer>
+<dialog id="decodlg"><div class="dhead"><h2>Save as a profile decoration</h2><button id="decoclose" type="button">✕</button></div><div class="dbody" id="decobody"></div></dialog>
 <dialog id="newdlg">
   <div class="dhead"><h2>New design</h2><button id="newclose">✕</button></div>
   <div class="dbody"><nav id="newcats"></nav><div id="newgrid"></div></div>
@@ -535,10 +536,12 @@
 <script src="src/ctxmenu.js"></script>
 <script src="src/guard.js"></script>
 <script src="src/pcicons.js"></script>
+<script src="src/asdeco.js"></script>
 <script src="src/filters.js"></script>
 <script src="src/imgedit.js"></script>
 <script src="src/app.js"></script>
 <script src="src/shapes.js"></script>
+<script src="src/decoexport.js"></script>
 <script src="src/arttools.js"></script>
 <script src="src/arttools2.js"></script>
 <script src="src/arttools3.js"></script>

@@ -470,7 +470,7 @@ async function addSource(file, meta, folder = null) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, useSource: sr => useSource(sr), delSource: id => delSource(id), addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, useSource: sr => useSource(sr), delSource: id => delSource(id), addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b), cleanSVG: () => cleanSVG(), deco: () => doc.deco || '', size: () => ({ w: doc.w, h: doc.h }), docName: () => doc.name || '' };
 // ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
 let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
 let curFolder = null, renamingFolder = null;
@@ -593,8 +593,8 @@ function buildDialog() {
       TC.groups.forEach(gp => { grid.append(Object.assign(document.createElement('h4'), { className: 'tgroup', textContent: gp.name }));
         gp.items.forEach(t => { const b = document.createElement('button'); b.className = 'card tpl'; const d = t.make(), sv = document.createElementNS(NS, 'svg'); sv.setAttribute('viewBox', `0 0 ${d.w} ${d.h}`); sv.setAttribute('class', 'tplprev');
           if (d.bg !== 'transparent') { const r = document.createElementNS(NS, 'rect'); r.setAttribute('width', d.w); r.setAttribute('height', d.h); r.setAttribute('fill', d.bg); sv.append(r); }
-          const g = document.createElementNS(NS, 'g'); sv.append(g); try { d.els.forEach(e => drawEl(e, g)); } catch (er) {} b.append(sv, Object.assign(document.createElement('b'), { textContent: t.name }), Object.assign(document.createElement('small'), { textContent: t.note || '' }));
-          b.onclick = () => { const m = t.make(); commit(); adopt({ w: m.w, h: m.h, dpi: m.dpi, name: t.name, pages: [{ bg: m.bg, els: m.els }], cur: 0 }); sel = null; dlg.close(); setMode('design'); fit(); }; grid.append(b); }); });
+          const g = document.createElementNS(NS, 'g'); sv.append(g); try { d.els.filter(e => !e.guide).forEach(e => drawEl(e, g)); } catch (er) {} b.append(sv, Object.assign(document.createElement('b'), { textContent: t.name }), Object.assign(document.createElement('small'), { textContent: t.note || '' }));
+          b.onclick = () => { const m = t.make(); commit(); adopt({ w: m.w, h: m.h, dpi: m.dpi, name: t.name, deco: m.deco, pages: [{ bg: m.bg, els: m.els }], cur: 0 }); sel = null; dlg.close(); setMode('design'); fit(); }; grid.append(b); }); });
       return;
     }
     if (cat === 'Custom size') {
@@ -652,6 +652,7 @@ $('#save').onclick = () => download('design.smart.json', new Blob([serialize()],
 $('#open').onclick = () => pick(f => f.text().then(t => { try { const d = JSON.parse(t); commit(); adopt(d); sel = null; fit(); } catch (e) { alert('Not a valid project file'); } }), '.json');
 function cleanSVG() {
   const c = svg.cloneNode(true); c.querySelector('#ui')?.remove();
+  doc.els.filter(e => e.guide).forEach(e => c.querySelector(`[data-id="${e.id}"]`)?.remove()); // placement guides (profile decorations) are for you, never exported
   c.setAttribute('width', doc.w); c.setAttribute('height', doc.h); c.style.background = '';
   if (doc.bg !== 'transparent') { const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', doc.w); bg.setAttribute('height', doc.h); bg.setAttribute('fill', doc.bg); c.insertBefore(bg, c.firstChild); } c.setAttribute('xmlns', NS);
   const fontCss = window.SMA_FONTS ? window.SMA_FONTS.embedCSS(doc.els.filter(e => e.type === 'text').map(e => e.font)) : ''; // added fonts travel inside the file, so exports look the same
@@ -690,6 +691,7 @@ async function exportIcons(kind, xml) {
 $('#export').onchange = ev => {
   const fmt = ev.target.value; ev.target.value = ''; if (!fmt) return;
   if (fmt === 'pdf') return exportPDF();
+  if (fmt === 'deco') return window.SMA_DECOEXPORT ? SMA_DECOEXPORT.open() : undefined; // profile decoration pack (src/decoexport.js)
   if (fmt === 'ico' || fmt === 'icons') return exportIcons(fmt, cleanSVG()).catch(e => alert('Could not export: ' + e.message));
   const xml = cleanSVG();
   if (fmt === 'svg') return download('design.svg', new Blob([xml], { type: 'image/svg+xml' }));

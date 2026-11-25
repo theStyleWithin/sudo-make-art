@@ -110,6 +110,11 @@ In the design editor, right-click an item for Copy, Paste, Duplicate, Bring to f
 Anything past the white page is hidden while you work (a faint ghost shows the hidden part of the selected item) and it is not deleted, so moving or resizing brings it back. Items snap to the page edges and centre while you drag (hold Alt to move freely), and pictures have Fit, Fill, Stretch and Center buttons.
 
 
+## Profile decorations for Anti-Social
+New design → **Profile decorations** has correctly sized canvases for Anti-Social's **nameplates** (960 × 176), **profile banners** (2400 × 400) and **avatar decorations** (576 × 576), with ready-made starting points. Pink guide shapes show where the picture and name go and where the avatar circle must stay clear. They help you place things and are never exported.
+
+When you are done, **Export → profile decoration (.asdeco) for Anti-Social…** saves it as a pack file. Each item can come from this design as a drawing (SVG, stays sharp, keeps animation) or as a PNG, or from a file you already have: a PNG, GIF or WebP, or a short MP4 / WebM clip (3 MB at most). The window checks the shape and size, shows a preview on a mock member row, banner or avatar, and can put several items in one pack. In Anti-Social, open Settings → Profile decorations → Add my own decorations. The format is in [docs/asdeco-format.md](docs/asdeco-format.md).
+
 ## Custom PC icons
 A **Custom PC icons** category in the New design window, for people who theme their desktop: folders (classic, dark, flat), CDs and DVDs (dark or silver), SD and microSD cards, rounded and round app icons, and a presentation sheet for each kind (a ready-made "my icon pack" picture), plus the usual icon sizes (1024 down to 16). Everything is made of ordinary shapes and text, so recolor it, swap the symbol or letters, resize it. Shapes can now have a two-colour gradient (straight or radial), and a page can be transparent (shown as a checkerboard). Export as PNG (keeps the see-through background), SVG, **ICO** (Windows icon, 16 to 256) or an **icon set zip** (PNG sizes 16 to 512 laid out like an icon theme, plus the SVG).
 
