@@ -34,6 +34,7 @@ const PRESETS = {
 };
 // Docs open the writing app and Videos open the video editor; they are listed in the new-design window next to the sizes
 const OTHER_APPS = { 'Docs': { mode: 'write', blurb: 'Documents are written in the writing app (Sudo Write Stuff), with real page layout, tables, and export to DOCX, ODT and PDF.', items: ['Document', 'Letter', 'Resume', 'Report', 'Notes'] },
+  'Character card editor': { mode: 'chara', opens: 'the character card editor', blurb: 'Create a profile for an AI chat bot: a name, description, first message and more. Export it as a PNG (the profile travels inside the picture) or JSON, or send it to Desktop College Dorms.', items: ['Character card'] },
   'Videos': { mode: 'video', blurb: 'Videos are made in the video editor: a timeline, text, pictures and sound.', items: ['Video 16:9 (1920×1080)', 'Vertical video 9:16 (1080×1920)', 'Square video (1080×1080)'] } };
 const FLAT = Object.values(PRESETS).flat();
 // a font name as CSS: quoted, except the generic families (sans-serif, serif, monospace, ...) which must stay bare
@@ -578,7 +579,7 @@ document.addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])], typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if (files.length) ingest(files, true); else if (!typing && isDesign()) pasteEl(); // Ctrl+V pastes the element you copied
 });
-const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write|avatar|vtuber)-mode/.test(document.body.className);
+const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write|avatar|vtuber|chara)-mode/.test(document.body.className);
 
 // ---------- new design dialog ----------
 const dlg = $('#newdlg');
@@ -587,7 +588,7 @@ function buildDialog() {
   const show = cat => {
     nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat)); grid.textContent = '';
     if (OTHER_APPS[cat]) { const o = OTHER_APPS[cat], p = document.createElement('p'); p.className = 'hint'; p.textContent = o.blurb; grid.append(p);
-      o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.mode === 'write' ? 'the writing app' : 'the video editor') + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); setMode(o.mode); }; grid.append(b); }); return; }
+      o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.opens || (o.mode === 'write' ? 'the writing app' : 'the video editor')) + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); if (o.mode === 'chara') { window.SMA_chara?.reset(); window.SMA_apps ? window.SMA_apps.choose('chara') : setMode('chara'); } else setMode(o.mode); }; grid.append(b); }); return; }
     const TC = window.SMA_NEWCATS && window.SMA_NEWCATS[cat];
     if (TC) { // template categories: pick one and it opens as a design you can edit
       TC.groups.forEach(gp => { grid.append(Object.assign(document.createElement('h4'), { className: 'tgroup', textContent: gp.name }));
@@ -763,7 +764,7 @@ document.addEventListener('keydown', ev => {
 
 // ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write'); document.body.classList.toggle('avatar-mode', m === 'avatar'); document.body.classList.toggle('vtuber-mode', m === 'vtuber');
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write'); document.body.classList.toggle('avatar-mode', m === 'avatar'); document.body.classList.toggle('chara-mode', m === 'chara'); document.body.classList.toggle('vtuber-mode', m === 'vtuber');
   ['home', 'design', 'video', 'convert', 'vconvert', 'vtrim', 'live'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
   if (m !== 'video') window.SMA_video?.hide();
   if (m !== 'pixels') window.SMA_pixels?.hide(); else window.SMA_pixels?.show();
@@ -772,6 +773,7 @@ function setMode(m) {
   if (m !== 'games') window.SMA_games?.hide(); else window.SMA_games?.show();
   if (m === 'manga') window.SMA_manga?.show();
   if (m === 'avatar') window.SMA_avatar?.show();
+  if (m === 'chara') window.SMA_chara?.show();
   if (m !== 'vn') window.SMA_vn?.hide(); else window.SMA_vn?.show();
   if (m === 'tcg') window.SMA_tcg?.show();
   if (m !== 'write') window.SMA_write?.hide(); else window.SMA_write?.show();
