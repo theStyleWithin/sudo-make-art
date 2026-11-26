@@ -1,0 +1,20 @@
+// Checks the .asdeco writer rules (src/asdeco.js). Run: node tools/tests/asdecotest.js
+'use strict';
+const A = require('../../src/asdeco.js');
+let bad = 0; const t = (n, c, x) => { if (c) console.log('ok   ', n); else { bad++; console.log('FAIL ', n, x || ''); } };
+const b64 = a => 'base64,' + Buffer.from(a).toString('base64');
+const png = (w, h) => 'data:image/png;' + b64([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, w >>> 24, w >>> 16 & 255, w >>> 8 & 255, w & 255, h >>> 24, h >>> 16 & 255, h >>> 8 & 255, h & 255, 8, 6, 0, 0, 0]);
+const gif = (w, h, n) => 'data:image/gif;' + b64([71, 73, 70, 56, 57, 97, w & 255, w >> 8, h & 255, h >> 8, 0, 0, 0, ...Array.from({ length: n }, () => [0x21, 0xf9, 4, 0, 10, 0, 0, 0]).flat()]);
+const svg = (w, h, body = '') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${body}</svg>`;
+t('the design sizes have the right shapes', Object.values(A.KINDS).every(K => Math.abs(K.work[0] / K.work[1] / (K.w / K.h) - 1) < 1e-9));
+t('a nameplate drawing at the design size is accepted', A.check('plate', { svg: svg(960, 176) }).ok);
+t('a square drawing is refused as a nameplate, with the size to use', (() => { const r = A.check('plate', { svg: svg(100, 100) }); return !r.ok && /240 × 44/.test(r.error); })());
+t('a moving drawing is noticed', A.check('wreath', { svg: svg(576, 576, '<circle r="5"><animate attributeName="r" values="5;9;5" dur="1s"/></circle>') }).moves);
+t('things Anti-Social would drop are mentioned', /scripts/.test(A.check('plate', { svg: svg(960, 176, '<script>1</script>') }).note));
+t('PNG and animated GIF are read from their headers', A.imageInfo(png(960, 176)).w === 960 && A.imageInfo(gif(288, 288, 5)).moves && !A.imageInfo(gif(288, 288, 1)).moves);
+t('a picture of the wrong shape is refused', !A.check('wreath', { image: png(400, 100) }).ok);
+t('a video that is too big is refused', !A.check('banner', { video: 'data:video/mp4;' + b64(new Array(3.5 * 1048576).fill(1)) }).ok && A.check('banner', { video: 'data:video/mp4;' + b64([0, 0, 0, 24]) }).ok);
+t('a picture is matched to the nearest kind', A.guessKind(1024, 1024) === 'wreath' && A.guessKind(2400, 400) === 'banner' && A.guessKind(960, 176) === 'plate' && A.guessKind(300, 900) === '');
+t('a pack is written in the format Anti-Social reads', (() => { const d = JSON.parse(A.buildPack({ name: 'P', author: 'Me', license: 'CC0' }, [{ kind: 'plate', name: 'N', svg: svg(960, 176) }, { kind: 'wreath', name: 'W', image: png(576, 576) }, { kind: 'banner', name: 'B', video: 'data:video/webm;' + b64([1, 2, 3]) }])); return d.format === 'anti-social-decorations' && d.v === 1 && d.items.length === 3 && d.items[0].art && d.items[1].image && d.items[2].video && d.author === 'Me'; })());
+t('markup and control characters are taken out of names', JSON.parse(A.buildPack({ name: '<b>x</b>' }, [{ kind: 'plate', name: 'a<b>\n', svg: svg(960, 176) }])).items[0].name === 'a b');
+console.log(bad ? `\n${bad} problem(s)` : '\nall good'); process.exit(bad ? 1 : 0);

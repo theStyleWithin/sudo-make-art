@@ -34,6 +34,7 @@ const PRESETS = {
 };
 // Docs open the writing app and Videos open the video editor; they are listed in the new-design window next to the sizes
 const OTHER_APPS = { 'Docs': { mode: 'write', blurb: 'Documents are written in the writing app (Sudo Write Stuff), with real page layout, tables, and export to DOCX, ODT and PDF.', items: ['Document', 'Letter', 'Resume', 'Report', 'Notes'] },
+  'Character card editor': { mode: 'chara', opens: 'the character card editor', blurb: 'Create a profile for an AI chat bot: a name, description, first message and more. Export it as a PNG (the profile travels inside the picture) or JSON, or send it to Desktop College Dorms.', items: ['Character card'] },
   'Videos': { mode: 'video', blurb: 'Videos are made in the video editor: a timeline, text, pictures and sound.', items: ['Video 16:9 (1920×1080)', 'Vertical video 9:16 (1080×1920)', 'Square video (1080×1080)'] } };
 const FLAT = Object.values(PRESETS).flat();
 // a font name as CSS: quoted, except the generic families (sans-serif, serif, monospace, ...) which must stay bare
@@ -470,7 +471,7 @@ async function addSource(file, meta, folder = null) {
 }
 async function delSource(id) { try { await dbDo('readwrite', st => st.delete(id)); } catch (e) {} sources = sources.filter(s => s.id !== id); renderSources(); }
 const smaSubs = [];
-window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, useSource: sr => useSource(sr), delSource: id => delSource(id), addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b) };
+window.SMA = { addSourceRec: (file, meta, folder) => addSource(file, meta, folder), FONT_ACCEPT, ext: { doc: () => doc, zoom: () => zoom, pt, mk, el, commit, render, find, select: id => { sel = id; render(); }, selected: () => sel && find(sel), add: e => { commit(); doc.els.push(e); sel = e.id; render(); return e; }, remove: id => { doc.els = doc.els.filter(x => x.id !== id); if (sel === id) sel = null; }, svg }, render: () => render(), cssFamily, buildPDF, addImageBlob: b => readImage(b), selectedImage: () => { const e = sel && find(sel); return e && e.type === 'image' ? { src: e.src, w: e.nw || e.w, h: e.nh || e.h } : null; }, getSources: () => sources, useSource: sr => useSource(sr), delSource: id => delSource(id), addFiles: (fs, meta) => ingest(fs, false, meta), subscribe: fn => smaSubs.push(fn), download: (n, b) => download(n, b), cleanSVG: () => cleanSVG(), deco: () => doc.deco || '', size: () => ({ w: doc.w, h: doc.h }), docName: () => doc.name || '' };
 // ---------- source folders (a tree you make yourself; files and folders can be dragged into any folder) ----------
 let folders = []; try { folders = JSON.parse(localStorage.getItem('sma-folders') || '[]'); } catch (e) {}
 let curFolder = null, renamingFolder = null;
@@ -578,7 +579,7 @@ document.addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])], typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if (files.length) ingest(files, true); else if (!typing && isDesign()) pasteEl(); // Ctrl+V pastes the element you copied
 });
-const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write|avatar|vtuber)-mode/.test(document.body.className);
+const isDesign = () => !/(video|home|convert|vconvert|vtrim|live|pixels|tiles|music|games|manga|vn|tcg|write|avatar|vtuber|chara)-mode/.test(document.body.className);
 
 // ---------- new design dialog ----------
 const dlg = $('#newdlg');
@@ -587,14 +588,14 @@ function buildDialog() {
   const show = cat => {
     nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cat === cat)); grid.textContent = '';
     if (OTHER_APPS[cat]) { const o = OTHER_APPS[cat], p = document.createElement('p'); p.className = 'hint'; p.textContent = o.blurb; grid.append(p);
-      o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.mode === 'write' ? 'the writing app' : 'the video editor') + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); setMode(o.mode); }; grid.append(b); }); return; }
+      o.items.forEach(n => { const b = document.createElement('button'); b.className = 'card'; b.innerHTML = '<b></b><small>Opens ' + (o.opens || (o.mode === 'write' ? 'the writing app' : 'the video editor')) + '</small>'; b.firstChild.textContent = n; b.onclick = () => { dlg.close(); if (o.mode === 'chara') { window.SMA_chara?.reset(); window.SMA_apps ? window.SMA_apps.choose('chara') : setMode('chara'); } else setMode(o.mode); }; grid.append(b); }); return; }
     const TC = window.SMA_NEWCATS && window.SMA_NEWCATS[cat];
     if (TC) { // template categories: pick one and it opens as a design you can edit
       TC.groups.forEach(gp => { grid.append(Object.assign(document.createElement('h4'), { className: 'tgroup', textContent: gp.name }));
         gp.items.forEach(t => { const b = document.createElement('button'); b.className = 'card tpl'; const d = t.make(), sv = document.createElementNS(NS, 'svg'); sv.setAttribute('viewBox', `0 0 ${d.w} ${d.h}`); sv.setAttribute('class', 'tplprev');
           if (d.bg !== 'transparent') { const r = document.createElementNS(NS, 'rect'); r.setAttribute('width', d.w); r.setAttribute('height', d.h); r.setAttribute('fill', d.bg); sv.append(r); }
-          const g = document.createElementNS(NS, 'g'); sv.append(g); try { d.els.forEach(e => drawEl(e, g)); } catch (er) {} b.append(sv, Object.assign(document.createElement('b'), { textContent: t.name }), Object.assign(document.createElement('small'), { textContent: t.note || '' }));
-          b.onclick = () => { const m = t.make(); commit(); adopt({ w: m.w, h: m.h, dpi: m.dpi, name: t.name, pages: [{ bg: m.bg, els: m.els }], cur: 0 }); sel = null; dlg.close(); setMode('design'); fit(); }; grid.append(b); }); });
+          const g = document.createElementNS(NS, 'g'); sv.append(g); try { d.els.filter(e => !e.guide).forEach(e => drawEl(e, g)); } catch (er) {} b.append(sv, Object.assign(document.createElement('b'), { textContent: t.name }), Object.assign(document.createElement('small'), { textContent: t.note || '' }));
+          b.onclick = () => { const m = t.make(); commit(); adopt({ w: m.w, h: m.h, dpi: m.dpi, name: t.name, deco: m.deco, pages: [{ bg: m.bg, els: m.els }], cur: 0 }); sel = null; dlg.close(); setMode('design'); fit(); }; grid.append(b); }); });
       return;
     }
     if (cat === 'Custom size') {
@@ -652,6 +653,7 @@ $('#save').onclick = () => download('design.smart.json', new Blob([serialize()],
 $('#open').onclick = () => pick(f => f.text().then(t => { try { const d = JSON.parse(t); commit(); adopt(d); sel = null; fit(); } catch (e) { alert('Not a valid project file'); } }), '.json');
 function cleanSVG() {
   const c = svg.cloneNode(true); c.querySelector('#ui')?.remove();
+  doc.els.filter(e => e.guide).forEach(e => c.querySelector(`[data-id="${e.id}"]`)?.remove()); // placement guides (profile decorations) are for you, never exported
   c.setAttribute('width', doc.w); c.setAttribute('height', doc.h); c.style.background = '';
   if (doc.bg !== 'transparent') { const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', doc.w); bg.setAttribute('height', doc.h); bg.setAttribute('fill', doc.bg); c.insertBefore(bg, c.firstChild); } c.setAttribute('xmlns', NS);
   const fontCss = window.SMA_FONTS ? window.SMA_FONTS.embedCSS(doc.els.filter(e => e.type === 'text').map(e => e.font)) : ''; // added fonts travel inside the file, so exports look the same
@@ -690,6 +692,7 @@ async function exportIcons(kind, xml) {
 $('#export').onchange = ev => {
   const fmt = ev.target.value; ev.target.value = ''; if (!fmt) return;
   if (fmt === 'pdf') return exportPDF();
+  if (fmt === 'deco') return window.SMA_DECOEXPORT ? SMA_DECOEXPORT.open() : undefined; // profile decoration pack (src/decoexport.js)
   if (fmt === 'ico' || fmt === 'icons') return exportIcons(fmt, cleanSVG()).catch(e => alert('Could not export: ' + e.message));
   const xml = cleanSVG();
   if (fmt === 'svg') return download('design.svg', new Blob([xml], { type: 'image/svg+xml' }));
@@ -761,7 +764,7 @@ document.addEventListener('keydown', ev => {
 
 // ---------- home / design / video mode ----------
 function setMode(m) {
-  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write'); document.body.classList.toggle('avatar-mode', m === 'avatar'); document.body.classList.toggle('vtuber-mode', m === 'vtuber');
+  document.body.classList.toggle('video-mode', m === 'video'); document.body.classList.toggle('home-mode', m === 'home'); document.body.classList.toggle('convert-mode', m === 'convert'); document.body.classList.toggle('vconvert-mode', m === 'vconvert'); document.body.classList.toggle('vtrim-mode', m === 'vtrim'); document.body.classList.toggle('live-mode', m === 'live'); document.body.classList.toggle('pixels-mode', m === 'pixels'); document.body.classList.toggle('tiles-mode', m === 'tiles'); document.body.classList.toggle('music-mode', m === 'music'); document.body.classList.toggle('games-mode', m === 'games'); document.body.classList.toggle('manga-mode', m === 'manga'); document.body.classList.toggle('vn-mode', m === 'vn'); document.body.classList.toggle('tcg-mode', m === 'tcg'); document.body.classList.toggle('write-mode', m === 'write'); document.body.classList.toggle('avatar-mode', m === 'avatar'); document.body.classList.toggle('chara-mode', m === 'chara'); document.body.classList.toggle('vtuber-mode', m === 'vtuber');
   ['home', 'design', 'video', 'convert', 'vconvert', 'vtrim', 'live'].forEach(k => $('#mode-' + k)?.classList.toggle('on', k === m));
   if (m !== 'video') window.SMA_video?.hide();
   if (m !== 'pixels') window.SMA_pixels?.hide(); else window.SMA_pixels?.show();
@@ -770,6 +773,7 @@ function setMode(m) {
   if (m !== 'games') window.SMA_games?.hide(); else window.SMA_games?.show();
   if (m === 'manga') window.SMA_manga?.show();
   if (m === 'avatar') window.SMA_avatar?.show();
+  if (m === 'chara') window.SMA_chara?.show();
   if (m !== 'vn') window.SMA_vn?.hide(); else window.SMA_vn?.show();
   if (m === 'tcg') window.SMA_tcg?.show();
   if (m !== 'write') window.SMA_write?.hide(); else window.SMA_write?.show();

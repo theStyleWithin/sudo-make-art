@@ -11,6 +11,7 @@ const APPS = [
   { id: 'manga', name: 'Sudo Make Manga', tag: 'Manga and comic pages: panels, bubbles, tones', ready: true, beta: true, mode: 'manga' },
   { id: 'avatar', name: 'Sudo Make Avatar Pose', tag: 'Pose VRM characters: angles, arms and legs, faces, clothes; save poses for Manga', ready: true, beta: true, mode: 'avatar' },
   { id: 'vtuber', name: 'Sudo Make VTuber', tag: 'Be a VTuber: camera and microphone drive a VRM avatar; use it as a source in Sudo Make Live', ready: true, beta: true, mode: 'vtuber' },
+  { id: 'chara', name: 'Character Card Editor', tag: 'Create a profile for an AI chat bot and export it as a PNG or JSON card', ready: true, hidden: true, mode: 'chara' },
   { id: 'write', name: 'Sudo Write Stuff', tag: 'Stories, notes and scripts: write, then export as PDF, Word, LibreOffice', ready: true, mode: 'write' },
   { id: 'tiles', name: 'Sudo Make Tiles', tag: 'Tilesets, maps and Game Boy tiles', ready: true, mode: 'tiles' },
   { id: 'pixels', name: 'Sudo Make Pixels', tag: 'Pixel art, sprites and animation', ready: true, mode: 'pixels' },
@@ -25,7 +26,7 @@ const el = (tag, attrs = {}, text) => Object.assign(document.createElement(tag),
 
 function build() {
   menu.textContent = '';
-  APPS.forEach(a => {
+  APPS.filter(a => !a.hidden).forEach(a => {
     const b = el('button', { type: 'button', role: 'menuitemradio', className: 'app-item' + (a.id === cur ? ' on' : '') });
     b.setAttribute('aria-checked', String(a.id === cur));
     b.append(el('b', {}, a.name), el('small', {}, a.tag), el('span', { className: 'app-tag' }, a.ready ? (a.beta ? 'Beta' : '') : 'Coming soon'));
