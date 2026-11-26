@@ -50,10 +50,28 @@ jobs:
         with: { distribution: temurin, java-version: 21 }
       - run: npm ci
       - run: npm run android:sync
-      - run: ./gradlew assembleDebug
+      # A release build (smaller, no debug code). With the ANDROID_* secrets set it is signed with the project's own key; without them it is signed
+      # with the throwaway debug key (still installs; see docs/ANDROID-SIGNING.md).
+      - name: Build the release APK
         working-directory: android
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"; export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/release.jks"; echo "signing with the project key"; else echo "no signing key set: using the debug key"; fi
+          ./gradlew assembleRelease
+      - name: Name it and check it
+        run: |
+          V=$(node -p "require('./package.json').version")
+          mkdir -p apk && cp android/app/build/outputs/apk/release/*.apk "apk/Sudo-Make-Art-$V.apk"
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "apk/Sudo-Make-Art-$V.apk" | head -4
+          "$BT/aapt2" dump badging "apk/Sudo-Make-Art-$V.apk" | grep -E "^package:|sdkVersion|application-label:"
+          ls -la apk
       - uses: actions/upload-artifact@v4
-        with: { name: android-apk, path: 'android/app/build/outputs/apk/debug/*.apk' }
+        with: { name: android-apk, path: 'apk/*.apk' }
 
   release:
     if: startsWith(github.ref, 'refs/tags/v') || inputs.publish

@@ -305,9 +305,11 @@ The icon is a terminal prompt (`>_`) next to a paintbrush. The source is `build/
 # Android, plans, help and licences
 
 ## Android
-A Capacitor wrapper lives in `android/` (same web code, no internet permission, no cloud backup). The phone layout is responsive.
-Build the debug APK with the `android` CI job, or locally with the Android SDK: `npm run android:sync` then `cd android && ./gradlew assembleDebug`.
+A Capacitor wrapper lives in `android/` (same web code, no internet permission, no cloud backup). The phone layout is responsive. Modes that need the desktop app (Live, VTuber, Avatar Pose, video conversion and others) are desktop only.
 
+Releases include `Sudo-Make-Art-<version>.apk`, a release build whose version matches the app. Install it by opening it on your phone and allowing installs from your browser or file manager when Android asks. Until the project's own signing key is set up (see [docs/ANDROID-SIGNING.md](docs/ANDROID-SIGNING.md)) it is signed with a throwaway key, so to install a newer version you must uninstall the old one first.
+
+Build it yourself with the Android SDK: `npm run android:sync` then `cd android && ./gradlew assembleRelease`.
 
 ## Planned
 - Sources linking to files in place (desktop)
