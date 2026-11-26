@@ -518,6 +518,13 @@ function dropOnFolder(ev, target) { // target: folder id or null (the top level)
   if (many) { try { moveMany(JSON.parse(many), target); } catch (e) {} } else if (sid) moveSource(sid, target); else if (fid) moveFolder(fid, target); else if (ev.dataTransfer.files.length) ingest([...ev.dataTransfer.files], false, undefined, target);
 }
 const dropTarget = (n, target) => { n.addEventListener('dragover', ev => { ev.preventDefault(); ev.stopPropagation(); n.classList.add('over'); }); n.addEventListener('dragleave', () => n.classList.remove('over')); n.addEventListener('drop', ev => dropOnFolder(ev, target)); };
+// the same folders, for the Assets shelf on the home screen (one tree: what you sort here shows there, and the other way round)
+window.SMA.folders = {
+  all: () => folders, of: folderOf, valid: validFolder, inside,
+  make: parent => { const f = { id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: 'New folder', parent: validFolder(parent) }; folders.push(f); saveFolders(); renderSources(); return f; },
+  rename: (id, name) => { const f = folderOf(id); if (f && name.trim()) { f.name = name.trim().slice(0, 60); saveFolders(); renderSources(); } },
+  remove: deleteFolder, moveFolder, moveSource,
+};
 function renderSources() {
   setTimeout(() => smaSubs.forEach(f => f()), 0);
   thumbURLs.forEach(URL.revokeObjectURL); thumbURLs = [];
