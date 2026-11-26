@@ -11,7 +11,7 @@ const h = (tag, a = {}, ...kids) => { const e = document.createElement(tag); for
 const readUrl = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => no(new Error('read')); r.readAsDataURL(f); });
 const slug = s => (String(s || 'decoration').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'decoration');
 
-let st;   // the thing being made right now
+let st;   // the thing being made right now (st.say is the last message from Send to Anti-Social)
 const fresh = () => {
   const dk = window.SMA.deco(), sz = window.SMA.size(), kind = dk || A.guessKind(sz.w, sz.h) || '';
   st = { kind, source: dk || kind ? 'svg' : 'file', name: window.SMA.docName() || '', svg: '', png: '', file: null, fileUrl: '', fileKind: '', still: '', result: null, busy: false };
@@ -66,10 +66,22 @@ function paint() {
   h('div', { class: 'dx-right' }, h('h4', {}, 'Preview'), h('div', { class: 'dx-stage' }, st.busy ? h('div', { class: 'dx-empty' }, 'Working…') : mock()),
     r && !r.quiet ? h('p', { class: ok ? 'dx-ok' : 'dx-err', role: 'status' }, ok ? '✓ Ready to save.' + (r.moves ? ' It moves.' : '') + ' ' + (r.note || '') : r.error) : h('p', { class: 'dx-ok' }, ' '),
     basket.length ? h('div', { class: 'dx-basket' }, h('b', {}, 'In this pack'), basket.map((b, i) => h('div', { class: 'dx-brow' }, h('span', {}, `${b.name} · ${A.KINDS[b.kind].label}`), h('button', { type: 'button', onclick: () => { basket.splice(i, 1); paint(); } }, 'Remove')))) : null,
-    h('div', { class: 'dx-btns' }, add, save, h('button', { type: 'button', onclick: () => dlg.close() }, 'Cancel')),
-    h('p', { class: 'hint' }, 'Open the .asdeco file in Anti-Social: Settings → Profile decorations → Add my own decorations.')));
+    h('div', { class: 'dx-btns' }, add, save, ...(window.SMA_ANTISOCIAL && window.SMA_ANTISOCIAL.available ? [h('button', { type: 'button', class: 'pri', disabled: st.busy || (!ok && !basket.length), title: 'Open Anti-Social and have it add this to your decorations', onclick: sendAll }, 'Send to Anti-Social')] : []), h('button', { type: 'button', onclick: () => dlg.close() }, 'Cancel')),
+    st.say ? h('p', { class: st.say.ok ? 'dx-ok' : 'dx-err', role: 'status' }, st.say.text) : null,
+    h('p', { class: 'hint' }, window.SMA_ANTISOCIAL && window.SMA_ANTISOCIAL.available ? 'Send to Anti-Social opens the app and adds it for you. Or save the .asdeco file and add it yourself: Settings → Profile decorations → Add my own decorations.' : 'Open the .asdeco file in Anti-Social: Settings → Profile decorations → Add my own decorations.')));
 }
 const cur = () => ({ kind: st.kind, name: st.name || A.KINDS[st.kind].label, ...st.src });
+function packOf() {
+  const items = [...basket]; if (st.result && st.result.ok) items.push(cur());
+  const m = load(); const text = A.buildPack({ name: items.length === 1 ? items[0].name : 'My decorations', author: m.author, license: m.license }, items);
+  return { text, file: (items.length === 1 ? slug(items[0].name) : 'my-decorations') + '.asdeco' };
+}
+async function sendAll() {   // open Anti-Social with this pack (desktop app)
+  let p; try { p = packOf(); } catch (e) { st.result = { ok: false, error: e.message }; paint(); return; }
+  st.busy = true; st.say = { ok: true, text: 'Looking for Anti-Social…' }; paint();
+  try { st.say = await window.SMA_ANTISOCIAL.send(p.text, p.file); if (st.say.ok) basket.length = 0; } catch (e) { st.say = { ok: false, text: window.SMA_ANTISOCIAL.clean(e) }; }
+  st.busy = false; paint();
+}
 async function saveAll() {
   const items = [...basket]; if (st.result && st.result.ok) items.push(cur());
   const m = load(); let text; try { text = A.buildPack({ name: items.length === 1 ? items[0].name : 'My decorations', author: m.author, license: m.license }, items); } catch (e) { st.result = { ok: false, error: e.message }; paint(); return; }
