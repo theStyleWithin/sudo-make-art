@@ -67,18 +67,55 @@ async function open(id) {
 }
 // ----- assets: everything kept in Sources for later (pictures, video, sound, fonts, text grabbed from the screen) -----
 const abar = document.createElement('div'); abar.className = 'home-bar'; abar.id = 'h-abar';
-abar.innerHTML = '<h2>Assets</h2><select id="h-atype"><option value="">All</option><option value="image">Pictures</option><option value="video">Video</option><option value="audio">Sound</option><option value="font">Fonts</option><option value="text">Text</option></select>';
-const agrid = document.createElement('div'); agrid.id = 'h-assets'; $('#h-grid').after(abar, agrid);
+abar.innerHTML = '<h2>Assets</h2><span class="h-aright"><button id="h-anew" type="button" title="Make a folder here to keep assets tidy (the same folders as in Sources)">+ Folder</button> <select id="h-atype"><option value="">All</option><option value="image">Pictures</option><option value="video">Video</option><option value="audio">Sound</option><option value="font">Fonts</option><option value="text">Text</option></select></span>';
+const acrumbs = document.createElement('div'); acrumbs.id = 'h-acrumbs';
+const agrid = document.createElement('div'); agrid.id = 'h-assets'; $('#h-grid').after(abar, acrumbs, agrid);
 const akind = { image: 'Picture', video: 'Video', audio: 'Sound', font: 'Font', text: 'Text' };
-let aurls = [];
+let aurls = [], acur = null, arenaming = null; // the folder being looked at (null = top level), and the folder being renamed
+// folders are the same ones Sources has (SMA.folders), so organising in either place shows in both
+const F = () => SMA.folders;
+function adrop(n, target) {
+  n.addEventListener('dragover', ev => { if (![...ev.dataTransfer.types].some(t => t === 'text/sma-source' || t === 'text/sma-folder')) return; ev.preventDefault(); n.classList.add('over'); });
+  n.addEventListener('dragleave', () => n.classList.remove('over'));
+  n.addEventListener('drop', ev => {
+    n.classList.remove('over'); const sid = ev.dataTransfer.getData('text/sma-source'), fid = ev.dataTransfer.getData('text/sma-folder');
+    if (!sid && !fid) return; ev.preventDefault(); ev.stopPropagation();
+    if (sid) F().moveSource(sid, target); else F().moveFolder(fid, target);
+  });
+}
 function renderAssets() {
-  aurls.forEach(u => URL.revokeObjectURL(u)); aurls = []; agrid.textContent = '';
-  const q = $('#h-search').value.trim().toLowerCase(), ty = $('#h-atype').value;
-  const list = SMA.getSources().filter(a => (!ty || a.kind === ty) && (!q || (a.name || '').toLowerCase().includes(q))).sort((a, b) => b.added - a.added);
-  if (!list.length) { agrid.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: SMA.getSources().length ? 'No assets match.' : 'Nothing saved yet. Pictures, video, sound and fonts you add to Sources, and text you save with Text Grab, show up here for later.' })); return; }
+  aurls.forEach(u => URL.revokeObjectURL(u)); aurls = []; agrid.textContent = ''; acrumbs.textContent = '';
+  const q = $('#h-search').value.trim().toLowerCase(), ty = $('#h-atype').value, searching = !!(q || ty);
+  acur = F().valid(acur);
+  const all = SMA.getSources(), allF = F().all();
+  // while searching or filtering, look through every folder; otherwise show one folder at a time
+  const list = all.filter(a => (!ty || a.kind === ty) && (!q || (a.name || '').toLowerCase().includes(q)) && (searching || F().valid(a.folder) === acur)).sort((a, b) => b.added - a.added);
+  const subs = searching ? [] : allF.filter(f => (F().valid(f.parent) || null) === acur).sort((a, b) => a.name.localeCompare(b.name));
+  abar.querySelector('#h-anew').hidden = searching;
+  if (!searching && (acur || allF.length)) { // the path back up, only once there are folders
+    const chain = []; for (let f = F().of(acur), n = 0; f && n < 99; f = F().of(f.parent), n++) chain.unshift(f);
+    [{ id: null, name: 'Assets' }, ...chain].forEach((f, i, arr) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = f.name; b.className = 'crumb' + (i === arr.length - 1 ? ' on' : ''); b.onclick = () => { acur = f.id; renderAssets(); }; adrop(b, f.id); acrumbs.append(b); if (i < arr.length - 1) acrumbs.append(' › '); });
+  }
+  if (!list.length && !subs.length) { agrid.append(Object.assign(document.createElement('p'), { className: 'hint', textContent: searching ? 'No assets match.' : acur ? 'This folder is empty. Drag assets or folders here.' : all.length ? 'No assets here.' : 'Nothing saved yet. Pictures, video, sound and fonts you add to Sources, and text you save with Text Grab, show up here for later.' })); return; }
+  subs.forEach(f => {
+    const c = document.createElement('div'); c.className = 'card2 fld'; c.draggable = true; c.title = f.name + ' (click to open, drag to move)';
+    c.ondragstart = ev => { ev.dataTransfer.setData('text/sma-folder', f.id); ev.dataTransfer.effectAllowed = 'move'; };
+    const t = document.createElement('div'); t.className = 'thumb'; t.textContent = '📁';
+    const count = all.filter(x => x.folder === f.id).length + allF.filter(x => x.parent === f.id).length;
+    let n;
+    if (arenaming === f.id) { n = document.createElement('input'); n.value = f.name; n.className = 'rn'; n.maxLength = 60;
+      const done = ok => { if (arenaming !== f.id) return; arenaming = null; if (ok) F().rename(f.id, n.value); else renderAssets(); };
+      n.onkeydown = ev => { if (ev.key === 'Enter') done(true); else if (ev.key === 'Escape') done(false); ev.stopPropagation(); }; n.onblur = () => done(true); n.onclick = ev => ev.stopPropagation(); setTimeout(() => { n.focus(); n.select(); }, 0); }
+    else { n = Object.assign(document.createElement('b'), { textContent: f.name }); n.ondblclick = ev => { ev.stopPropagation(); arenaming = f.id; renderAssets(); }; }
+    const m = Object.assign(document.createElement('small'), { textContent: 'Folder · ' + count + (count === 1 ? ' item' : ' items') });
+    const r = Object.assign(document.createElement('button'), { className: 'x r', textContent: '✎', title: 'Rename folder' }); r.onclick = ev => { ev.stopPropagation(); arenaming = f.id; renderAssets(); };
+    const x = Object.assign(document.createElement('button'), { className: 'x', textContent: '🗑', title: 'Delete folder (its contents move up; nothing in it is deleted)' }); x.onclick = ev => { ev.stopPropagation(); F().remove(f.id); };
+    c.onclick = () => { if (arenaming !== f.id) { acur = f.id; renderAssets(); } }; adrop(c, f.id); c.append(t, n, m, r, x); agrid.append(c);
+  });
   list.forEach(a => {
-    const c = document.createElement('div'); c.className = 'card2'; const t = document.createElement('div'); t.className = 'thumb';
-    if (a.kind === 'image' || a.kind === 'video') { const u = URL.createObjectURL(a.blob); aurls.push(u); const m = document.createElement(a.kind === 'image' ? 'img' : 'video'); m.src = u + (a.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; t.append(m); }
+    const c = document.createElement('div'); c.className = 'card2'; c.draggable = true; const t = document.createElement('div'); t.className = 'thumb';
+    c.ondragstart = ev => { ev.dataTransfer.setData('text/sma-source', a.id); ev.dataTransfer.effectAllowed = 'move'; };
+    if (a.kind === 'image' || a.kind === 'video') { const u = URL.createObjectURL(a.blob); aurls.push(u); const m = document.createElement(a.kind === 'image' ? 'img' : 'video'); m.src = u + (a.kind === 'video' ? '#t=0.1' : ''); m.muted = true; m.preload = 'metadata'; m.draggable = false; t.append(m); }
     else if (a.kind === 'text') { t.className += ' txt'; t.textContent = '📝'; a.blob.slice(0, 400).text().then(x => { const p = document.createElement('div'); p.className = 'atxt'; p.textContent = x.trim().slice(0, 160); t.textContent = ''; t.append(p); }).catch(() => {}); }
     else t.textContent = a.kind === 'font' ? 'Aa' : '♪';
     const n = Object.assign(document.createElement('b'), { textContent: a.name || 'Untitled' });
@@ -88,6 +125,7 @@ function renderAssets() {
     c.onclick = () => { if (a.kind === 'image') SMA.setMode('design'); SMA.useSource(a); }; c.append(t, n, m, x); agrid.append(c);
   });
 }
+abar.querySelector('#h-anew').onclick = () => { const f = F().make(acur); arenaming = f.id; renderAssets(); };
 SMA.subscribe(() => { if (document.body.classList.contains('home-mode')) renderAssets(); });
 $('#h-atype').onchange = renderAssets; $('#h-search').addEventListener('input', renderAssets);
 $('#h-search').oninput = $('#h-type').onchange = render;
